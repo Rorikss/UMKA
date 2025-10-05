@@ -176,6 +176,83 @@ let lines = read("filename");   // чтение из файла
 
 ## 4. Грамматика EBNF
 [ДОБАВИТЬ как появится!!]
+```ebnf
+(======= Программа =========)
+program = { statement } ;
+
+(======== Операторы ========)
+statement = let_statement
+            | assignment_statement
+            | expression_statement
+            | if_statement
+            | while_statement
+            | for_statement
+            | return_statement
+            | block_statement
+            | function_definition ;
+
+let_statement = "let", identifier, "=", expression, ";" ;
+assignment_statement = identifier, "=", expression, ";" ;
+expression_statement = expression, ";" ;
+return_statement = "return", [expression], ";" ;
+block_statement = "{", { statement }, "}" ;
+
+(========== Управляющие конструкции ==========)
+if_statement = "if", "(", logical_expression, ")", block_statement, [ "else", (if_statement | block_statement) ] ;
+while_statement = "while", "(", logical_expression, ")", block_statement ;
+for_statement = "for", "(", (let_statement | expression_statement), logical_expression, ";", expression, ")", block_statement ;
+
+(===== Выражения =====)
+expression = logical_expression | arithmetic_expression | string_literal | boolean | array_literal | function_call | identifier ;
+
+logical_expression = comparison | unary_logical ;
+comparison = arithmetic_expression, { ("==" | "!=" | ">" | "<" | ">=" | "<="), arithmetic_expression } 
+           | string_literal, { ("==" | "!="), string_literal } 
+           | identifier, { ("==" | "!="), (identifier | string_literal | arithmetic_expression) } ;
+unary_logical = "!", (boolean | identifier | function_call | "(", logical_expression, ")") ;
+
+arithmetic_expression = term ;
+term = factor, { ("+" | "-"), factor } ;
+factor = unary_arithmetic, { ("*" | "/" | "%"), unary_arithmetic } ;
+unary_arithmetic = [("-" | "+")], arithmetic_primary ;
+arithmetic_primary = number | identifier | function_call | "(", arithmetic_expression, ")" ;
+
+(===== Функции =====)
+function_definition = "fun", identifier, "(", [parameter_list], ")", "->", return_type, block_statement ;
+parameter_list = identifier, { ",", identifier } ;
+return_type = basic_type | array_type | "void";
+basic_type = "int" | "float" | "string" | "bool";
+array_type = "[", "]" ;
+function_call = (identifier | std_function), "(", [argument_list], ")" ;
+argument_list = expression, { ",", expression } ;
+
+(===== Массивы =====)
+array_literal = "[", [expression_list], "]" ;
+expression_list = expression, { ",", expression } ;
+                
+(======= Встроенные функции (функции стандартной библиотеки) ========)
+std_function = "print" | "len" | "add" | "remove" | "get" | "set" | "str" | "write" | "read" | "concat";
+
+(======= Базовые типы =========)
+number = integer | float ;
+integer = ["+" | "-"], digit, { digit } ; 
+float = ["+" | "-"], digit, { digit }, ".", digit, { digit } ;
+string_literal = '"', { string_character }, '"' ; 
+boolean = "true" | "false" ;
+identifier = letter, {letter|digit|"_"};
+
+(======= Базовые символы =======)
+letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
+        | "H" | "I" | "J" | "K" | "L" | "M" | "N"
+        | "O" | "P" | "Q" | "R" | "S" | "T" | "U"
+        | "V" | "W" | "X" | "Y" | "Z" | "a" | "b"
+        | "c" | "d" | "e" | "f" | "g" | "h" | "i"
+        | "j" | "k" | "l" | "m" | "n" | "o" | "p"
+        | "q" | "r" | "s" | "t" | "u" | "v" | "w"
+        | "x" | "y" | "z" ;
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+string_character = ? все символы кроме '"' ? ; \\ без кавычек, чтобы голову не ломать где строка заканчивается (мне кажется так проще)
+```
 
 ## 5. Байткод
 Виртуальная машина использует стековую архитектуру. Основные инструкции:
