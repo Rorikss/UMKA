@@ -66,6 +66,7 @@
 #### 3.1 Переменные
 ```
 let x = 10;
+let f = 0.1; // f = 1. и f = .1 запрещено
 let text = "hello";
 let flag = true;
 let arr = [1, 2, 3];
@@ -75,7 +76,8 @@ let arr = [1, 2, 3];
 ```
 x = 28;
 name = "aboba";
-arr[0] = 14;
+arr[0] = 14; // запрещено
+set(arr, 0, 14);
 ```
 
 #### 3.3 Арифметика
@@ -134,6 +136,10 @@ fun fib(n) -> int {
         return 0;
     }
     return fib(n - 1) + fib(n - 2);
+}
+
+fun printHello() -> void {
+    print("Hello!");
 }
 ```
 
