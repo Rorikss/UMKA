@@ -175,7 +175,6 @@ let lines = read("filename");   // чтение из файла
 * `str` - конвертация в строку
 
 ## 4. Грамматика EBNF
-[ДОБАВИТЬ как появится!!]
 ```ebnf
 (======= Программа =========)
 program = { statement } ;
@@ -191,8 +190,12 @@ statement = let_statement
             | block_statement
             | function_definition ;
 
-let_statement = "let", identifier, "=", expression, ";" ;
-assignment_statement = identifier, "=", expression, ";" ;
+let_statement = let_declaration, ";" ;
+assignment_statement = assignment_expression, ";" ;
+
+let_declaration = "let", identifier, "=", expression ;
+assignment_expression = identifier, "=", expression ;
+
 expression_statement = expression, ";" ;
 return_statement = "return", [expression], ";" ;
 block_statement = "{", { statement }, "}" ;
@@ -200,7 +203,7 @@ block_statement = "{", { statement }, "}" ;
 (========== Управляющие конструкции ==========)
 if_statement = "if", "(", logical_expression, ")", block_statement, [ "else", (if_statement | block_statement) ] ;
 while_statement = "while", "(", logical_expression, ")", block_statement ;
-for_statement = "for", "(", (let_statement | expression_statement), logical_expression, ";", expression, ")", block_statement ;
+for_statement = "for", "(", let_declaration, ";", logical_expression, ";", assignment_expression, ")", block_statement ;
 
 (===== Выражения =====)
 expression = logical_expression | arithmetic_expression | string_literal | boolean | array_literal | function_call | identifier ;
@@ -251,7 +254,7 @@ letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
         | "q" | "r" | "s" | "t" | "u" | "v" | "w"
         | "x" | "y" | "z" ;
 digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
-string_character = ? все символы кроме '"' ? ; \\ без кавычек, чтобы голову не ломать где строка заканчивается (мне кажется так проще)
+string_character = ? все символы кроме '"' ? ; // без кавычек, чтобы голову не ломать где строка заканчивается (мне кажется так проще)
 ```
 
 ## 5. Байткод
