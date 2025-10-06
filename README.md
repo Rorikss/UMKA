@@ -214,10 +214,15 @@ for_statement = "for", "(", let_declaration, ";", logical_expression, ";", assig
 (===== Выражения =====)
 expression = logical_expression | arithmetic_expression | string_literal | boolean | array_literal | function_call | identifier ;
 
-logical_expression = comparison | unary_logical ;
+logical_expression = logical_or ;
+logical_or = logical_and, { "||", logical_and } ;
+logical_and = logical_comparison, { "&&", logical_comparison } ;
+logical_comparison = comparison | unary_logical ;
 comparison = arithmetic_expression, { ("==" | "!=" | ">" | "<" | ">=" | "<="), arithmetic_expression } 
-           | string_literal, { ("==" | "!="), string_literal } 
-           | identifier, { ("==" | "!="), (identifier | string_literal | arithmetic_expression) } ;
+           | string_literal, { ("==" | "!=" | ">" | "<" | ">=" | "<="), string_literal } 
+           | array_literal, { ("==" | "!="), array_literal }
+           | identifier, { ("==" | "!=" | ">" | "<" | ">=" | "<="), (identifier | string_literal | arithmetic_expression) } 
+           | identifier, { ("==" | "!="), array_literal };
 unary_logical = "!", (boolean | identifier | function_call | "(", logical_expression, ")") ;
 
 arithmetic_expression = term ;
@@ -232,23 +237,20 @@ parameter_list = identifier, { ",", identifier } ;
 return_type = basic_type | array_type | "void";
 basic_type = "int" | "float" | "string" | "bool";
 array_type = "[", "]" ;
-function_call = (identifier | std_function), "(", [argument_list], ")" ;
+function_call = identifier, "(", [argument_list], ")" ;
 argument_list = expression, { ",", expression } ;
 
 (===== Массивы =====)
 array_literal = "[", [expression_list], "]" ;
 expression_list = expression, { ",", expression } ;
                 
-(======= Встроенные функции (функции стандартной библиотеки) ========)
-std_function = "print" | "len" | "add" | "remove" | "get" | "set" | "str" | "write" | "read" | "concat";
-
 (======= Базовые типы =========)
 number = integer | float ;
 integer = ["+" | "-"], digit, { digit } ; 
 float = ["+" | "-"], digit, { digit }, ".", digit, { digit } ;
 string_literal = '"', { string_character }, '"' ; 
 boolean = "true" | "false" ;
-identifier = letter, {letter|digit|"_"};
+identifier = (letter | "_"), {letter | digit | "_"} ;
 
 (======= Базовые символы =======)
 letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
@@ -260,7 +262,7 @@ letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
         | "q" | "r" | "s" | "t" | "u" | "v" | "w"
         | "x" | "y" | "z" ;
 digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
-string_character = ? все символы кроме '"' ? ; // без кавычек, чтобы голову не ломать где строка заканчивается (мне кажется так проще)
+string_character = ? все символы кроме '"' ? ;
 ```
 
 ## 5. Байткод
