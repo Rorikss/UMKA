@@ -66,6 +66,7 @@
 #### 3.1 Переменные
 ```
 let x = 10;
+let f = 0.1; // f = 1. и f = .1 запрещено
 let text = "hello";
 let flag = true;
 let arr = [1, 2, 3];
@@ -75,7 +76,8 @@ let arr = [1, 2, 3];
 ```
 x = 28;
 name = "aboba";
-arr[0] = 14;
+arr[0] = 14; // запрещено
+set(arr, 0, 14);
 ```
 
 #### 3.3 Арифметика
@@ -91,7 +93,8 @@ let mod = 17 % 5;  // взятие остатка
 ```
 let x = 10 > 5;        // true
 let y = 10 == 10;      // true  
-var z = "hi" != "bye"; // true
+let z = "hi" != "bye"; // true
+let k = "apple" < "banana" // true
 ```
 
 #### 3.5 Условные операторы
@@ -135,6 +138,10 @@ fun fib(n) -> int {
     }
     return fib(n - 1) + fib(n - 2);
 }
+
+fun printHello() -> void {
+    print("Hello!");
+}
 ```
 
 #### 3.9 Встроенные функции
@@ -148,6 +155,8 @@ set(arr, index, elem);          // установка в массив по ин�
 let s = str(123);               // конвертация в строку
 write("filename", s);           // запись в файл
 let lines = read("filename");   // чтение из файла
+let double_num = int_to_double(42);      // конвертация int в double
+let int_num = double_to_int(3.14);      // конвертация double в int
 ```
 
 
@@ -173,9 +182,93 @@ let lines = read("filename");   // чтение из файла
 * `add` - добавление в массив
 * `remove` - удаление из массива по индексу
 * `str` - конвертация в строку
+* `int_to_double` - конвертация int в double
+* `double_to_int` - конвертация double в int
 
 ## 4. Грамматика EBNF
-[ДОБАВИТЬ как появится!!]
+```ebnf
+(======= Программа =========)
+program = { statement } ;
+
+(======== Операторы ========)
+statement = let_statement
+            | assignment_statement
+            | expression_statement
+            | if_statement
+            | while_statement
+            | for_statement
+            | return_statement
+            | block_statement
+            | function_definition ;
+
+let_statement = let_declaration, ";" ;
+assignment_statement = assignment_expression, ";" ;
+
+let_declaration = "let", identifier, "=", expression ;
+assignment_expression = identifier, "=", expression ;
+
+expression_statement = expression, ";" ;
+return_statement = "return", [expression], ";" ;
+block_statement = "{", { statement }, "}" ;
+
+(========== Управляющие конструкции ==========)
+if_statement = "if", "(", logical_expression, ")", block_statement, [ "else", (if_statement | block_statement) ] ;
+while_statement = "while", "(", logical_expression, ")", block_statement ;
+for_statement = "for", "(", let_declaration, ";", logical_expression, ";", assignment_expression, ")", block_statement ;
+
+(===== Выражения =====)
+expression = logical_expression | arithmetic_expression | string_literal | boolean | array_literal | function_call | identifier ;
+
+logical_expression = logical_or ;
+logical_or = logical_and, { "||", logical_and } ;
+logical_and = logical_comparison, { "&&", logical_comparison } ;
+logical_comparison = comparison | unary_logical ;
+comparison = arithmetic_expression, { ("==" | "!=" | ">" | "<" | ">=" | "<="), arithmetic_expression } 
+           | string_literal, { ("==" | "!=" | ">" | "<" | ">=" | "<="), string_literal } 
+           | array_literal, { ("==" | "!="), array_literal }
+           | identifier, { ("==" | "!=" | ">" | "<" | ">=" | "<="), (identifier | string_literal | arithmetic_expression) } 
+           | identifier, { ("==" | "!="), array_literal };
+unary_logical = "!", (boolean | identifier | function_call | "(", logical_expression, ")") ;
+
+arithmetic_expression = term ;
+term = factor, { ("+" | "-"), factor } ;
+factor = unary_arithmetic, { ("*" | "/" | "%"), unary_arithmetic } ;
+unary_arithmetic = [("-" | "+")], arithmetic_primary ;
+arithmetic_primary = number | identifier | function_call | "(", arithmetic_expression, ")" ;
+
+(===== Функции =====)
+function_definition = "fun", identifier, "(", [parameter_list], ")", "->", return_type, block_statement ;
+parameter_list = identifier, { ",", identifier } ;
+return_type = basic_type | array_type | "void";
+basic_type = "int" | "double" | "string" | "bool";
+array_type = "[", "]" ;
+function_call = identifier, "(", [argument_list], ")" ;
+argument_list = expression, { ",", expression } ;
+
+(===== Массивы =====)
+array_literal = "[", [expression_list], "]" ;
+expression_list = expression, { ",", expression } ;
+                
+(======= Базовые типы =========)
+number = integer | double ;
+integer = ["+" | "-"], digit, { digit } ; 
+double = ["+" | "-"], digit, { digit }, ".", digit, { digit } ;
+string_literal = '"', { string_character }, '"' ; 
+boolean = "true" | "false" ;
+identifier = (letter | "_"), {letter | digit | "_"} ;
+
+(======= Базовые символы =======)
+letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
+        | "H" | "I" | "J" | "K" | "L" | "M" | "N"
+        | "O" | "P" | "Q" | "R" | "S" | "T" | "U"
+        | "V" | "W" | "X" | "Y" | "Z" | "a" | "b"
+        | "c" | "d" | "e" | "f" | "g" | "h" | "i"
+        | "j" | "k" | "l" | "m" | "n" | "o" | "p"
+        | "q" | "r" | "s" | "t" | "u" | "v" | "w"
+        | "x" | "y" | "z" ;
+digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
+string_character = ? все символы кроме '"' ? ;
+```
 
 ## 5. Байткод
 Виртуальная машина использует стековую архитектуру. Основные инструкции:
