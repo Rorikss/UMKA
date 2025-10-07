@@ -155,8 +155,8 @@ set(arr, index, elem);          // установка в массив по ин�
 let s = str(123);               // конвертация в строку
 write("filename", s);           // запись в файл
 let lines = read("filename");   // чтение из файла
-let float_num = int_to_float(42);      // конвертация int в float
-let int_num = float_to_int(3.14);      // конвертация float в int
+let double_num = int_to_double(42);      // конвертация int в double
+let int_num = double_to_int(3.14);      // конвертация double в int
 ```
 
 
@@ -182,8 +182,8 @@ let int_num = float_to_int(3.14);      // конвертация float в int
 * `add` - добавление в массив
 * `remove` - удаление из массива по индексу
 * `str` - конвертация в строку
-* `int_to_float` - конвертация int в float
-* `float_to_int` - конвертация float в int
+* `int_to_double` - конвертация int в double
+* `double_to_int` - конвертация double в int
 
 ## 4. Грамматика EBNF
 ```ebnf
@@ -240,7 +240,7 @@ arithmetic_primary = number | identifier | function_call | "(", arithmetic_expre
 function_definition = "fun", identifier, "(", [parameter_list], ")", "->", return_type, block_statement ;
 parameter_list = identifier, { ",", identifier } ;
 return_type = basic_type | array_type | "void";
-basic_type = "int" | "float" | "string" | "bool";
+basic_type = "int" | "double" | "string" | "bool";
 array_type = "[", "]" ;
 function_call = identifier, "(", [argument_list], ")" ;
 argument_list = expression, { ",", expression } ;
@@ -250,9 +250,9 @@ array_literal = "[", [expression_list], "]" ;
 expression_list = expression, { ",", expression } ;
                 
 (======= Базовые типы =========)
-number = integer | float ;
+number = integer | double ;
 integer = ["+" | "-"], digit, { digit } ; 
-float = ["+" | "-"], digit, { digit }, ".", digit, { digit } ;
+double = ["+" | "-"], digit, { digit }, ".", digit, { digit } ;
 string_literal = '"', { string_character }, '"' ; 
 boolean = "true" | "false" ;
 identifier = (letter | "_"), {letter | digit | "_"} ;
