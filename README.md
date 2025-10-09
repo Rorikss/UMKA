@@ -333,6 +333,283 @@ string_character = ? все символы кроме '"' ? ;
 ### Примеры
 [TODO: описать принцип составления байткода и его примеры]
 
+#### Пример №1
+
+**Код UMKA**
+```kt
+fun main() -> void {
+    let x = 10;
+    let y = 5;
+    let z = x + y;
+    print(z);
+}
+```
+
+**Текстовый байткод**
+```kt
+PUSH_CONST 0
+STORE 0        ; x = 10
+PUSH_CONST 1
+STORE 1        ; y = 5
+LOAD 0
+LOAD 1
+ADD
+STORE 2        ; z = x + y
+LOAD 2
+PRINT
+RETURN
+```
+**Бинарный код**
+
+```kt
+01                        ; version = 1
+02 00                     ; const_count = 2
+01 00                     ; func_count = 1
+1B 00 00 00               ; code_size = 27 (0x1B)
+
+-- const pool  --
+01 0A 00 00 00 00 00 00 00 ; type=0x01 int64(10)
+01 05 00 00 00 00 00 00 00 ; type=0x01 int64(5)
+
+-- function table  --
+00 00 00 00 00 00 03 00    ; ArgCount = 0  CodeOffset = 0 LocalCount = 3
+                    
+-- code (27 bytes) --
+01 00 00   ; PUSH_CONST 0
+03 00 00   ; STORE 0
+01 01 00   ; PUSH_CONST 1
+03 01 00   ; STORE 1
+04 00 00   ; LOAD 0
+04 01 00   ; LOAD 1
+10        ; ADD
+03 02 00   ; STORE 2
+04 02 00   ; LOAD 2
+40        ; PRINT
+24        ; RETURN
+```
+
+#### Пример №2
+
+**Код UMKA**
+```kt
+fun main() -> void {
+    let i = 0;
+    while (i < 3) {
+        print(i);
+        i = i + 1;
+    }
+}
+```
+
+**Текстовый байткод (с метками)**
+```kt
+PUSH_CONST 0
+STORE 0          ; i = 0
+
+L0:
+LOAD 0
+PUSH_CONST 1
+LT
+JMP_IF_FALSE L1
+
+LOAD 0
+PRINT
+LOAD 0
+PUSH_CONST 2
+ADD
+STORE 0
+JMP L0
+
+L1:
+RETURN
+```
+**Бинарный код**
+```kt
+01                        ; version = 1
+03 00                     ; const_count = 3
+01 00                     ; func_count = 1
+26 00 00 00               ; code_size = 38 bytes
+
+-- constant pool --
+01 00 00 00 00 00 00 00 00   ; type=0x01 int64(0)
+01 03 00 00 00 00 00 00 00   ; type=0x01 int64(3)
+01 01 00 00 00 00 00 00 00   ; type=0x01 int64(1)
+
+-- function table --
+00 00 00 00   ; CodeOffset = 0 ArgCount = 0 LocalCount = 1 
+
+-- code section (38 bytes) --
+01 00 00
+03 00 00
+04 00 00
+01 01 00
+1D
+21 13 00 00 00
+04 00 00
+40
+04 00 00
+01 02 00
+10
+03 00 00
+20 E1 FF FF FF
+24
+```
+#### Пример №3
+**Код UMKA**
+```kt
+fun processAndSave(arr) -> void {
+    set(arr, 0, 10);     
+    add(arr, 4);          
+    print(get(arr, 1));   
+    remove(arr, 1);
+    let total = get(arr, 0) + get(arr, 1);
+    write_file("out.txt", to_string(total));
+    return;
+}
+
+fun main() -> void {
+    let arr = [1,2,3];
+    processAndSave(arr);
+    print(17 % 5);
+    print(read_file("out.txt"));
+    return;
+}
+
+```
+**Текстовый байткод (с метками)**
+```kt
+;processAndSave
+LOAD 0               ; load parameter arr
+PUSH_CONST 5         ; const 0 (index 0) ???  -- in my mapping c5 = 0 (index of constant 0)
+PUSH_CONST 4         ; const 4 (value 10)
+STORE_INDEX          ; arr[0] = 10
+
+LOAD 0
+PUSH_CONST 3
+ARR_ADD
+
+LOAD 0
+PUSH_CONST 0
+LOAD_INDEX
+PRINT
+
+LOAD 0
+PUSH_CONST 0
+ARR_REMOVE
+
+LOAD 0
+PUSH_CONST 5
+LOAD_INDEX
+
+LOAD 0
+PUSH_CONST 0
+LOAD_INDEX
+ADD
+STORE 1              ; store total in local slot 1
+
+PUSH_CONST 8         ; filename "out.txt"
+LOAD 1               ; load total
+TO_STRING
+WRITE_FILE
+
+RETURN
+
+;main
+PUSH_CONST 0
+PUSH_CONST 1
+PUSH_CONST 2
+BUILD_ARR 3
+STORE 0              ; arr in var0
+
+LOAD 0
+CALL 0, 1            ; call processAndSave(arr)
+
+PUSH_CONST 6         ; 17
+PUSH_CONST 7         ; 5
+REM
+PRINT
+
+PUSH_CONST 8
+READ_FILE
+PRINT
+
+PUSH_CONST 5
+POP
+
+RETURN
+```
+
+**Бинарный код**
+```kt
+01                      ; version = 1
+09 00                   ; const_count = 9
+02 00                   ; func_count = 2
+64 00 00 00             ; code_size = 100 (0x64)
+
+-- const pool --
+01 01 00 00 00 00 00 00 00        ; type=0x01, int64(1)
+01 02 00 00 00 00 00 00 00        ; type=0x01, int64(2)
+01 03 00 00 00 00 00 00 00        ; type=0x01, int64(3)
+01 04 00 00 00 00 00 00 00        ; type=0x01, int64(4)
+01 0A 00 00 00 00 00 00 00        ; type=0x01, int64(10)
+01 00 00 00 00 00 00 00 00        ; type=0x01, int64(0)
+01 11 00 00 00 00 00 00 00        ; type=0x01, int64(17)
+01 05 00 00 00 00 00 00 00        ; type=0x01, int64(5)
+03 07 00 6F 75 74 2E 74 78 74    ; type=0x03, len=7, "out.txt"
+
+-- function table --
+00 00 00 00   01 00   02 00    ; func0: CodeOffset=0, ArgCount=1, LocalCount=2
+3B 00 00 00   00 00   02 00    ; func1: CodeOffset=59 (0x3B), ArgCount=0, LocalCount=2
+
+; function0 (processAndSave) (59 bytes)
+04 00 00                      ; LOAD 0
+01 05 00                      ; PUSH_CONST 5  (const id 5 = int64(0))
+01 04 00                      ; PUSH_CONST 4  (const id 4 = 10)
+32                            ; STORE_INDEX
+04 00 00                      ; LOAD 0
+01 03 00                      ; PUSH_CONST 3  (4)
+33                            ; ARR_ADD
+04 00 00                      ; LOAD 0
+01 00 00                      ; PUSH_CONST 0  (1)
+31                            ; LOAD_INDEX
+40                            ; PRINT
+04 00 00                      ; LOAD 0
+01 00 00                      ; PUSH_CONST 0  (1)
+34                            ; ARR_REMOVE
+04 00 00                      ; LOAD 0
+01 05 00                      ; PUSH_CONST 5  (0)
+31                            ; LOAD_INDEX
+04 00 00                      ; LOAD 0
+01 00 00                      ; PUSH_CONST 0
+31                            ; LOAD_INDEX
+10                            ; ADD
+03 01 00                      ; STORE 1
+01 08 00                      ; PUSH_CONST 8  ("out.txt")
+04 01 00                      ; LOAD 1
+60                            ; TO_STRING
+50                            ; WRITE_FILE
+24                            ; RETURN
+
+; function1 (main) (41 bytes)
+01 00 00                      ; PUSH_CONST 0
+01 01 00                      ; PUSH_CONST 1
+01 02 00                      ; PUSH_CONST 2
+30 03 00                      ; BUILD_ARR 3
+03 00 00                      ; STORE 0
+04 00 00                      ; LOAD 0
+23 00 00 01 00                ; CALL func_index=0, arg_count=1
+01 06 00                      ; PUSH_CONST 6    ; 17
+01 07 00                      ; PUSH_CONST 7    ; 5
+14                            ; REM
+40                            ; PRINT
+01 08 00                      ; PUSH_CONST 8    ; "out.txt"
+51                            ; READ_FILE
+40                            ; PRINT
+01 05 00                      ; PUSH_CONST 5
+02                            ; POP
+24                            ; RETURN
+
+```
 ## 6. Стековая машина и память 
 [TODO: описать принцип работы стека и памяти -- будет!]
 
