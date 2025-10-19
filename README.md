@@ -53,14 +53,14 @@
 
  
 ## 2. Типы данных
-| Тип | Описание | Пример |
-|-----|-----------|---------|
-| `int` | Целое число (64-битное) | `42`, `-10`, `0` |
+| Тип      | Описание | Пример |
+|----------|-----------|---------|
+| `int`    | Целое число (64-битное) | `42`, `-10`, `0` |
 | `double` | Дробное число (64-битное) | `2.8`, `-1.118` |
 | `string` | Строка UTF-8 | `"hello"`, `"test"` |
-| `bool` | Логический тип | `true`, `false` |
-| `[]` | Массив элементов | `[1, 2, "a"]`, `["a", [1, 2, 3]]` |
-| `void` | Отсутствие значения | `return;` |
+| `bool`   | Логический тип | `true`, `false` |
+| `[]`     | Массив элементов | `[1, 2, "a"]`, `["a", [1, 2, 3]]` |
+| `uint`   | Отсутствие значения | `return;` |
 
 ## 3. Синтаксис
 #### 3.1 Переменные
@@ -139,7 +139,7 @@ fun fib(n) -> int {
     return fib(n - 1) + fib(n - 2);
 }
 
-fun printHello() -> void {
+fun printHello() -> uint {
     print("Hello!");
 }
 ```
@@ -217,7 +217,7 @@ while_statement = "while", "(", logical_expression, ")", block_statement ;
 for_statement = "for", "(", let_declaration, ";", logical_expression, ";", assignment_expression, ")", block_statement ;
 
 (===== Выражения =====)
-expression = logical_expression | arithmetic_expression | string_literal | boolean | array_literal | function_call | identifier ;
+expression = logical_expression | arithmetic_expression | string_literal | boolean | array_literal | function_call | identifier | type_value ;
 
 logical_expression = logical_or ;
 logical_or = logical_and, { "||", logical_and } ;
@@ -227,20 +227,21 @@ comparison = arithmetic_expression, { ("==" | "!=" | ">" | "<" | ">=" | "<="), a
            | string_literal, { ("==" | "!=" | ">" | "<" | ">=" | "<="), string_literal } 
            | array_literal, { ("==" | "!="), array_literal }
            | identifier, { ("==" | "!=" | ">" | "<" | ">=" | "<="), (identifier | string_literal | arithmetic_expression) } 
-           | identifier, { ("==" | "!="), array_literal };
+           | identifier, { ("==" | "!="), array_literal }
+           | type_value, { ("==" | "!=" | ">" | "<" | ">=" | "<="), (type_value | identifier | string_literal | arithmetic_expression) } ;
 unary_logical = "!", (boolean | identifier | function_call | "(", logical_expression, ")") ;
 
 arithmetic_expression = term ;
 term = factor, { ("+" | "-"), factor } ;
 factor = unary_arithmetic, { ("*" | "/" | "%"), unary_arithmetic } ;
 unary_arithmetic = [("-" | "+")], arithmetic_primary ;
-arithmetic_primary = number | identifier | function_call | "(", arithmetic_expression, ")" ;
+arithmetic_primary = number | identifier | function_call | "(", arithmetic_expression, ")" | type_value ;
 
 (===== Функции =====)
 function_definition = "fun", identifier, "(", [parameter_list], ")", "->", return_type, block_statement ;
 parameter_list = identifier, { ",", identifier } ;
-return_type = basic_type | array_type | "void";
-basic_type = "int" | "double" | "string" | "bool";
+return_type = basic_type | array_type;
+basic_type = "int" | "double" | "string" | "bool" | "uint";
 array_type = "[", "]" ;
 function_call = identifier, "(", [argument_list], ")" ;
 argument_list = expression, { ",", expression } ;
@@ -248,7 +249,7 @@ argument_list = expression, { ",", expression } ;
 (===== Массивы =====)
 array_literal = "[", [expression_list], "]" ;
 expression_list = expression, { ",", expression } ;
-                
+
 (======= Базовые типы =========)
 number = integer | double ;
 integer = ["+" | "-"], digit, { digit } ; 
@@ -256,6 +257,7 @@ double = ["+" | "-"], digit, { digit }, ".", digit, { digit } ;
 string_literal = '"', { string_character }, '"' ; 
 boolean = "true" | "false" ;
 identifier = (letter | "_"), {letter | digit | "_"} ;
+type_value = "uint" ;
 
 (======= Базовые символы =======)
 letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
@@ -330,7 +332,7 @@ string_character = ? все символы кроме '"' ? ;
 
 **Код UMKA**
 ```kt
-fun main() -> void {
+fun main() -> uint {
     let x = 10;
     let y = 5;
     let z = x + y;
@@ -385,7 +387,7 @@ RETURN
 
 **Код UMKA**
 ```kt
-fun main() -> void {
+fun main() -> uint {
     let i = 0;
     while (i < 3) {
         print(i);
@@ -450,7 +452,7 @@ RETURN
 #### Пример №3
 **Код UMKA**
 ```kt
-fun processAndSave(arr) -> void {
+fun processAndSave(arr) -> uint {
     set(arr, 0, 10);     
     add(arr, 4);          
     print(get(arr, 1));   
@@ -460,7 +462,7 @@ fun processAndSave(arr) -> void {
     return;
 }
 
-fun main() -> void {
+fun main() -> uint {
     let arr = [1,2,3];
     processAndSave(arr);
     print(17 % 5);
