@@ -217,7 +217,8 @@ while_statement = "while", "(", logical_expression, ")", block_statement ;
 for_statement = "for", "(", let_declaration, ";", logical_expression, ";", assignment_expression, ")", block_statement ;
 
 (===== Выражения =====)
-expression = logical_expression | arithmetic_expression | string_literal | boolean | array_literal | function_call | identifier | type_value ;
+expression = logical_expression | arithmetic_expression | string_literal | boolean | array_literal | function_call | identifier | type_value | cat_expression;
+cat_expression = logical_expression, [ "^-^", expression ] ;
 
 logical_expression = logical_or ;
 logical_or = logical_and, { "||", logical_and } ;
@@ -227,8 +228,7 @@ comparison = arithmetic_expression, { ("==" | "!=" | ">" | "<" | ">=" | "<="), a
            | string_literal, { ("==" | "!=" | ">" | "<" | ">=" | "<="), string_literal } 
            | array_literal, { ("==" | "!="), array_literal }
            | identifier, { ("==" | "!=" | ">" | "<" | ">=" | "<="), (identifier | string_literal | arithmetic_expression) } 
-           | identifier, { ("==" | "!="), array_literal }
-           | type_value, { ("==" | "!=" | ">" | "<" | ">=" | "<="), (type_value | identifier | string_literal | arithmetic_expression) } ;
+           | identifier, { ("==" | "!="), array_literal } ;
 unary_logical = "!", (boolean | identifier | function_call | "(", logical_expression, ")") ;
 
 arithmetic_expression = term ;
