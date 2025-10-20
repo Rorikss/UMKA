@@ -666,7 +666,7 @@ fun factorial_tail(n, acc) -> int {
 }
 
 let result = factorial (10);
-print(result);  // 3628800
+print(result); // 3628800
 ```
 
 #### Сортировка массивов
