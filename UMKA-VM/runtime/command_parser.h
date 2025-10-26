@@ -2,7 +2,7 @@
 
 #include <vector>
 #include <cstdint>
-#include "model.h"
+#include "../model/model.h"
 
 class CommandParser {
 public:
