@@ -40,40 +40,35 @@ private:
             case 0x10: // ADD
                 if (operand_stack.size() < 2) throw std::runtime_error("Not enough operands for ADD");
                 {
-                    Entity b = operand_stack.top(); operand_stack.pop();
-                    Entity a = operand_stack.top(); operand_stack.pop();
+                    auto [lhs, rhs] = get_operands_from_stack();
                     // TODO
                 }
                 break;
             case 0x11: // SUB
                 if (operand_stack.size() < 2) throw std::runtime_error("Not enough operands for SUB");
                 {
-                    Entity b = operand_stack.top(); operand_stack.pop();
-                    Entity a = operand_stack.top(); operand_stack.pop();
+                    auto [lhs, rhs] = get_operands_from_stack();
                     // TODO
                 }
                 break;
             case 0x12: // MUL
                 if (operand_stack.size() < 2) throw std::runtime_error("Not enough operands for MUL");
                 {
-                    Entity b = operand_stack.top(); operand_stack.pop();
-                    Entity a = operand_stack.top(); operand_stack.pop();
+                    auto [lhs, rhs] = get_operands_from_stack();
                     // TODO
                 }
                 break;
             case 0x13: // DIV
                 if (operand_stack.size() < 2) throw std::runtime_error("Not enough operands for DIV");
                 {
-                    Entity b = operand_stack.top(); operand_stack.pop();
-                    Entity a = operand_stack.top(); operand_stack.pop();
+                    auto [lhs, rhs] = get_operands_from_stack();
                     // TODO
                 }
                 break;
             case 0x14: // MOD
                 if (operand_stack.size() < 2) throw std::runtime_error("Not enough operands for MOD");
                 {
-                    Entity b = operand_stack.top(); operand_stack.pop();
-                    Entity a = operand_stack.top(); operand_stack.pop();
+                    auto [lhs, rhs] = get_operands_from_stack();
                     // TODO
                 }
                 break;
@@ -102,6 +97,14 @@ private:
             default:
                 throw std::runtime_error("Unknown opcode: " + std::to_string(cmd.code));
         }
+    }
+
+    std::pair<Entity, Entity> get_operands_from_stack() {
+        Entity lhs = operand_stack.top();
+        operand_stack.pop();
+        Entity rhs = operand_stack.top();
+        operand_stack.pop();
+        return {lhs, rhs};
     }
 
     std::vector<Command> commands;
