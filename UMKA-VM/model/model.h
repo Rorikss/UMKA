@@ -1,7 +1,11 @@
+#pragma once
+
 #include <map>
 #include <memory>
 #include <tuple>
 #include <variant>
+#include <string>
+#include <unordered_map>
 
 template<typename T>
 using reference = std::weak_ptr<T>;
