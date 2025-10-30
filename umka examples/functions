@@ -1,0 +1,9 @@
+fun sum(a, b) -> int {
+    return a + b;
+}
+
+fun main() -> unit {
+    let result = sum(5, 3);
+    print(result);
+    return;
+}

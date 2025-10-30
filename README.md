@@ -71,7 +71,7 @@
 | `string` | Строка UTF-8 | `"hello"`, `"test"` |
 | `bool`   | Логический тип | `true`, `false` |
 | `[]`     | Массив элементов | `[1, 2, "a"]`, `["a", [1, 2, 3]]` |
-| `uint`   | Отсутствие значения | `return;` |
+| `unit`   | Отсутствие значения | `return;` |
 
 ## 3. Синтаксис
 
@@ -162,7 +162,7 @@ fun fib(n) -> int {
     return fib(n - 1) + fib(n - 2);
 }
 
-fun printHello() -> uint {
+fun printHello() -> unit {
     print("Hello!");
 }
 ```
@@ -265,7 +265,7 @@ arithmetic_primary = number | identifier | function_call | "(", arithmetic_expre
 function_definition = "fun", identifier, "(", [parameter_list], ")", "->", return_type, block_statement ;
 parameter_list = identifier, { ",", identifier } ;
 return_type = basic_type | array_type;
-basic_type = "int" | "double" | "string" | "bool" | "uint";
+basic_type = "int" | "double" | "string" | "bool" | "unit";
 array_type = "[", "]" ;
 function_call = identifier, "(", [argument_list], ")" ;
 argument_list = expression, { ",", expression } ;
@@ -281,7 +281,7 @@ double = ["+" | "-"], digit, { digit }, ".", digit, { digit } ;
 string_literal = '"', { string_character }, '"' ; 
 boolean = "true" | "false" ;
 identifier = (letter | "_"), {letter | digit | "_"} ;
-type_value = "uint" ;
+type_value = "unit" ;
 
 (======= Базовые символы =======)
 letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
@@ -346,7 +346,7 @@ string_character = ? все символы кроме '"' ? ;
 | **CALL**          | `0x23`  | `int64` func_index  | вызывает функцию по func_index                                                           |
 | **RETURN**        | `0x24`  | -                   | возвращает управление из функции, может брать возвращаемое значение с вершины стека      |
 | **BUILD_ARR**     | `0x30`  | `int64` const_index | создает массив, беря количество элементов по onst_index, а сами элементы с вершины стека |
-| **OPCOT**         | `0x40`  | `int64` var_index   | проверяет, является ли переменная unit типом                                             |
+| **OPCOT**         | `0x40`  | -                   | проверяет, является ли переменная unit типом                                             |
 | **TO_STRING**     | `0x60`  | -                   | конвертирует первое значение в строку                                                    |
 | **INT_TO_DOUBLE** | `0x61`  | -                   | конвертирует целое число в число с плавающей точкой, но только если оно первое на стеке  |
 | **DOUBLE_TO_INT** | `0x62`  | -                   | конвертирует число с плавающей точкой в целое число, но только если оно первое на стеке  |
@@ -358,7 +358,7 @@ string_character = ? все символы кроме '"' ? ;
 
 **Код UMKA**
 ```kt
-fun main() -> uint {
+fun main() -> unit {
     let x = 10;
     let y = 5;
     let z = x + y;
@@ -413,7 +413,7 @@ RETURN
 
 **Код UMKA**
 ```kt
-fun main() -> uint {
+fun main() -> unit {
     let i = 0;
     while (i < 3) {
         print(i);
@@ -478,7 +478,7 @@ RETURN
 #### Пример №3
 **Код UMKA**
 ```kt
-fun processAndSave(arr) -> uint {
+fun processAndSave(arr) -> unit {
     set(arr, 0, 10);     
     add(arr, 4);          
     print(get(arr, 1));   
@@ -488,7 +488,7 @@ fun processAndSave(arr) -> uint {
     return;
 }
 
-fun main() -> uint {
+fun main() -> unit {
     let arr = [1,2,3];
     processAndSave(arr);
     print(17 % 5);

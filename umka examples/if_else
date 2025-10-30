@@ -1,0 +1,9 @@
+fun main() -> unit {
+    let a = 15;
+    if (a > 10) {
+        print("big");
+    } else {
+        print("small");
+    }
+    return;
+}
