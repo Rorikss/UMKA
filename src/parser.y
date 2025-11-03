@@ -570,6 +570,11 @@ void yyerror(const char* s){
 %token TYPE_UINT
 %token LET FUN IF ELSE WHILE FOR RETURN PRINT READ WRITE LEN ADD REMOVE GET SET STR INT_TO_DOUBLE DOUBLE_TO_INT
 %token CAT
+%token ARROW
+%token TYPE_INT
+%token TYPE_DOUBLE
+%token TYPE_STRING
+%token TYPE_BOOL
 
 /* операторы/разделители — можно объявить как обычные символы или токены */
 %token EQ NEQ GE LE AND OR
@@ -675,9 +680,19 @@ for_statement:
             $$ = new ForStmt(init, cond, post, $9);
         }
 ;
+
+return_type:
+    TYPE_UINT
+  | TYPE_INT
+  | TYPE_DOUBLE
+  | TYPE_STRING
+  | TYPE_BOOL
+  | '[' ']'   /* array type */
+  ;
+
 /* function definition */
 function_definition:
-    FUN IDENT '(' parameter_list ')' "->" TYPE_UINT block_statement {
+    FUN IDENT '(' parameter_list ')' ARROW return_type block_statement {
         // позиции:
         // $2 = IDENT (char*)
         // $4 = parameter_list (vector<char*>*)
