@@ -41,7 +41,7 @@ private:
                 break;
             case 0x02: // POP
                 if (operand_stack.empty()) throw std::runtime_error("Stack underflow");
-                operand_stack.pop();
+                operand_stack.pop_back();
                 break;
             case 0x03: // STORE
                 // TODO
