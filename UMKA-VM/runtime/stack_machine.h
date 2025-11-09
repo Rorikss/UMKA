@@ -1,13 +1,39 @@
 #pragma once
-#include "../model/model.h"
-#include "../model/command_parser.h"
+#include "model/model.h"
+#include "runtime/command_parser.h"
 #include "operations.h"
-#include <functional>
+#include <compare>
 #include <cstdint>
 #include <memory>
 #include <vector>
-#include <unordered_map>
 #include <stdexcept>
+
+enum OpCode : uint8_t {
+    PUSH_CONST = 0x01,
+    POP = 0x02,
+    STORE = 0x03,
+    LOAD = 0x04,
+    ADD = 0x10,
+    SUB = 0x11,
+    MUL = 0x12,
+    DIV = 0x13,
+    MOD = 0x14,
+    NOT = 0x17,
+    AND = 0x18,
+    OR = 0x19,
+    EQ = 0x1A,
+    NEQ = 0x1B,
+    GT = 0x1C,
+    LT = 0x1D,
+    GTE = 0x1E,
+    LTE = 0x1F,
+    JMP = 0x20,
+    JMP_IF_FALSE = 0x21,
+    JMP_IF_TRUE = 0x22,
+    CALL = 0x23,
+    BUILD_ARR = 0x30,
+    OPCOT = 0x40
+};
 
 class StackMachine {
 public:
@@ -35,83 +61,103 @@ private:
             BinaryOperationDecoratorWithApplier(op_name, f, numeric_applier<decltype(f)>);
         };
 
+        auto UnaryOperationDecorator = [machine = this](const std::string& op_name, auto f) {
+            if (machine->operand_stack.empty()) throw std::runtime_error("Not enough operands for " + op_name);
+            Reference<Entity> operand = machine->operand_stack.back();
+            machine->operand_stack.pop_back();
+            if (operand.expired()) throw std::runtime_error("Operand expired for " + op_name);
+            Entity result = unary_applier(*operand.lock(), f);
+            machine->create_and_push(result);
+        };
+
+        auto CompareOperationDecorator = [BinaryOperationDecoratorWithApplier](auto f) {
+            BinaryOperationDecoratorWithApplier(
+                "Ordering",
+                f,
+                [](const Entity& a, const Entity& b, auto f) {
+                    return Entity(f(a, b));
+                }
+            );
+        };
+
         switch (cmd.code) {
-            case 0x01: // PUSH_CONST
+            case PUSH_CONST:
                 // TODO
                 break;
-            case 0x02: // POP
+            case POP:
                 if (operand_stack.empty()) throw std::runtime_error("Stack underflow");
                 operand_stack.pop_back();
                 break;
-            case 0x03: // STORE
+            case STORE:
                 // TODO
                 break;
-            case 0x04: // LOAD
+            case LOAD:
                 // TODO
                 break;
-            case 0x10: // ADD
+            case ADD:
                 BinaryOperationDecorator("ADD", [](auto a, auto b) { return a + b; });
                 break;
-            case 0x11: // SUB
+            case SUB:
                 BinaryOperationDecorator("SUB", [](auto a, auto b) { return a - b; });
                 break;
-            case 0x12: // MUL
+            case MUL:
                 BinaryOperationDecorator("MUL", [](auto a, auto b) { return a * b; });
                 break;
-            case 0x13: // DIV
+            case DIV:
                 BinaryOperationDecorator("DIV", [](auto a, auto b) { return a / b; });
                 break;
-            case 0x14: // REM
+            case MOD: {
                 auto f = [](auto a, auto b) { return a % b; };
                 BinaryOperationDecoratorWithApplier("REM", f, mod_applier<decltype(f)>);
                 break;
-            case 0x17: // NOT
-                // TODO
+            }
+            case NOT:
+                UnaryOperationDecorator("NOT", [](auto val) { return !val; });
                 break;
-            case 0x18: // AND
+            case AND:
                 BinaryOperationDecorator("AND", [](auto a, auto b) { return a && b; });
                 break;
-            case 0x19: // OR 
+            case OR:
                 BinaryOperationDecorator("OR", [](auto a, auto b) { return a || b; });
                 break;
-            case 0x1A: // EQ
-                // todo
+            case EQ:
+                CompareOperationDecorator([](auto a, auto b) { return a == b; });
                 break;
-            case 0x1B: // NEQ
-                // todo
+            case NEQ:
+                CompareOperationDecorator([](auto a, auto b) { return a != b; });
                 break;
-            case 0x1C: // GT
-                // todo
+            case GT:
+                CompareOperationDecorator([](auto a, auto b) { return a > b; });
                 break;
-            case 0x1D: // LT
-                // todo
+            case LT:
+                CompareOperationDecorator([](auto a, auto b) { return a < b; });
                 break;
-            case 0x1E: // GTE
-                // todo
+            case GTE:
+                CompareOperationDecorator([](auto a, auto b) { return a >= b; });
                 break;
-            case 0x1F: // LTE
-                // todo
+            case LTE:
+                CompareOperationDecorator([](auto a, auto b) { return a <= b; });
                 break;
-            case 0x20: // JMP
+            case JMP:
                 // TODO
                 break;
-            case 0x21: // JMP_IF_FALSE
+            case JMP_IF_FALSE:
                 if (operand_stack.empty()) throw std::runtime_error("Stack underflow");
                 // TODO
                 operand_stack.pop_back();
                 break;
-            case 0x22: // JMP_IF_TRUE
+            case JMP_IF_TRUE:
                 if (operand_stack.empty()) throw std::runtime_error("Stack underflow");
                 // TODO
                 operand_stack.pop_back();
                 break;
-            case 0x23: // CALL
+            case CALL:
                 // TODO
                 break;
-            case 0x30: // BUILD_ARR
+            case BUILD_ARR:
                 // TODO
                 break;
-            case 0x40: // OPCOT
+            case OPCOT:
                 // TODO
                 break;
             default:

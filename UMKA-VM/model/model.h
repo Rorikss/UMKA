@@ -1,11 +1,13 @@
 #pragma once
 
+#include <compare>
 #include <map>
 #include <memory>
 #include <tuple>
 #include <variant>
 #include <string>
 #include <unordered_map>
+#include <variant>
 
 template<typename T>
 using Reference = std::weak_ptr<T>;
@@ -25,8 +27,43 @@ using unit = std::monostate;
     X(double) \
     X(bool)
 
+#include <concepts>
+
+template <typename T, typename U>
+concept Comparable = requires(T a, U b) {
+    { a <=> b } -> std::convertible_to<std::partial_ordering>;
+};
+
+template <typename T, typename U>
+concept Equtable = requires(T a, U b) {
+    { a == b } -> std::convertible_to<bool>;
+};
+
 struct Entity {
     std::variant<int64_t, double, bool, unit, std::string, std::map<int, Reference<Entity>>> value;
+
+    std::partial_ordering operator<=>(const Entity& other) const {
+        return std::visit([&](auto&& arg1) {
+            return std::visit([&](auto&& arg2) -> std::partial_ordering {
+                using T1 = std::decay_t<decltype(arg1)>;
+                using T2 = std::decay_t<decltype(arg2)>;
+                
+                if constexpr (Comparable<T1, T2>) {
+                    return arg1 <=> arg2;
+                }
+                if constexpr (Equtable<T1, T2>) {
+                    return arg1 == arg2 
+                    ? std::partial_ordering::equivalent 
+                    : std::partial_ordering::unordered;
+                }
+                return std::partial_ordering::unordered;
+            }, other.value);
+        }, value);
+    }
+    
+    bool operator==(const Entity& other) const {
+        return (*this <=> other) == std::partial_ordering::equivalent;
+    }
 };
 
 struct Command {

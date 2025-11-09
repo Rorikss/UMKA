@@ -19,7 +19,7 @@ public:
                 index += sizeof(int64_t);
             }
             
-            commands.push_back(Command{static_cast<int64_t>(opcode), arg});
+            commands.push_back(Command{static_cast<uint8_t>(opcode), arg});
         }
     }
     

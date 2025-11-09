@@ -34,3 +34,19 @@ Entity mod_applier(Entity a, Entity b, F op) {
     throw std::runtime_error("bad cast in f");
 }
 #undef if_get_then_apply_op
+
+#define if_get_then_apply_unary_op(T) \
+    if (auto* val = std::get_if<T>(&a.value)) { \
+        return make_entity(op(*val)); \
+    }
+
+template<typename F>
+Entity unary_applier(Entity a, F op) {
+    if_get_then_apply_unary_op(int64_t)
+    if_get_then_apply_unary_op(double)
+    if_get_then_apply_unary_op(bool)
+    
+    throw std::runtime_error("bad cast in unary operation");
+}
+
+#undef if_get_then_apply_unary_op
