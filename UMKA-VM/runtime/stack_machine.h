@@ -1,12 +1,20 @@
 #pragma once
 #include "model/model.h"
-#include "runtime/command_parser.h"
 #include "operations.h"
-#include <compare>
 #include <cstdint>
 #include <memory>
 #include <vector>
 #include <stdexcept>
+
+#define CHECK_REF(ref) \
+    if ((ref).expired()) { \
+        throw std::runtime_error("Reference expired at " + std::string(__FILE__) + ":" + std::to_string(__LINE__)); \
+    }
+
+#define CHECK_STACK_EMPTY() \
+    if (operand_stack.empty()) { \
+        throw std::runtime_error("Stack underflow at " + std::string(__FILE__) + ":" + std::to_string(__LINE__)); \
+    }
 
 enum OpCode : uint8_t {
     PUSH_CONST = 0x01,
@@ -37,19 +45,34 @@ enum OpCode : uint8_t {
 
 class StackMachine {
 public:
-    StackMachine(const std::vector<Command>& cmds) : commands(cmds) {} 
-
+    StackMachine(const std::vector<Command>& cmds,
+                 const std::vector<Entity>& const_pool,
+                 const std::vector<FunctionTableEntry>& func_table)
+        : commands(cmds), constant_pool(const_pool), function_table(func_table)
+    {
+        stack_of_functions.emplace_back(StackFrame{
+            .name = 0,
+            .instruction_ptr = commands.begin(),
+            .name_resolver = {}
+        });
+    }
 
     void run() {
-        size_t program_counter = 0;
-        while (program_counter < commands.size()) {
-            execute_command(commands[program_counter]);
-            program_counter++;
+        while (!stack_of_functions.empty()) {
+            StackFrame& current_frame = stack_of_functions.back();
+            if (current_frame.instruction_ptr >= commands.end()) {
+                stack_of_functions.pop_back();
+                continue;
+            }
+            
+            auto it = current_frame.instruction_ptr;
+            ++current_frame.instruction_ptr;
+            execute_command(*it, current_frame);
         }
     }
 
 private:
-    void execute_command(const Command& cmd) {
+    void execute_command(const Command& cmd, StackFrame& current_frame) {
         auto BinaryOperationDecoratorWithApplier = [machine = this](const std::string& op_name, auto f, auto applier) {
             if (machine->operand_stack.size() < 2) throw std::runtime_error("Not enough operands for " + op_name);
             auto [lhs, rhs] = machine->get_operands_from_stack();
@@ -65,7 +88,7 @@ private:
             if (machine->operand_stack.empty()) throw std::runtime_error("Not enough operands for " + op_name);
             Reference<Entity> operand = machine->operand_stack.back();
             machine->operand_stack.pop_back();
-            if (operand.expired()) throw std::runtime_error("Operand expired for " + op_name);
+            CHECK_REF(operand);
             Entity result = unary_applier(*operand.lock(), f);
             machine->create_and_push(result);
         };
@@ -81,19 +104,48 @@ private:
         };
 
         switch (cmd.code) {
-            case PUSH_CONST:
-                // TODO
+            case PUSH_CONST: {
+                int64_t const_index = cmd.arg;
+                if (const_index < 0 || const_index >= constant_pool.size()) {
+                    throw std::runtime_error("Constant index out of bounds");
+                }
+                
+                Entity constant_entity = constant_pool[const_index];
+                create_and_push(constant_entity);
                 break;
+            }
             case POP:
-                if (operand_stack.empty()) throw std::runtime_error("Stack underflow");
+                CHECK_STACK_EMPTY();
                 operand_stack.pop_back();
                 break;
-            case STORE:
-                // TODO
+            case STORE: {
+                int64_t var_index = cmd.arg;
+                if (operand_stack.empty()) {
+                    throw std::runtime_error("Stack underflow for STORE");
+                }
+                Reference<Entity> ref = operand_stack.back();
+                operand_stack.pop_back();
+                
+                if (stack_of_functions.empty()) {
+                    throw std::runtime_error("No active stack frame");
+                }
+                StackFrame& frame = stack_of_functions.back();
+                frame.name_resolver[var_index] = ref;
                 break;
-            case LOAD:
-                // TODO
+            }
+            case LOAD: {
+                int64_t var_index = cmd.arg;
+                if (stack_of_functions.empty()) {
+                    throw std::runtime_error("No active stack frame");
+                }
+                StackFrame& frame = stack_of_functions.back();
+                auto it = frame.name_resolver.find(var_index);
+                if (it == frame.name_resolver.end()) {
+                    throw std::runtime_error("Variable not found");
+                }
+                operand_stack.push_back(it->second);
                 break;
+            }
             case ADD:
                 BinaryOperationDecorator("ADD", [](auto a, auto b) { return a + b; });
                 break;
@@ -139,24 +191,62 @@ private:
                 CompareOperationDecorator([](auto a, auto b) { return a <= b; });
                 break;
             case JMP:
-                // TODO
+                current_frame.instruction_ptr = commands.begin() + cmd.arg;
                 break;
             case JMP_IF_FALSE:
-                if (operand_stack.empty()) throw std::runtime_error("Stack underflow");
-                // TODO
-                operand_stack.pop_back();
+                if (!jump_condition()) {
+                    current_frame.instruction_ptr = commands.begin() + cmd.arg;
+                }
                 break;
             case JMP_IF_TRUE:
-                if (operand_stack.empty()) throw std::runtime_error("Stack underflow");
-                // TODO
-                operand_stack.pop_back();
+                if (jump_condition()) {
+                    current_frame.instruction_ptr = commands.begin() + cmd.arg;
+                }
                 break;
-            case CALL:
-                // TODO
+            case CALL: {
+                int64_t func_id = cmd.arg;
+                auto it = std::find_if(function_table.begin(), function_table.end(),
+                    [func_id](const FunctionTableEntry& entry) { return entry.id == func_id; });
+                
+                if (it == function_table.end()) {
+                    throw std::runtime_error("Function not found: " + std::to_string(func_id));
+                }
+                
+                StackFrame new_frame;
+                new_frame.name = it->id;
+                new_frame.instruction_ptr = commands.begin() + it->code_offset;
+                
+                for (int i = it->arg_count - 1; i >= 0; i--) {
+                    if (operand_stack.empty()) {
+                        throw std::runtime_error("Not enough arguments for function call");
+                    }
+                    Reference<Entity> arg_ref = operand_stack.back();
+                    operand_stack.pop_back();
+                    new_frame.name_resolver[i] = arg_ref;
+                }
+                
+                stack_of_functions.push_back(new_frame);
                 break;
-            case BUILD_ARR:
-                // TODO
+            }
+            case BUILD_ARR: {
+                int64_t count = cmd.arg;
+                if (operand_stack.size() < static_cast<size_t>(count)) {
+                    throw std::runtime_error("Not enough operands for BUILD_ARR");
+                }
+
+                std::map<int, Reference<Entity>> array;
+                for (int i = 0; i < count; ++i) {
+                    Reference<Entity> ref = operand_stack.back();
+                    operand_stack.pop_back();
+                    CHECK_REF(ref);
+                    array[i] = ref;
+                }
+
+                Entity array_entity;
+                array_entity.value = array;
+                create_and_push(array_entity);
                 break;
+            }
             case OPCOT:
                 // TODO
                 break;
@@ -179,8 +269,22 @@ private:
         operand_stack.push_back(heap.back());
     }
 
+    bool jump_condition() {
+        CHECK_STACK_EMPTY();
+        Reference<Entity> condition_ref = operand_stack.back();
+        operand_stack.pop_back();
+        if (condition_ref.expired()) throw std::runtime_error("Condition expired");
+        Entity condition = *condition_ref.lock();
+        return umka_cast<bool>(condition);
+    }
+
     std::vector<Command> commands;
+    std::vector<Entity> constant_pool;
+    std::vector<FunctionTableEntry> function_table;
     std::vector<Owner<Entity>> heap = {};
-    std::vector<StackFrame> stack_of_functions = {};
+    std::vector<StackFrame> stack_of_functions;
     std::vector<Reference<Entity>> operand_stack;
 };
+
+#undef CHECK_STACK_EMPTY
+#undef CHECK_REF

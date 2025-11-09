@@ -2,6 +2,7 @@
 
 #include "../model/model.h"
 #include <exception>
+#include <type_traits>
 
 #define if_get_then_apply_op(T, S) \
     if (std::get_if<T>(&a.value) && std::get_if<S>(&b.value)) { \
@@ -50,3 +51,15 @@ Entity unary_applier(Entity a, F op) {
 }
 
 #undef if_get_then_apply_unary_op
+
+template <typename T>
+T umka_cast(Entity a) {
+    T new_value = std::visit([](auto value) -> T {
+        if constexpr(std::is_convertible_v<std::decay_t<decltype(value)>, T>) {
+            return value;
+        } else {
+            throw std::runtime_error("Bad cast in umka_cast");
+        }
+    }, a.value);
+    return new_value;
+}

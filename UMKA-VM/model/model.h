@@ -1,9 +1,9 @@
 #pragma once
 
 #include <compare>
+#include <concepts>
 #include <map>
 #include <memory>
-#include <tuple>
 #include <variant>
 #include <string>
 #include <unordered_map>
@@ -26,8 +26,6 @@ using unit = std::monostate;
     X(int) \
     X(double) \
     X(bool)
-
-#include <concepts>
 
 template <typename T, typename U>
 concept Comparable = requires(T a, U b) {
@@ -71,9 +69,16 @@ struct Command {
     int64_t arg;
 };
 
+struct FunctionTableEntry {
+    uint64_t id;
+    int64_t code_offset;
+    int64_t arg_count;
+    int64_t local_count;
+};
+
 struct StackFrame {
     uint64_t name;
-    size_t instruction_index = 0;
+    std::vector<Command>::iterator instruction_ptr;
     std::unordered_map<int64_t, Reference<Entity>> name_resolver = {};
 };
 
