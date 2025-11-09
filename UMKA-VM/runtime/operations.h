@@ -56,7 +56,7 @@ template <typename T>
 T umka_cast(Entity a) {
     T new_value = std::visit([](auto value) -> T {
         if constexpr(std::is_convertible_v<std::decay_t<decltype(value)>, T>) {
-            return value;
+            return static_cast<T>(value);
         } else {
             throw std::runtime_error("Bad cast in umka_cast");
         }
