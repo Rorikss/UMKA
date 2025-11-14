@@ -243,11 +243,7 @@ private:
             }
             case OPCOT: {
                 auto operand = get_operand_from_stack("OPCOT");
-                if constexpr (std::get_if<unit>(&operand.value)) {
-                    create_and_push(make_entity(true));
-                } else {
-                    create_and_push(make_entity(false));
-                }
+                create_and_push(make_entity(operand.is_unit()));
                 break;
             }
             case TO_STRING: {

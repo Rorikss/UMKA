@@ -1,8 +1,10 @@
 #pragma once
 
-#include <vector>
-#include <cstdint>
 #include "../model/model.h"
+
+#include <cstring>
+#include <cstdint>
+#include <vector>
 
 class CommandParser {
 public:

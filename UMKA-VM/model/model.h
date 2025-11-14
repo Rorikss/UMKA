@@ -2,13 +2,14 @@
 
 #include <compare>
 #include <concepts>
+#include <cstdint>
 #include <map>
 #include <memory>
-#include <variant>
 #include <string>
-#include <unordered_map>
 #include <type_traits>
-#include <cstdint>
+#include <unordered_map>
+#include <variant>
+#include <vector>
 
 template<typename T>
 using Reference = std::weak_ptr<T>;
@@ -35,7 +36,6 @@ concept Comparable = requires(T a, U b) {
 
 template <typename T, typename U>
 concept Equtable = requires(T a, U b) {
-    requires std::is_same_v<T, U>;
     { a == b } -> std::convertible_to<bool>;
 };
 
@@ -62,6 +62,13 @@ struct Entity {
         }, value);
     }
 
+    friend bool operator==(const Reference<Entity> a, const Reference<Entity> b) {
+        if (a.expired() || b.expired()) throw std::runtime_error("Reference is expired");
+        auto [own_a, own_b] = std::pair{ a.lock(), b.lock() };
+        if (own_a && own_b) return *own_a == *own_b;
+        return own_a == own_b;
+    }
+
     std::partial_ordering operator<=>(const Entity& other) const {
         return std::visit([&](auto&& arg1) {
             return std::visit([&](auto&& arg2) -> std::partial_ordering {
@@ -72,7 +79,7 @@ struct Entity {
                     return arg1 <=> arg2;
                 }
                 if constexpr (Equtable<T1, T2>) {
-                    return arg1 == arg2 
+                    return arg1 == arg2
                     ? std::partial_ordering::equivalent 
                     : std::partial_ordering::unordered;
                 }
@@ -84,7 +91,12 @@ struct Entity {
     bool operator==(const Entity& other) const {
         return (*this <=> other) == std::partial_ordering::equivalent;
     }
+
+    bool is_unit() const {
+        return std::holds_alternative<unit>(value);
+    }
 };
+
 
 struct Command {
     uint8_t code;
