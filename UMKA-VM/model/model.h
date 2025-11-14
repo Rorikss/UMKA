@@ -7,7 +7,8 @@
 #include <variant>
 #include <string>
 #include <unordered_map>
-#include <variant>
+#include <type_traits>
+#include <cstdint>
 
 template<typename T>
 using Reference = std::weak_ptr<T>;
@@ -34,11 +35,32 @@ concept Comparable = requires(T a, U b) {
 
 template <typename T, typename U>
 concept Equtable = requires(T a, U b) {
+    requires std::is_same_v<T, U>;
     { a == b } -> std::convertible_to<bool>;
+};
+
+template <typename T>
+concept ConvertableToString = requires(T value) {
+    { std::to_string(value) } -> std::same_as<std::string>;
 };
 
 struct Entity {
     std::variant<int64_t, double, bool, unit, std::string, std::map<int, Reference<Entity>>> value;
+
+    std::string to_string() const {
+        return std::visit([](auto&& arg) -> std::string {
+            using T = std::decay_t<decltype(arg)>;
+            if constexpr (ConvertableToString<T>) {
+                return std::to_string(arg);
+            } else if constexpr (std::is_same_v<T, unit>) {
+                return "unit";
+            } else if constexpr (std::is_same_v<T, std::string>) {
+                return arg;
+            } else {
+                throw std::runtime_error("Cannot convert to string");
+            }
+        }, value);
+    }
 
     std::partial_ordering operator<=>(const Entity& other) const {
         return std::visit([&](auto&& arg1) {

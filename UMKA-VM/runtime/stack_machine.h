@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
+#include <type_traits>
 
 #define CHECK_REF(ref) \
     if ((ref).expired()) { \
@@ -88,11 +89,8 @@ private:
         };
 
         auto UnaryOperationDecorator = [machine = this](const std::string& op_name, auto f) {
-            if (machine->operand_stack.empty()) throw std::runtime_error("Not enough operands for " + op_name);
-            Reference<Entity> operand = machine->operand_stack.back();
-            machine->operand_stack.pop_back();
-            CHECK_REF(operand);
-            Entity result = unary_applier(*operand.lock(), f);
+            auto operand = machine->get_operand_from_stack(op_name);
+            Entity result = unary_applier(operand, f);
             machine->create_and_push(result);
         };
 
@@ -213,7 +211,7 @@ private:
                 new_frame.name = it->id;
                 new_frame.instruction_ptr = commands.begin() + it->code_offset;
                 
-                for (int i = it->arg_count - 1; i >= 0; --i) {
+                for (size_t i = it->arg_count - 1; i >= 0; --i) {
                     if (operand_stack.empty()) {
                         throw std::runtime_error("Not enough arguments for function call");
                     }
@@ -232,24 +230,31 @@ private:
                 }
 
                 std::map<int, Reference<Entity>> array;
-                for (int i = 0; i < count; ++i) {
+                for (size_t i = 0; i < count; ++i) {
                     Reference<Entity> ref = operand_stack.back();
                     operand_stack.pop_back();
                     CHECK_REF(ref);
                     array[i] = ref;
                 }
 
-                Entity array_entity;
-                array_entity.value = array;
+                Entity array_entity = make_entity(array);
                 create_and_push(array_entity);
                 break;
             }
-            case OPCOT:
-                // TODO
+            case OPCOT: {
+                auto operand = get_operand_from_stack("OPCOT");
+                if constexpr (std::get_if<unit>(&operand.value)) {
+                    create_and_push(make_entity(true));
+                } else {
+                    create_and_push(make_entity(false));
+                }
                 break;
-            case TO_STRING:
-                // todo
+            }
+            case TO_STRING: {
+                auto operand = get_operand_from_stack("TO_STRING");
+                create_and_push(make_entity(operand.to_string()));
                 break;
+            }
             case TO_INT: {
                 auto casted_value = umka_cast<int64_t>(get_operand_from_stack("CAST_TO_INT"));
                 create_and_push(make_entity(casted_value));
