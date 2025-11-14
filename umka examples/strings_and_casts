@@ -3,25 +3,20 @@ fun main() -> unit {
     let d = 3.14;
     let flag = true;
 
-    let text1 = str(num);
-    let double1 = int_to_double(num);
-    let bool_from_int = num != 0;
+    let s_num = TO_STRING(num);
+    let d2 = TO_DOUBLE(num);
+    let i2 = TO_INT(d);
 
-    let text2 = str(d);
-    let int_from_double = double_to_int(d);
-    let bool_from_double = d != 0.0;
+    let s_flag = TO_STRING(flag);
+    let i_flag = TO_INT(flag);
+    let d_flag = TO_DOUBLE(flag);
 
-    let text3 = str(flag);
-    let int_from_bool = if (flag) { 1 } else { 0 };
-    let double_from_bool = if (flag) { 1.0 } else { 0.0 };
-
-    print(text1);
-    print(double1);
-    print(text2);
-    print(int_from_double);
-    print(text3);
-    print(int_from_bool);
-    print(double_from_bool);
+    print(s_num);
+    print(d2);
+    print(i2);
+    print(s_flag);
+    print(i_flag);
+    print(d_flag);
 
     return;
 }

@@ -1,0 +1,14 @@
+;sum
+LOAD 0
+LOAD 1
+ADD
+RETURN
+
+;main
+PUSH_CONST 0
+PUSH_CONST 1
+CALL 1           ; sum(5, 3)
+STORE 0
+LOAD 0
+CALL 9223372036854775807  ; print(result)
+RETURN
