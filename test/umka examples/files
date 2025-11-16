@@ -1,0 +1,7 @@
+fun main() -> unit {
+    let data = "test";
+    write("output.txt", data);
+    let content = read("output.txt");
+    print(content);
+    return;
+}
