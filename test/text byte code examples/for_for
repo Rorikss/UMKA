@@ -1,0 +1,40 @@
+PUSH_CONST 0
+STORE 0
+
+L0:                ; внешний цикл i
+LOAD 0
+PUSH_CONST 1
+LT
+JMP_IF_FALSE L1
+
+PUSH_CONST 0
+STORE 1
+
+L2:                ; внутренний цикл j
+LOAD 1
+PUSH_CONST 1
+LT
+JMP_IF_FALSE L3
+
+LOAD 0
+PUSH_CONST 2
+MUL
+LOAD 1
+ADD
+CALL 9223372036854775807  ; print(i*10 + j)
+
+LOAD 1
+PUSH_CONST 3
+ADD
+STORE 1
+JMP L2
+L3:
+
+LOAD 0
+PUSH_CONST 3       ; 1
+ADD
+STORE 0
+JMP L0
+L1:
+
+RETURN

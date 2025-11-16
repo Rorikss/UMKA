@@ -1,0 +1,12 @@
+fun factorial(n) -> int {
+    if (n <= 1) {
+        return 1;
+    }
+    return n * factorial(n - 1);
+}
+
+fun main() -> unit {
+    let result = factorial(5);
+    print(result);
+    return;
+}
