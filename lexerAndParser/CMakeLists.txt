@@ -9,7 +9,7 @@ find_package(BISON REQUIRED)
 find_package(FLEX REQUIRED)
 
 # --- пути к исходникам: переехали в lexerAndParser ---
-set(PARSER_DIR lexerAndParser)
+set(PARSER_DIR .)
 
 # --- генерируем parser (Bison) ---
 BISON_TARGET(Parser

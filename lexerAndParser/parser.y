@@ -1,5 +1,14 @@
 %{
-#include <bits/stdc++.h>
+#include <iostream>
+#include <string>
+#include <vector>
+#include <map>
+#include <algorithm>
+#include <memory>
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
+using namespace std;
 extern FILE* yyin;
 using namespace std;
 
