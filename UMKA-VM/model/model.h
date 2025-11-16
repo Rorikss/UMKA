@@ -110,8 +110,14 @@ struct FunctionTableEntry {
     int64_t local_count;
 };
 
+enum ConstantType : uint8_t {
+    TYPE_INT64 = 0x01,
+    TYPE_DOUBLE = 0x02,
+    TYPE_STRING = 0x03,
+};
+
 struct Constant {
-    uint8_t type; // 0x01=int64, 0x02=double, 0x03=string
+    ConstantType type;
     std::vector<uint8_t> data;
 };
 

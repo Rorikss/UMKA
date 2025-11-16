@@ -37,7 +37,7 @@ enum OpCode : uint8_t {
     OPCOT = 0x40,
     TO_STRING = 0x60,
     TO_INT = 0x61,
-    TO_DOUBLE = 0x62
+    TO_DOUBLE = 0x62,
 };
 
 class CommandParser {

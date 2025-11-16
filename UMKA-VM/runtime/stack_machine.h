@@ -19,9 +19,12 @@
         throw std::runtime_error("Stack underflow at operation: " + op_name); \
     }
 
+struct ReleaseMod {};
+struct DebugMod {};
+
 class StackMachine {
 public:
-    StackMachine(const CommandParser& parser)
+    StackMachine(const auto& parser)
         : commands(parser.get_commands()),
           const_pool(parser.get_const_pool()),
           func_table(parser.get_func_table())
@@ -33,7 +36,9 @@ public:
         });
     }
 
-    void run() {
+    using debugger_t = std::function<void(Command, std::string)>;
+    template<typename Tag = ReleaseMod>
+    void run(debugger_t debugger = [](auto, auto){}) {
         while (!stack_of_functions.empty()) {
             StackFrame& current_frame = stack_of_functions.back();
             if (current_frame.instruction_ptr >= commands.end()) {
@@ -43,6 +48,13 @@ public:
             
             auto it = current_frame.instruction_ptr;
             ++current_frame.instruction_ptr;
+            if constexpr (std::is_same_v<Tag, DebugMod>) {
+                auto entity = stack_lookup();
+                debugger(*it, entity.has_value()
+                    ? entity.value().to_string() 
+                    : "EMPTY STACK"
+                );
+            }
             execute_command(*it, current_frame);
         }
     }
@@ -203,7 +215,7 @@ private:
                 new_frame.name = entry.id;
                 new_frame.instruction_ptr = commands.begin() + entry.code_offset;
                 
-                for (size_t i = entry.arg_count - 1; i >= 0; --i) {
+                for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
                     if (operand_stack.empty()) {
                         throw std::runtime_error("Not enough arguments for function call");
                     }
@@ -294,6 +306,13 @@ private:
         operand_stack.pop_back();
         CHECK_REF(operand);
         return *operand.lock();
+    }
+
+    std::optional<Entity> stack_lookup() {
+        if (operand_stack.empty()) {
+            return std::nullopt;
+        }
+        return *operand_stack.back().lock();
     }
 
     void create_and_push(Entity result) {
