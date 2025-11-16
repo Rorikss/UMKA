@@ -6,6 +6,8 @@
 #include <vector>
 #include <stdexcept>
 #include <string>
+#include <istream>
+#include <memory>
 
 enum OpCode : uint8_t {
     PUSH_CONST = 0x01,
@@ -47,28 +49,23 @@ public:
         uint32_t code_size;
     };
 
-    void parse(const std::vector<uint8_t>& bytecode) {
-        if (bytecode.size() < sizeof(BytecodeHeader)) {
+    void parse(std::istream& bytecode_stream) {
+        BytecodeHeader header;
+        bytecode_stream.read(reinterpret_cast<char*>(&header), sizeof(BytecodeHeader));
+        if (bytecode_stream.gcount() != sizeof(BytecodeHeader)) {
             throw std::runtime_error("Invalid bytecode - too small for header");
         }
-
-        // Parse header
-        BytecodeHeader header;
-        std::memcpy(&header, bytecode.data(), sizeof(BytecodeHeader));
         
-        size_t index = sizeof(BytecodeHeader);
         commands.clear();
         const_pool.clear();
         func_table.clear();
 
-        // Parse constant pool
         for (uint16_t i = 0; i < header.const_count; ++i) {
-            if (index >= bytecode.size()) {
+            Constant constant;
+            bytecode_stream.read(reinterpret_cast<char*>(&constant.type), 1);
+            if (bytecode_stream.gcount() != 1) {
                 throw std::runtime_error("Unexpected end of bytecode in constant pool");
             }
-
-            Constant constant;
-            constant.type = bytecode[index++];
             
             size_t data_size = 0;
             switch (constant.type) {
@@ -76,56 +73,54 @@ public:
                 case 0x02: // double
                     data_size = 8;
                     break;
-                case 0x03: // string
-                    if (index + sizeof(int64_t) > bytecode.size()) {
+                case 0x03: { // string
+                    int64_t str_len;
+                    bytecode_stream.read(reinterpret_cast<char*>(&str_len), sizeof(int64_t));
+                    if (bytecode_stream.gcount() != sizeof(int64_t)) {
                         throw std::runtime_error("Invalid string length in constant pool");
                     }
-                    int64_t str_len;
-                    std::memcpy(&str_len, &bytecode[index], sizeof(int64_t));
-                    index += sizeof(int64_t);
                     data_size = str_len;
                     break;
+                }
                 default:
                     throw std::runtime_error("Unknown constant type");
             }
 
-            if (index + data_size > bytecode.size()) {
+            constant.data.resize(data_size);
+            bytecode_stream.read(reinterpret_cast<char*>(constant.data.data()), data_size);
+            if (bytecode_stream.gcount() != static_cast<std::streamsize>(data_size)) {
                 throw std::runtime_error("Unexpected end of constant data");
             }
-
-            constant.data.assign(bytecode.begin() + index, bytecode.begin() + index + data_size);
-            index += data_size;
+            
             const_pool.push_back(constant);
         }
 
-        // Parse function table
         for (uint16_t i = 0; i < header.func_count; i++) {
-            if (index + sizeof(FunctionTableEntry) > bytecode.size()) {
+            FunctionTableEntry entry;
+            bytecode_stream.read(reinterpret_cast<char*>(&entry), sizeof(FunctionTableEntry));
+            if (bytecode_stream.gcount() != sizeof(FunctionTableEntry)) {
                 throw std::runtime_error("Unexpected end of bytecode in function table");
             }
-
-            FunctionTableEntry entry;
-            std::memcpy(&entry, &bytecode[index], sizeof(FunctionTableEntry));
-            index += sizeof(FunctionTableEntry);
             func_table.push_back(entry);
         }
 
-        // Parse code section
-        while (index < bytecode.size()) {
-            uint8_t opcode = bytecode[index++];
+        while (bytecode_stream.peek() != EOF) {
+            uint8_t opcode;
+            bytecode_stream.read(reinterpret_cast<char*>(&opcode), 1);
+            if (bytecode_stream.gcount() != 1) break;
+            
             int64_t arg = 0;
-
             if (has_operand(opcode)) {
-                if (index + sizeof(int64_t) > bytecode.size()) {
+                bytecode_stream.read(reinterpret_cast<char*>(&arg), sizeof(int64_t));
+                if (bytecode_stream.gcount() != sizeof(int64_t)) {
                     throw std::runtime_error("Missing operand for opcode");
                 }
-                std::memcpy(&arg, &bytecode[index], sizeof(int64_t));
-                index += sizeof(int64_t);
             }
             
-            commands.push_back(Command{static_cast<uint8_t>(opcode), arg});
+            commands.push_back(Command{opcode, arg});
         }
     }
+
     
     const std::vector<Command>& get_commands() const { return commands; }
     const std::vector<Constant>& get_const_pool() const { return const_pool; }

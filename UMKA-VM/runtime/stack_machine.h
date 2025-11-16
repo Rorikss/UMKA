@@ -215,9 +215,24 @@ private:
                 stack_of_functions.push_back(new_frame);
                 break;
             }
-            case RETURN:
-                // todo
+            case RETURN: {
+                Reference<Entity> return_value;
+                if (!operand_stack.empty()) {
+                    return_value = operand_stack.back();
+                    operand_stack.pop_back();
+                    CHECK_REF(return_value);
+                }
+                
+                if (stack_of_functions.empty()) {
+                    throw std::runtime_error("No frame to return from");
+                }
+                stack_of_functions.pop_back();
+                
+                if (!return_value.expired() && !stack_of_functions.empty()) {
+                    operand_stack.push_back(return_value);
+                }
                 break;
+            }
             case BUILD_ARR: {
                 int64_t count = cmd.arg;
                 if (operand_stack.size() < static_cast<size_t>(count)) {
