@@ -110,6 +110,11 @@ struct FunctionTableEntry {
     int64_t local_count;
 };
 
+struct Constant {
+    uint8_t type; // 0x01=int64, 0x02=double, 0x03=string
+    std::vector<uint8_t> data;
+};
+
 struct StackFrame {
     uint64_t name;
     std::vector<Command>::iterator instruction_ptr;

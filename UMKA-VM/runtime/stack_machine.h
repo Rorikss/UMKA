@@ -1,5 +1,6 @@
 #pragma once
 #include "model/model.h"
+#include "command_parser.h"
 #include "operations.h"
 #include <cstdint>
 #include <memory>
@@ -15,45 +16,15 @@
 
 #define CHECK_STACK_EMPTY(op_name) \
     if (operand_stack.empty()) { \
-        throw std::runtime_error("Stack underflow at operatione: " + op_name); \
+        throw std::runtime_error("Stack underflow at operation: " + op_name); \
     }
-
-enum OpCode : uint8_t {
-    PUSH_CONST = 0x01,
-    POP = 0x02,
-    STORE = 0x03,
-    LOAD = 0x04,
-    ADD = 0x10,
-    SUB = 0x11,
-    MUL = 0x12,
-    DIV = 0x13,
-    MOD = 0x14,
-    NOT = 0x17,
-    AND = 0x18,
-    OR = 0x19,
-    EQ = 0x1A,
-    NEQ = 0x1B,
-    GT = 0x1C,
-    LT = 0x1D,
-    GTE = 0x1E,
-    LTE = 0x1F,
-    JMP = 0x20,
-    JMP_IF_FALSE = 0x21,
-    JMP_IF_TRUE = 0x22,
-    CALL = 0x23,
-    BUILD_ARR = 0x30,
-    OPCOT = 0x40,
-    TO_STRING = 0x60,
-    TO_INT = 0x61,
-    TO_DOUBLE = 0x62
-};
 
 class StackMachine {
 public:
-    StackMachine(const std::vector<Command>& cmds,
-                 const std::vector<Entity>& const_pool,
-                 const std::vector<FunctionTableEntry>& func_table)
-        : commands(cmds), constant_pool(const_pool), function_table(func_table)
+    StackMachine(const CommandParser& parser)
+        : commands(parser.get_commands()),
+          const_pool(parser.get_const_pool()),
+          func_table(parser.get_func_table())
     {
         stack_of_functions.emplace_back(StackFrame{
             .name = 0,
@@ -77,6 +48,27 @@ public:
     }
 
 private:
+    Entity parse_constant(const Constant& constant) {
+        switch (constant.type) {
+            case 0x01: { // int64
+                int64_t value;
+                std::memcpy(&value, constant.data.data(), sizeof(int64_t));
+                return make_entity(value);
+            }
+            case 0x02: { // double
+                double value;
+                std::memcpy(&value, constant.data.data(), sizeof(double));
+                return make_entity(value);
+            }
+            case 0x03: { // string
+                std::string value(constant.data.begin(), constant.data.end());
+                return make_entity(value);
+            }
+            default:
+                throw std::runtime_error("Unknown constant type");
+        }
+    }
+
     void execute_command(const Command& cmd, StackFrame& current_frame) {
         auto BinaryOperationDecoratorWithApplier = [machine = this](const std::string& op_name, auto f, auto applier) {
             auto [lhs, rhs] = machine->get_operands_from_stack(op_name);
@@ -107,11 +99,11 @@ private:
         switch (cmd.code) {
             case PUSH_CONST: {
                 int64_t const_index = cmd.arg;
-                if (const_index < 0 || const_index >= constant_pool.size()) {
+                if (const_index < 0 || const_index >= const_pool.size()) {
                     throw std::runtime_error("Constant index out of bounds");
                 }
                 
-                Entity constant_entity = constant_pool[const_index];
+                Entity constant_entity = parse_constant(const_pool[const_index]);
                 create_and_push(constant_entity);
                 break;
             }
@@ -202,16 +194,16 @@ private:
                 }
                 break;
             case CALL: {
-                if (function_table.size() <= cmd.arg) {
+                if (func_table.size() <= cmd.arg) {
                     throw std::runtime_error("Function not found: " + std::to_string(cmd.arg));
                 }
 
-                auto it = function_table.begin() + cmd.arg;
+                const FunctionTableEntry& entry = func_table[cmd.arg];
                 StackFrame new_frame;
-                new_frame.name = it->id;
-                new_frame.instruction_ptr = commands.begin() + it->code_offset;
+                new_frame.name = entry.id;
+                new_frame.instruction_ptr = commands.begin() + entry.code_offset;
                 
-                for (size_t i = it->arg_count - 1; i >= 0; --i) {
+                for (size_t i = entry.arg_count - 1; i >= 0; --i) {
                     if (operand_stack.empty()) {
                         throw std::runtime_error("Not enough arguments for function call");
                     }
@@ -223,6 +215,9 @@ private:
                 stack_of_functions.push_back(new_frame);
                 break;
             }
+            case RETURN:
+                // todo
+                break;
             case BUILD_ARR: {
                 int64_t count = cmd.arg;
                 if (operand_stack.size() < static_cast<size_t>(count)) {
@@ -301,8 +296,8 @@ private:
     }
 
     std::vector<Command> commands;
-    std::vector<Entity> constant_pool;
-    std::vector<FunctionTableEntry> function_table;
+    std::vector<Constant> const_pool;
+    std::vector<FunctionTableEntry> func_table;
     std::vector<Owner<Entity>> heap = {};
     std::vector<StackFrame> stack_of_functions;
     std::vector<Reference<Entity>> operand_stack;
