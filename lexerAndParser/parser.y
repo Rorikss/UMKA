@@ -189,7 +189,7 @@ struct BinaryExpr : Expr {
         Value L = left->eval();
         Value R = right->eval();
 
-        // arithmetic for ints/doubles, comparisons, logicals, concat (CAT)
+        // arithmetic for ints/doubles, comparisons, logicals
         if (op == "+") {
             if (L.kind == Value::VINT && R.kind == Value::VINT)
                 return Value::make_int(L.ival + R.ival);
@@ -271,9 +271,11 @@ struct BinaryExpr : Expr {
             return Value::make_bool(la || ra);
         }
 
-        // concatenation token (CAT) // TODO
-        if(op == "^-^"){
-            return Value::make_string(L.to_string_val() + R.to_string_val());
+        // Elvis operator: возвращаем левое выражение, если оно не VVOID (null/unit),
+        // иначе — правое выражение.
+        if (op == "^-^") {
+            if (L.kind != Value::VVOID) return L;
+            return R;
         }
 
         return Value::make_void();
@@ -800,7 +802,7 @@ void yyerror(const char* s) {
 
 /* --- типы нетерминалов --- */
 %type <stmt> block_statement statement let_statement assignment_statement expression_statement if_statement while_statement for_statement return_statement function_definition
-%type <expr> expression logical_expression logical_or logical_and logical_comparison comparison arithmetic_expression term factor unary_arithmetic arithmetic_primary function_call array_literal
+%type <expr> expression cat_expression logical_expression logical_or logical_and logical_comparison comparison arithmetic_expression term factor unary_arithmetic arithmetic_primary function_call array_literal
 %type <expr_list> expression_list argument_list
 %type <param_list> parameter_list
 %type <stmt_list> statement_list
@@ -897,22 +899,22 @@ statement_list:
 
 /* if / while / for */
 if_statement:
-    IF '(' logical_expression ')' block_statement {
+    IF '(' expression ')' block_statement {
         $$ = new IfStmt($3, $5, nullptr);
     }
-  | IF '(' logical_expression ')' block_statement ELSE block_statement {
+  | IF '(' expression ')' block_statement ELSE block_statement {
         $$ = new IfStmt($3, $5, $7);
     }
   ;
 
 while_statement:
-    WHILE '(' logical_expression ')' block_statement {
+    WHILE '(' expression ')' block_statement {
         $$ = new WhileStmt($3, $5);
     }
   ;
 
 for_statement:
-    FOR '(' let_statement ';' logical_expression ';' assignment_statement ')' block_statement {
+    FOR '(' let_statement ';' expression ';' assignment_statement ')' block_statement {
         Stmt* init = $3;
         Expr* cond = $5;
         Stmt* post = $7;
@@ -962,7 +964,13 @@ parameter_list:
 
 /* ------------- expressions ------------- */
 expression:
+    cat_expression { $$ = $1; }
+  ;
+
+/* CAT token '^-^' */
+cat_expression:
     logical_expression { $$ = $1; }
+  | cat_expression CAT logical_expression { $$ = new BinaryExpr("^-^", $1, $3); }
   ;
 
 /* logical chain */
@@ -1035,7 +1043,7 @@ arithmetic_primary:
   | IDENT           { $$ = new IdentExpr(string($1)); free($1); }
   | array_literal   { $$ = $1; }
   | function_call   { $$ = $1; }
-  | '(' arithmetic_expression ')' { $$ = $2; }
+  | '(' expression ')' { $$ = $2; }
   ;
 
 /* array literal */
