@@ -32,8 +32,25 @@ auto make_instruction_validator(const std::vector<uint8_t>& expected_instruction
             << ", Got: " << static_cast<int>(cmd.code)
             << ", Stack top: " << stack_top;
         
+        std::cerr << "Stack top: " << stack_top << std::endl;
+        std::cerr << "Instruction: " << static_cast<int>(cmd.code) << std::endl;
         (*instruction_index)++;
     } };
+}
+
+class EntityTest : public ::testing::Test {};
+
+TEST_F(EntityTest, CmpTest) {
+    Entity a = Entity{42};
+    Entity b = Entity{42};
+    EXPECT_TRUE(a == b);
+    a = Entity{43};
+    EXPECT_FALSE(a == b);
+    EXPECT_TRUE(a != b);
+    EXPECT_TRUE(a > b);
+    EXPECT_TRUE(a >= b);
+    EXPECT_FALSE(a < b);
+    EXPECT_FALSE(a <= b);
 }
 
 class StackMachineTest : public ::testing::Test {
@@ -163,6 +180,125 @@ TEST_F(StackMachineTest, FunctionCallSum) {
     StackMachine machine(parser);
     machine.run<DebugMod>(validator);
     ASSERT_EQ(*calls, 6);
+}
+
+TEST_F(StackMachineTest, LoopExecution) {
+    // Setup constants for loop: counter initial value and loop limit
+    Constant const0, const1, const3;
+    const0.type = TYPE_INT64; const1.type = TYPE_INT64; const3.type = TYPE_INT64;
+    const0.data.resize(sizeof(int64_t));
+    const1.data.resize(sizeof(int64_t));
+    const3.data.resize(sizeof(int64_t));
+    *reinterpret_cast<int64_t*>(const0.data.data()) = 0;  // counter initial value
+    *reinterpret_cast<int64_t*>(const1.data.data()) = 1;  // increment
+    *reinterpret_cast<int64_t*>(const3.data.data()) = 3;  // loop limit
+    
+    parser.const_pool = {const0, const1, const3};
+    
+    // Setup commands for a simple loop that increments a counter from 0 to 3:
+    // 1. PUSH_CONST 0 (counter initial value)
+    // 2. STORE 0 (store counter in variable 0)
+    // 3. LOAD 0 (load counter)
+    // 4. PUSH_CONST 2 (load limit)
+    // 5. LT (compare counter < limit)
+    // 6. JMP_IF_FALSE 14 (jump to end if condition false)
+    // 7. LOAD 0 (load counter)
+    // 8. PUSH_CONST 1 (load increment)
+    // 9. ADD (increment counter)
+    // 10. STORE 0 (store incremented counter)
+    // 11. JMP 3 (jump back to loop condition)
+    // 12. RETURN (end)
+    
+    Command push0, store0, load0, push2, lt, jmp_if_false, push1, add, jmp, ret;
+    push0.code = PUSH_CONST; push0.arg = 0;
+    store0.code = STORE; store0.arg = 0;
+    load0.code = LOAD; load0.arg = 0;
+    push2.code = PUSH_CONST; push2.arg = 2;
+    lt.code = LT;
+    jmp_if_false.code = JMP_IF_FALSE; jmp_if_false.arg = 11;  // Points at last command
+    push1.code = PUSH_CONST; push1.arg = 1;
+    add.code = ADD;
+    jmp.code = JMP; jmp.arg = 2;  // Points to LOAD 0
+    ret.code = RETURN;
+    
+    parser.commands = {
+        push0, store0,
+        load0, push2, lt, jmp_if_false, 
+            load0, push1, add, store0, 
+        jmp,
+        ret
+    };
+    
+    std::vector<uint8_t> flow = {
+        PUSH_CONST, STORE,
+        LOAD, PUSH_CONST, LT, JMP_IF_FALSE,
+            LOAD, PUSH_CONST, ADD, STORE,
+        JMP,
+        LOAD, PUSH_CONST, LT, JMP_IF_FALSE,
+            LOAD, PUSH_CONST, ADD, STORE,
+        JMP, 
+        LOAD, PUSH_CONST, LT, JMP_IF_FALSE,
+            LOAD, PUSH_CONST, ADD, STORE,
+        JMP,
+        LOAD, PUSH_CONST, LT, JMP_IF_FALSE,
+        RETURN
+    };
+
+    // Create validator for expected instruction sequence
+    auto [calls, validator] = make_instruction_validator(flow);
+
+    StackMachine machine(parser);
+    machine.run<DebugMod>(validator);
+    ASSERT_EQ(*calls, flow.size());
+}
+
+TEST_F(StackMachineTest, FunctionCallWithArguments) {
+    // Setup constants for function arguments
+    Constant const5, const3;
+    const5.type = TYPE_INT64; const3.type = TYPE_INT64;
+    const5.data.resize(sizeof(int64_t));
+    const3.data.resize(sizeof(int64_t));
+    *reinterpret_cast<int64_t*>(const5.data.data()) = 5;
+    *reinterpret_cast<int64_t*>(const3.data.data()) = 3;
+    
+    parser.const_pool = {const5, const3};
+    
+    // Setup function table - function that takes 2 arguments and adds them
+    FunctionTableEntry func;
+    func.id = 1;
+    func.arg_count = 2;  // Takes 2 arguments
+    func.code_offset = 4;  // Points to the ADD instruction
+    parser.func_table.push_back(func);
+    
+    // Setup commands:
+    // 1. PUSH_CONST 0 (push first argument: 5)
+    // 2. PUSH_CONST 1 (push second argument: 3)
+    // 3. CALL 0 (call function with 2 arguments)
+    // 4. RETURN (main return)
+    // 5. ADD (function body: add the two arguments)
+    // 6. RETURN (function return)
+    
+    std::vector<Command> cmd = {
+        Command{PUSH_CONST, 0},
+        Command{PUSH_CONST, 1},
+        Command{CALL, 0},
+        Command{RETURN},
+        Command{LOAD, 0},
+        Command{LOAD, 1},
+        Command{ADD},
+        Command{RETURN},
+    };
+
+    parser.commands = cmd;
+    
+    // Create validator for expected instruction sequence
+    auto [calls, validator] = make_instruction_validator({
+        PUSH_CONST, PUSH_CONST, CALL, LOAD, LOAD, ADD, RETURN, RETURN
+    });
+
+    StackMachine machine(parser);
+    machine.run<DebugMod>(validator);
+    ASSERT_EQ(*calls, 8);
 }
 
 int main(int argc, char **argv) {

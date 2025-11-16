@@ -290,10 +290,10 @@ private:
 
     std::pair<Entity, Entity> get_operands_from_stack(const std::string& op_name) {
         CHECK_STACK_EMPTY(op_name);
-        Reference<Entity> lhs = operand_stack.back();
+        Reference<Entity> rhs = operand_stack.back();
         operand_stack.pop_back();
         CHECK_STACK_EMPTY(op_name);
-        Reference<Entity> rhs = operand_stack.back();
+        Reference<Entity> lhs = operand_stack.back();
         operand_stack.pop_back();
         CHECK_REF(lhs);
         CHECK_REF(rhs);
