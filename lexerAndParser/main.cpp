@@ -4,8 +4,6 @@ extern FILE* yyin;
 extern int yyparse();
 extern void print_program_ast();
 
-extern void generate_bytecode();
-extern void print_generated_code();
 
 int main(int argc, char** argv) {
   if (argc > 1) {
@@ -26,9 +24,5 @@ int main(int argc, char** argv) {
 
   // распечатать AST (для отладки)
   print_program_ast();
-  generate_bytecode();
-  print_generated_code();
-
-
   return 0;
 }
