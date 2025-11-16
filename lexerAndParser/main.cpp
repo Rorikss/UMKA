@@ -2,7 +2,6 @@
 
 extern FILE* yyin;
 extern int yyparse();
-extern void execute_program();
 extern void print_program_ast();
 
 extern void generate_bytecode();
@@ -27,8 +26,6 @@ int main(int argc, char** argv) {
 
   // распечатать AST (для отладки)
   print_program_ast();
-  // Выполняем программу, которая была собрана парсером
-  execute_program();
   generate_bytecode();
   print_generated_code();
 

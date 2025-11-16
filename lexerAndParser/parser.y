@@ -3,89 +3,6 @@
 extern FILE* yyin;
 using namespace std;
 
-/* --- Value: динамический тип (int64, double, string, bool, array, void) --- */
-struct Value {
-    enum Kind { VINT, VDOUBLE, VSTRING, VBOOL, VARRAY, VVOID } kind;
-    long long ival;
-    double dval;
-    string sval;
-    vector<Value> arr;
-
-    Value(): kind(VVOID), ival(0), dval(0.0), sval(), arr() {}
-    static Value make_int(long long v){ Value a; a.kind=VINT; a.ival=v; return a;}
-    static Value make_double(double v){ Value a; a.kind=VDOUBLE; a.dval=v; return a;}
-    static Value make_string(const string &s){ Value a; a.kind=VSTRING; a.sval=s; return a;}
-    static Value make_bool(bool b){ Value a; a.kind=VBOOL; a.ival=b?1:0; return a;}
-    static Value make_array(const vector<Value>& v){ Value a; a.kind=VARRAY; a.arr=v; return a;}
-    static Value make_void(){ Value a; a.kind=VVOID; return a;}
-
-    string to_string_val() const {
-        switch (kind) {
-            case VINT:
-                return std::to_string(ival);
-            case VDOUBLE: {
-                std::ostringstream os;
-                os << dval;
-                return os.str();
-            }
-            case VSTRING:
-                return sval;
-            case VBOOL:
-                return (ival ? "true" : "false");
-            case VARRAY: {
-                string out = "[";
-                for (size_t i = 0; i < arr.size(); ++i) {
-                    if (i) out += ", ";
-                    out += arr[i].to_string_val();
-                }
-                out += "]";
-                return out;
-            }
-            case VVOID:
-                return "unit";
-        }
-        return "";
-    }
-};
-
-/* --- окружение / стек переменных --- */
-static vector<unordered_map<string, Value>> env;
-
-static void push_env() { env.emplace_back(); }
-static void pop_env() { if(!env.empty()) env.pop_back(); }
-static void set_var(const string& name, const Value& v){
-    if (env.empty()) push_env();
-    // ищем в стеке сверху вниз — если нашли, перезапишем; иначе в текущей
-    for (int i = (int)env.size() - 1; i >= 0; --i) {
-        if (env[i].count(name)) {
-            env[i][name] = v;
-            return;
-        }
-    }
-
-    env.back()[name] = v;
-}
-
-static bool has_var_local(const string& name) {
-    if (env.empty()) return false;
-    return env.back().count(name) > 0;
-}
-
-static Value get_var(const string& name) {
-    for (int i = (int)env.size() - 1; i >= 0; --i) {
-        auto it = env[i].find(name);
-        if (it != env[i].end()) return it->second;
-    }
-    // если нет — вернуть void
-    return Value::make_void();
-}
-
-/* --- обработка ошибок / возврат из функции --- */
-struct ReturnExc {
-    Value v;
-    ReturnExc(const Value& vv) : v(vv) {}
-};
-
 /* --- forward declarations AST --- */
 struct Expr;
 struct Stmt;
@@ -96,13 +13,11 @@ using StmtPtr = Stmt*;
 /* --- базовый класс выражений --- */
 struct Expr {
     virtual ~Expr() {}
-    virtual Value eval() = 0;
 };
 
 /* --- базовый класс операторов --- */
 struct Stmt {
     virtual ~Stmt() {}
-    virtual void run() = 0;
 };
 
 /* --- выражения: литералы, идентификаторы, бинарные, unary, array literal, function call --- */
@@ -110,73 +25,43 @@ struct Stmt {
 struct IntExpr : Expr {
     long long v;
     IntExpr(long long x) : v(x) {}
-    Value eval() override { return Value::make_int(v); }
 };
 
 struct DoubleExpr : Expr {
     double v;
     DoubleExpr(double x) : v(x) {}
-    Value eval() override { return Value::make_double(v); }
 };
 
 struct StringExpr : Expr {
     string s;
     StringExpr(const string& ss) : s(ss) {}
-    Value eval() override { return Value::make_string(s); }
 };
 
 struct BoolExpr : Expr {
     bool b;
     BoolExpr(bool bb) : b(bb) {}
-    Value eval() override { return Value::make_bool(b); }
 };
 
 struct IdentExpr : Expr {
     string name;
     IdentExpr(const string& n) : name(n) {}
-    Value eval() override { return get_var(name); }
 };
 
 struct ArrayExpr : Expr {
     vector<ExprPtr> elems;
     ArrayExpr(const vector<ExprPtr>& e) : elems(e) {}
-    Value eval() override {
-        vector<Value> vals;
-        for (auto p : elems) vals.push_back(p->eval());
-        return Value::make_array(vals);
-    }
 };
 
 struct CallExpr : Expr {
     string name;
     vector<ExprPtr> args;
     CallExpr(const string& n, const vector<ExprPtr>& a) : name(n), args(a) {}
-    Value eval() override;
 };
 
 struct UnaryExpr : Expr {
     char op;
     ExprPtr rhs;
     UnaryExpr(char o, ExprPtr r) : op(o), rhs(r) {}
-    Value eval() override {
-        Value v = rhs->eval();
-        if (op == '!') {
-            bool val = false;
-            if (v.kind == Value::VBOOL) val = (v.ival != 0);
-            else if (v.kind == Value::VINT) val = (v.ival != 0);
-            else if (v.kind == Value::VDOUBLE) val = (v.dval != 0.0);
-            return Value::make_bool(!val);
-        } else if (op == '-' || op == '+') {
-            if (v.kind == Value::VINT) {
-                if (op == '-') return Value::make_int(-v.ival);
-                else return v;
-            } else if (v.kind == Value::VDOUBLE) {
-                if (op == '-') return Value::make_double(-v.dval);
-                else return v;
-            }
-        }
-        return Value::make_void();
-    }
 };
 
 struct BinaryExpr : Expr {
@@ -184,324 +69,29 @@ struct BinaryExpr : Expr {
     ExprPtr left;
     ExprPtr right;
     BinaryExpr(const string& o, ExprPtr l, ExprPtr r) : op(o), left(l), right(r) {}
-
-    Value eval() override {
-        Value L = left->eval();
-        Value R = right->eval();
-
-        // arithmetic for ints/doubles, comparisons, logicals
-        if (op == "+") {
-            if (L.kind == Value::VINT && R.kind == Value::VINT)
-                return Value::make_int(L.ival + R.ival);
-
-            if (L.kind == Value::VDOUBLE || R.kind == Value::VDOUBLE) {
-                double a = (L.kind == Value::VDOUBLE ? L.dval : (L.kind == Value::VINT ? (double)L.ival : 0.0));
-                double b = (R.kind == Value::VDOUBLE ? R.dval : (R.kind == Value::VINT ? (double)R.ival : 0.0));
-                return Value::make_double(a + b);
-            }
-
-            if (L.kind == Value::VSTRING || R.kind == Value::VSTRING) {
-                return Value::make_string(L.to_string_val() + R.to_string_val());
-            }
-        }
-
-        if (op == "-") {
-            if (L.kind == Value::VINT && R.kind == Value::VINT)
-                return Value::make_int(L.ival - R.ival);
-
-            if (L.kind == Value::VDOUBLE || R.kind == Value::VDOUBLE) {
-                double a = (L.kind == Value::VDOUBLE ? L.dval : (L.kind == Value::VINT ? (double)L.ival : 0.0));
-                double b = (R.kind == Value::VDOUBLE ? R.dval : (R.kind == Value::VINT ? (double)R.ival : 0.0));
-                return Value::make_double(a - b);
-            }
-        }
-
-        if (op == "*") {
-            if (L.kind == Value::VINT && R.kind == Value::VINT)
-                return Value::make_int(L.ival * R.ival);
-
-            if (L.kind == Value::VDOUBLE || R.kind == Value::VDOUBLE) {
-                double a = (L.kind == Value::VDOUBLE ? L.dval : (L.kind == Value::VINT ? (double)L.ival : 0.0));
-                double b = (R.kind == Value::VDOUBLE ? R.dval : (R.kind == Value::VINT ? (double)R.ival : 0.0));
-                return Value::make_double(a * b);
-            }
-        }
-
-        if (op == "/") {
-            double a = (L.kind == Value::VDOUBLE ? L.dval : (L.kind == Value::VINT ? (double)L.ival : 0.0));
-            double b = (R.kind == Value::VDOUBLE ? R.dval : (R.kind == Value::VINT ? (double)R.ival : 0.0));
-            return Value::make_double(a / b);
-        }
-
-        if (op == "%") {
-            if (L.kind == Value::VINT && R.kind == Value::VINT) return Value::make_int(L.ival % R.ival);
-        }
-
-        // comparisons (==, !=, >, <, >=, <=)
-        if (op == "==" || op == "!=") {
-            bool eq = false;
-            if (L.kind == Value::VINT && R.kind == Value::VINT) eq = (L.ival == R.ival);
-            else if (L.kind == Value::VDOUBLE && R.kind == Value::VDOUBLE) eq = (L.dval == R.dval);
-            else eq = (L.to_string_val() == R.to_string_val());
-
-            if (op == "==") return Value::make_bool(eq);
-            else return Value::make_bool(!eq);
-        }
-
-        if (op == ">" || op == "<" || op == ">=" || op == "<=") {
-            double a = (L.kind == Value::VDOUBLE ? L.dval : (L.kind == Value::VINT ? (double)L.ival : 0.0));
-            double b = (R.kind == Value::VDOUBLE ? R.dval : (R.kind == Value::VINT ? (double)R.ival : 0.0));
-
-            if (op == ">")  return Value::make_bool(a > b);
-            if (op == "<")  return Value::make_bool(a < b);
-            if (op == ">=") return Value::make_bool(a >= b);
-            if (op == "<=") return Value::make_bool(a <= b);
-        }
-
-        // logical && ||
-        if (op == "&&") {
-            bool la = (L.kind == Value::VBOOL ? L.ival : (L.kind == Value::VINT ? L.ival != 0 : true));
-            bool ra = (R.kind == Value::VBOOL ? R.ival : (R.kind == Value::VINT ? R.ival != 0 : true));
-            return Value::make_bool(la && ra);
-        }
-
-        if (op == "||") {
-            bool la = (L.kind == Value::VBOOL ? L.ival : (L.kind == Value::VINT ? L.ival != 0 : true));
-            bool ra = (R.kind == Value::VBOOL ? R.ival : (R.kind == Value::VINT ? R.ival != 0 : true));
-            return Value::make_bool(la || ra);
-        }
-
-        // Elvis operator: возвращаем левое выражение, если оно не VVOID (null/unit),
-        // иначе — правое выражение.
-        if (op == "^-^") {
-            if (L.kind != Value::VVOID) return L;
-            return R;
-        }
-
-        return Value::make_void();
-    }
 };
-
-/* --- вызовы встроенных функций и пользовательских --- */
-struct Function {
-    vector<string> params;
-    StmtPtr body;
-};
-
-static unordered_map<string, Function*> functions;
-
-Value CallExpr::eval() {
-    // встроенные функции
-    if (name == "print") {
-        for (auto a : args) {
-            Value v = a->eval();
-            cout << v.to_string_val();
-        }
-        cout << endl;
-        return Value::make_void();
-    }
-
-    if (name == "len") {
-        if (args.size() >= 1) {
-            Value v = args[0]->eval();
-            if (v.kind == Value::VARRAY)  return Value::make_int((long long)v.arr.size());
-            if (v.kind == Value::VSTRING) return Value::make_int((long long)v.sval.size());
-        }
-        return Value::make_int(0);
-    }
-
-    if (name == "get") {
-        if (args.size() >= 2) {
-            Value arrv = args[0]->eval();
-            Value idxv = args[1]->eval();
-            if (arrv.kind == Value::VARRAY && idxv.kind == Value::VINT) {
-                int idx = (int)idxv.ival;
-                if (idx >= 0 && idx < (int)arrv.arr.size()) return arrv.arr[idx];
-            }
-        }
-        return Value::make_void();
-    }
-
-    if (name == "set") {
-        // set(arr, index, elem)
-        if (args.size() >= 3) {
-            ExprPtr e0 = args[0];
-            IdentExpr* ide = dynamic_cast<IdentExpr*>(e0);
-            if (ide) {
-                Value arrv = get_var(ide->name);
-                Value idxv = args[1]->eval();
-                Value valv = args[2]->eval();
-
-                if (arrv.kind == Value::VARRAY && idxv.kind == Value::VINT) {
-                    int idx = (int)idxv.ival;
-                    if (idx >= 0 && idx < (int)arrv.arr.size()) {
-                        arrv.arr[idx] = valv;
-                        set_var(ide->name, arrv);
-                        return Value::make_void();
-                    }
-                }
-            }
-        }
-        return Value::make_void();
-    }
-
-    if (name == "add") {
-        if (args.size() >= 2) {
-            IdentExpr* ide = dynamic_cast<IdentExpr*>(args[0]);
-            if (ide) {
-                Value arrv = get_var(ide->name);
-                Value valv = args[1]->eval();
-                if (arrv.kind == Value::VARRAY) {
-                    arrv.arr.push_back(valv);
-                    set_var(ide->name, arrv);
-                }
-            }
-        }
-        return Value::make_void();
-    }
-
-    if (name == "remove") {
-        if (args.size() >= 2) {
-            IdentExpr* ide = dynamic_cast<IdentExpr*>(args[0]);
-            if (ide) {
-                Value arrv = get_var(ide->name);
-                Value idxv = args[1]->eval();
-                if (arrv.kind == Value::VARRAY && idxv.kind == Value::VINT) {
-                    int idx = (int)idxv.ival;
-                    if (idx >= 0 && idx < (int)arrv.arr.size()) {
-                        arrv.arr.erase(arrv.arr.begin() + idx);
-                        set_var(ide->name, arrv);
-                    }
-                }
-            }
-        }
-        return Value::make_void();
-    }
-
-    if (name == "str") {
-        if (args.size() >= 1) {
-            Value v = args[0]->eval();
-            return Value::make_string(v.to_string_val());
-        }
-        return Value::make_string("");
-    }
-
-    if (name == "int_to_double") { // TODO delete?
-        if (args.size() >= 1) {
-            Value v = args[0]->eval();
-            if (v.kind == Value::VINT)    return Value::make_double((double)v.ival);
-            if (v.kind == Value::VDOUBLE) return v;
-        }
-        return Value::make_double(0.0);
-    }
-
-    if (name == "double_to_int") { // TODO delete?
-        if (args.size() >= 1) {
-            Value v = args[0]->eval();
-            if (v.kind == Value::VDOUBLE) return Value::make_int((long long)v.dval);
-            if (v.kind == Value::VINT)    return v;
-        }
-        return Value::make_int(0);
-    }
-
-    if (name == "write") {
-        if (args.size() >= 2) {
-            Value f   = args[0]->eval();
-            Value cont = args[1]->eval();
-            if (f.kind == Value::VSTRING) {
-                ofstream ofs(f.sval);
-                if (ofs) {
-                    ofs << cont.to_string_val();
-                    ofs.close();
-                }
-            }
-        }
-        return Value::make_void();
-    }
-
-    if (name == "read") {
-        if (args.size() >= 1) {
-            Value f = args[0]->eval();
-            if (f.kind == Value::VSTRING) {
-                ifstream ifs(f.sval);
-                vector<Value> lines;
-                if (ifs) {
-                    string line;
-                    while (std::getline(ifs, line)) {
-                        lines.push_back(Value::make_string(line));
-                    }
-                }
-                return Value::make_array(lines);
-            }
-        }
-        return Value::make_array({});
-    }
-
-    // пользовательские функции
-    auto it = functions.find(name);
-    if (it != functions.end()) {
-        Function* fn = it->second;
-
-        // подготовка локального окружения
-        push_env();
-        for (size_t i = 0; i < fn->params.size() && i < args.size(); ++i) {
-            Value av = args[i]->eval();
-            env.back()[fn->params[i]] = av;
-        }
-
-        try {
-            fn->body->run();
-        } catch (ReturnExc &ret) {
-            Value rv = ret.v;
-            pop_env();
-            return rv;
-        }
-
-        pop_env();
-        return Value::make_void();
-    }
-
-    // неизвестная функция -> void
-    return Value::make_void();
-}
 
 /* --- операторы (statements) --- */
 struct LetStmt : Stmt {
     string name;
     ExprPtr expr;
     LetStmt(const string& n, ExprPtr e) : name(n), expr(e) {}
-    void run() override {
-        Value v = expr->eval();
-        set_var(name, v);
-    }
 };
 
 struct AssignStmt : Stmt {
     string name;
     ExprPtr expr;
     AssignStmt(const string& n, ExprPtr e) : name(n), expr(e) {}
-    void run() override {
-        Value v = expr->eval();
-        set_var(name, v);
-    }
 };
 
 struct ExprStmt : Stmt {
     ExprPtr expr;
     ExprStmt(ExprPtr e) : expr(e) {}
-    void run() override {
-        expr->eval();
-    }
 };
 
 struct BlockStmt : Stmt {
     vector<StmtPtr> stmts;
     BlockStmt(const vector<StmtPtr>& s) : stmts(s) {}
-    void run() override {
-        push_env();
-        for (auto s : stmts) s->run();
-        pop_env();
-    }
 };
 
 struct IfStmt : Stmt {
@@ -509,26 +99,12 @@ struct IfStmt : Stmt {
     StmtPtr thenb;
     StmtPtr elseb;
     IfStmt(ExprPtr c, StmtPtr t, StmtPtr e) : cond(c), thenb(t), elseb(e) {}
-    void run() override {
-        Value v = cond->eval();
-        bool b = (v.kind == Value::VBOOL ? v.ival : (v.kind == Value::VINT ? v.ival != 0 : true));
-        if (b) thenb->run();
-        else if (elseb) elseb->run();
-    }
 };
 
 struct WhileStmt : Stmt {
     ExprPtr cond;
     StmtPtr body;
     WhileStmt(ExprPtr c, StmtPtr b) : cond(c), body(b) {}
-    void run() override {
-        while (true) {
-            Value v = cond->eval();
-            bool b = (v.kind == Value::VBOOL ? v.ival : (v.kind == Value::VINT ? v.ival != 0 : true));
-            if (!b) break;
-            body->run();
-        }
-    }
 };
 
 struct ForStmt : Stmt {
@@ -537,29 +113,11 @@ struct ForStmt : Stmt {
     StmtPtr post;
     StmtPtr body;
     ForStmt(StmtPtr i, ExprPtr c, StmtPtr p, StmtPtr b) : init(i), cond(c), post(p), body(b) {}
-    void run() override {
-        push_env();
-        if (init) init->run();
-        while (true) {
-            if (cond) {
-                Value v = cond->eval();
-                bool b = (v.kind == Value::VBOOL ? v.ival : (v.kind == Value::VINT ? v.ival != 0 : true));
-                if (!b) break;
-            }
-            body->run();
-            if (post) post->run();
-        }
-        pop_env();
-    }
 };
 
 struct ReturnStmt : Stmt {
     ExprPtr expr;
     ReturnStmt(ExprPtr e) : expr(e) {}
-    void run() override {
-        Value v = (expr ? expr->eval() : Value::make_void());
-        throw ReturnExc(v);
-    }
 };
 
 struct FunctionDefStmt : Stmt {
@@ -568,12 +126,6 @@ struct FunctionDefStmt : Stmt {
     StmtPtr body;
     FunctionDefStmt(const string& n, const vector<string>& p, StmtPtr b)
         : name(n), params(p), body(b) {}
-    void run() override {
-        Function* f = new Function();
-        f->params = params;
-        f->body = body;
-        functions[name] = f;
-    }
 };
 
 /* --- вспом. контейнеры для списков --- */
@@ -593,16 +145,6 @@ static void free_stmt(StmtPtr s) {
 static void add_program_stmt(StmtPtr s) {
     program_stmts.push_back(s);
 }
-
-/* --- После парсинга вызываем execute_program() --- */
-void execute_program() {
-    push_env();
-    for (auto s : program_stmts) s->run();
-    pop_env();
-}
-
-
-
 
 /* --- debug / печать AST --- */
 static void print_indent(int n) {
