@@ -7,7 +7,7 @@ fun fib(n) -> int {
 
 print(fib(5));
 
-fun printHello() -> uint {
+fun printHello() -> unit {
     print("Hello!");
 }
 

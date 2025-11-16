@@ -42,7 +42,7 @@ struct Value {
                 return out;
             }
             case VVOID:
-                return "uint";
+                return "unit";
         }
         return "";
     }
@@ -813,7 +813,7 @@ void yyerror(const char* s) {
 %token <sval> IDENT
 %token <boolval> BOOLEAN
 
-%token TYPE_UINT
+%token TYPE_UNIT
 %token LET FUN IF ELSE WHILE FOR RETURN PRINT READ WRITE LEN ADD REMOVE GET SET STR INT_TO_DOUBLE DOUBLE_TO_INT
 %token CAT
 %token ARROW
@@ -922,7 +922,7 @@ for_statement:
 
 /* return type */
 return_type:
-      TYPE_UINT
+      TYPE_UNIT
     | TYPE_INT
     | TYPE_DOUBLE
     | TYPE_STRING
@@ -1123,7 +1123,7 @@ static void compile_stmt_for_codegen(StmtPtr s) {
         for (auto st : blk->stmts) compile_stmt_for_codegen(st);
     } else if (auto ret = dynamic_cast<ReturnStmt*>(s)) {
         if (ret->expr) compile_expr(ret->expr);
-        else emit("PUSH_UINT"); // пустой return
+        else emit("PUSH_UNIT"); // пустой return
         emit("RET");
     } else {
         // другие типы: if/while/for — опустим в примере или реализуем аналогично

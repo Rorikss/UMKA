@@ -34,7 +34,7 @@ ESC     \\["\\nrt\\]
 "double"                                { return TYPE_DOUBLE; }
 "string"                                { return TYPE_STRING; }
 "bool"                                  { return TYPE_BOOL; }
-"uint"                                  { return TYPE_UINT; }
+"unit"                                  { return TYPE_UNIT; }
 
 \"([^"\\]|\\["\\nrt])*\"                {
                                             size_t len = yyleng;
