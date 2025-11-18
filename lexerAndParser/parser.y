@@ -138,7 +138,7 @@ struct FunctionDefStmt : Stmt {
 };
 
 /* --- вспом. контейнеры для списков --- */
-static vector<StmtPtr> program_stmts;
+vector<StmtPtr> program_stmts;
 
 /* --- помощники для освобождения строк, выражений, stmts --- */
 static void free_expr(ExprPtr e) {

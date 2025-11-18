@@ -2,18 +2,14 @@
 #include <string>
 #include <cstdio>
 #include <vector>
+#include "../build/parser.hpp"
+#include "BytecodeGenerator.h" // теперь включаем хедер, а не .cpp
 
 extern FILE* yyin;
 extern int yyparse();
-class Stmt;
-extern std::vector<Stmt*> program_stmts;
 
-// BytecodeGenerator объявляем как extern класс, реализация через CMake
-class BytecodeGenerator {
-public:
-    void generateAll(const std::vector<Stmt*>& stmts);
-    void writeToFile(const std::string& path);
-};
+// program_stmts определён в parser.cpp (bison) — parser.hpp содержит тип Stmt
+extern std::vector<Stmt*> program_stmts;
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -31,17 +27,16 @@ int main(int argc, char** argv) {
     std::cout << "Parsing: " << inputPath << "\n";
     if (yyparse() != 0) {
         std::cerr << "Parsing failed.\n";
-        fclose(yyin);
+        if (yyin != stdin) fclose(yyin);
         return 1;
     }
-    fclose(yyin);
+    if (yyin != stdin) fclose(yyin);
 
     if (program_stmts.empty()) {
         std::cerr << "Error: program has no statements.\n";
         return 1;
     }
 
-    // Генерация байткода
     BytecodeGenerator gen;
     gen.generateAll(program_stmts);
 

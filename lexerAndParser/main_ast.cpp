@@ -23,7 +23,6 @@ int main(int argc, char** argv) {
 
     if (yyin != stdin) fclose(yyin);
 
-    // Печать AST
     print_program_ast();
     return 0;
 }
