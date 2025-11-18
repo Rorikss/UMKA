@@ -8,7 +8,6 @@
 #include "../build/parser.hpp"
 #include "ast.h"
 
-// -------------------- OPCODES --------------------
 enum Opcode : uint8_t {
     OP_PUSH_CONST = 0x01,
     OP_POP        = 0x02,
@@ -40,7 +39,6 @@ enum Opcode : uint8_t {
     OP_TO_INT    = 0x62
 };
 
-// -------------------- CONSTANT POOL ENTRY --------------------
 struct ConstEntry {
     enum Type : uint8_t { INT = 1, DOUBLE = 2, STRING = 3 } type;
     int64_t i{};
@@ -53,21 +51,18 @@ struct ConstEntry {
     ConstEntry() = default;
 };
 
-// -------------------- FUNCTION TABLE ENTRY --------------------
 struct FunctionEntry {
     int64_t codeOffset{0};
     int64_t argCount{0};
     int64_t localCount{0};
 };
 
-// -------------------- BYTECODE GENERATOR --------------------
 class BytecodeGenerator {
 public:
     std::vector<ConstEntry> constPool;
     std::vector<FunctionEntry> funcTable;
     std::unordered_map<std::string, int64_t> userFuncIndex;
 
-    // Builtin IDs
     static inline const std::unordered_map<std::string, int64_t> builtinIDs = {
             {"print",      9223372036854775807LL},
             {"len",        9223372036854775806LL},
@@ -82,7 +77,6 @@ public:
             {"to_int",     9223372036854775797LL}
     };
 
-    // Map binary ops
     static inline const std::unordered_map<std::string, uint8_t> BINOP_MAP = {
             {"+", OP_ADD}, {"-", OP_SUB}, {"*", OP_MUL}, {"/", OP_DIV}, {"%", OP_REM},
             {"&&", OP_AND}, {"||", OP_OR},
@@ -90,7 +84,6 @@ public:
             {"^-^", OP_OPCOT}
     };
 
-    // ---------------- Per-function builder ----------------
     struct FuncBuilder {
         std::vector<uint8_t> code;
         std::unordered_map<std::string, size_t> labelPos;

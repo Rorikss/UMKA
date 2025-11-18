@@ -41,7 +41,7 @@ int main(int argc, char** argv) {
     gen.generateAll(program_stmts);
 
     std::string outPath = std::string(inputPath) + ".bin";
-    std::cout << "Generating bytecode → " << outPath << "\n";
+    std::cout << "Generating bytecode to " << outPath << "\n";
     gen.writeToFile(outPath);
 
     std::cout << "Done.\n";
