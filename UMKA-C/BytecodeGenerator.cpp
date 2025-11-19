@@ -20,12 +20,12 @@ static void appendDouble(std::vector <uint8_t> &buf, double dv) {
     for (int i = 0; i < 8; i++) buf.push_back(u.b[i]);
 }
 
-void BytecodeGenerator::collectFunctions(const std::vector<Stmt *> &program) {
+void BytecodeGenerator::collectFunctions(const std::vector<Stmt*>& program) {
     userFuncIndex.clear();
 
-    FunctionDefStmt *mainFunc = nullptr;
-    for (auto s: program) {
-        if (auto fd = dynamic_cast<FunctionDefStmt *>(s)) {
+    FunctionDefStmt* mainFunc = nullptr;
+    for (auto s : program) {
+        if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
             if (fd->name == "main") {
                 mainFunc = fd;
                 break;
@@ -39,16 +39,23 @@ void BytecodeGenerator::collectFunctions(const std::vector<Stmt *> &program) {
         userFuncIndex["main"] = idx++;
     }
 
-    for (auto s: program) {
-        if (auto fd = dynamic_cast<FunctionDefStmt *>(s)) {
-            userFuncIndex[fd->name] = idx++;
+    for (auto s : program) {
+        if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
+            if (fd->name == "main") continue; // <-- важно
+            if (userFuncIndex.find(fd->name) == userFuncIndex.end()) {
+                userFuncIndex[fd->name] = idx++;
+            } else {
+                std::cerr << "Warning: duplicate function name '" << fd->name << "'\n";
+            }
         }
     }
+
     funcBuilders.clear();
-    funcBuilders.resize(userFuncIndex.size(), FuncBuilder(&constPool));
+    funcBuilders.resize(idx, FuncBuilder(&constPool));
     funcTable.clear();
-    funcTable.resize(userFuncIndex.size());
+    funcTable.resize(idx);
 }
+
 
 void BytecodeGenerator::buildFunctions(const std::vector<Stmt *> &program) {
     for (auto s: program) {

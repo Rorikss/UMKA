@@ -2,18 +2,17 @@
 #include <string>
 #include <cstdio>
 #include <vector>
-#include "../build/parser.hpp"
-#include "BytecodeGenerator.h" // теперь включаем хедер, а не .cpp
+#include "BytecodeGenerator.h"
 
 extern FILE* yyin;
 extern int yyparse();
 
 // program_stmts определён в parser.cpp (bison) — parser.hpp содержит тип Stmt
-extern std::vector<Stmt*> program_stmts;
+// extern std::vector<Stmt*> program_stmts;
 
 int main(int argc, char** argv) {
     if (argc < 2) {
-        std::cerr << "Usage: umka_compiler <source_file.umka>\n";
+        std::cerr << "Usage: umka_compiler <source_file>\n";
         return 1;
     }
 
