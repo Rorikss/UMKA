@@ -29,7 +29,7 @@ enum Opcode : uint8_t {
     OP_LTE = 0x1F,
     OP_JMP = 0x20,
     OP_JMP_IF_FALSE = 0x21,
-    OP_JMP_IF_TRUE  = 0x22,
+    OP_JMP_IF_TRUE  = 0x22, // он нам пока не нужен
     OP_CALL = 0x23,
     OP_RETURN = 0x24,
     OP_BUILD_ARR = 0x30,
@@ -70,11 +70,8 @@ public:
             {"set",        9223372036854775804LL},
             {"add",        9223372036854775803LL},
             {"remove",     9223372036854775802LL},
-            {"to_string",  9223372036854775801LL},
             {"write",      9223372036854775800LL},
-            {"read",       9223372036854775799LL},
-            {"to_double",  9223372036854775798LL},
-            {"to_int",     9223372036854775797LL}
+            {"read",       9223372036854775799LL}
     };
 
     static inline const std::unordered_map<std::string, uint8_t> BINOP_MAP = {

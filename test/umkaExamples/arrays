@@ -1,5 +1,5 @@
 fun main() -> unit {
-    let arr = [1, 2];
+    let arr = [1, 4];
     add(arr, 3);
     print(get(arr, 2));
     return;

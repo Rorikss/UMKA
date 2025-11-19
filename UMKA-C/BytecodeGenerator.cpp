@@ -2,15 +2,15 @@
 #include <fstream>
 #include <iostream>
 
-static void appendInt64(std::vector <uint8_t> &buf, int64_t v) {
+static void appendInt64(std::vector<uint8_t> &buf, int64_t v) {
     for (int i = 0; i < 8; ++i) buf.push_back((v >> (i * 8)) & 0xFF);
 }
 
-static void appendByte(std::vector <uint8_t> &buf, uint8_t b) {
+static void appendByte(std::vector<uint8_t> &buf, uint8_t b) {
     buf.push_back(b);
 }
 
-static void appendDouble(std::vector <uint8_t> &buf, double dv) {
+static void appendDouble(std::vector<uint8_t> &buf, double dv) {
     static_assert(sizeof(double) == 8);
     union {
         double d;
@@ -20,12 +20,12 @@ static void appendDouble(std::vector <uint8_t> &buf, double dv) {
     for (int i = 0; i < 8; i++) buf.push_back(u.b[i]);
 }
 
-void BytecodeGenerator::collectFunctions(const std::vector<Stmt*>& program) {
+void BytecodeGenerator::collectFunctions(const std::vector<Stmt *> &program) {
     userFuncIndex.clear();
 
-    FunctionDefStmt* mainFunc = nullptr;
-    for (auto s : program) {
-        if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
+    FunctionDefStmt *mainFunc = nullptr;
+    for (auto s: program) {
+        if (auto fd = dynamic_cast<FunctionDefStmt *>(s)) {
             if (fd->name == "main") {
                 mainFunc = fd;
                 break;
@@ -39,8 +39,8 @@ void BytecodeGenerator::collectFunctions(const std::vector<Stmt*>& program) {
         userFuncIndex["main"] = idx++;
     }
 
-    for (auto s : program) {
-        if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
+    for (auto s: program) {
+        if (auto fd = dynamic_cast<FunctionDefStmt *>(s)) {
             if (fd->name == "main") continue; // <-- важно
             if (userFuncIndex.find(fd->name) == userFuncIndex.end()) {
                 userFuncIndex[fd->name] = idx++;
@@ -85,8 +85,8 @@ void BytecodeGenerator::buildFunctions(const std::vector<Stmt *> &program) {
     }
 }
 
-std::vector <uint8_t> BytecodeGenerator::concatenateFunctionCodes() {
-    std::vector <uint8_t> finalCode;
+std::vector<uint8_t> BytecodeGenerator::concatenateFunctionCodes() {
+    std::vector<uint8_t> finalCode;
     int64_t offset = 0;
     for (size_t i = 0; i < funcBuilders.size(); ++i) {
         FuncBuilder &fb = funcBuilders[i];
@@ -179,7 +179,28 @@ void BytecodeGenerator::genExprInFunc(Expr *e, FuncBuilder &fb) {
         int64_t countIdx = fb.addConst(ConstEntry((int64_t) arr->elems.size()));
         fb.emitBuildArr(countIdx);
     } else if (auto call = dynamic_cast<CallExpr *>(e)) {
+        if (call->name == "to_int" ||
+            call->name == "to_double" ||
+            call->name == "to_string") {
+            if (call->args.size() != 1) {
+                std::cerr << "Cast '" << call->name << "' requires exactly 1 argument\n";
+            }
+
+            if (!call->args.empty())
+                genExprInFunc(call->args[0], fb);
+
+            if (call->name == "to_int") {
+                fb.emitByte(OP_TO_INT);
+            } else if (call->name == "to_double") {
+                fb.emitByte(OP_TO_DOUBLE);
+            } else {
+                fb.emitByte(OP_TO_STRING);
+            }
+            return;
+        }
+
         for (auto arg: call->args) genExprInFunc(arg, fb);
+
         auto itb = builtinIDs.find(call->name);
         if (itb != builtinIDs.end()) {
             fb.emitCall(itb->second);
