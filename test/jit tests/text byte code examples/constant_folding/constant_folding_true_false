@@ -1,0 +1,11 @@
+; main
+PUSH_CONST 0       ; true
+PUSH_CONST 1       ; false
+AND                ; true && false = false
+PUSH_CONST 0       ; true
+OR                 ; false || true = true
+STORE 0            ; b
+
+LOAD 0
+CALL 0             ; print(b)
+RETURN

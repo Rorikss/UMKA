@@ -1,0 +1,4 @@
+; main
+PUSH_CONST 2
+CALL 0
+RETURN

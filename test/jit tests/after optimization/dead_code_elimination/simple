@@ -1,0 +1,9 @@
+; main
+PUSH_CONST 0
+STORE 0            ; x = 10
+
+; x + 1;  -- удалено, так как результат не используется
+
+LOAD 0
+CALL 0             ; print(x)
+RETURN

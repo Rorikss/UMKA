@@ -1,0 +1,31 @@
+; main
+PUSH_CONST 0
+STORE 0            ; x = 0
+
+; итерация 1
+LOAD 0
+PUSH_CONST 2
+ADD
+STORE 0
+
+; итерация 2
+LOAD 0
+PUSH_CONST 2
+ADD
+STORE 0
+
+; итерация 3
+LOAD 0
+PUSH_CONST 2
+ADD
+STORE 0
+
+; итерация 4
+LOAD 0
+PUSH_CONST 2
+ADD
+STORE 0
+
+LOAD 0
+CALL 0             ; print(x)
+RETURN
