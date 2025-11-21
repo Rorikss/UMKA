@@ -1,0 +1,24 @@
+;factorial
+LOAD 0
+PUSH_CONST 0
+LTE
+JMP_IF_FALSE L0
+PUSH_CONST 0
+RETURN
+L0:
+LOAD 0
+LOAD 0
+PUSH_CONST 0
+SUB
+CALL 1            ; factorial(n-1)
+MUL
+RETURN
+
+;main
+
+PUSH_CONST 1
+CALL 1            ; factorial(5)
+STORE 0
+LOAD 0
+CALL 9223372036854775807  ; print(result)
+RETURN

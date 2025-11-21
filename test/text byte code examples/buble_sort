@@ -1,0 +1,94 @@
+
+; sort
+LOAD 0
+CALL 9223372036854775806         ; len(arr)
+STORE 1        ; n
+
+PUSH_CONST 0
+STORE 2        ; i = 0
+
+L0:            ; начало внешнего цикла
+LOAD 2
+LOAD 1
+LT
+JMP_IF_FALSE L1
+
+    PUSH_CONST 0
+    STORE 3    ; j = 0
+
+    L2:        ; начало внутреннего цикла
+    LOAD 3
+    LOAD 1
+    LOAD 2
+    SUB
+    PUSH_CONST 1
+    SUB
+    LT
+    JMP_IF_FALSE L3
+
+        LOAD 0
+        LOAD 3
+        CALL 9223372036854775805     ; get(arr, j)
+        LOAD 0
+        LOAD 3
+        PUSH_CONST 1
+        ADD
+        CALL 9223372036854775805     ; get(arr, j+1)
+        GT
+        JMP_IF_FALSE L4
+
+            LOAD 0
+            LOAD 3
+            CALL 9223372036854775805     ; get(arr, j)
+            STORE 4    ; temp
+
+            LOAD 0
+            LOAD 3
+            PUSH_CONST 1
+            ADD
+            CALL 9223372036854775805     ; get(arr, j+1)
+            LOAD 0
+            LOAD 3
+            CALL 9223372036854775804     ; set(arr, j, value)
+
+            LOAD 0
+            LOAD 3
+            LOAD 4
+            CALL 9223372036854775804     ; set(arr, j+1, temp)
+
+        L4:
+
+        LOAD 3
+        PUSH_CONST 1
+        ADD
+        STORE 3
+        JMP L2
+
+    L3:
+
+    LOAD 2
+    PUSH_CONST 1
+    ADD
+    STORE 2
+    JMP L0
+
+L1:
+LOAD 0
+RETURN
+
+;main
+PUSH_CONST 0
+PUSH_CONST 1
+PUSH_CONST 2
+PUSH_CONST 3
+BUILD_ARR 4
+STORE 0
+
+LOAD 0
+CALL 1         ; sort(arr)
+STORE 1
+
+LOAD 1
+CALL 9223372036854775807
+
+RETURN

@@ -1,0 +1,15 @@
+; main
+PUSH_CONST 0       ; 1
+PUSH_CONST 1       ; 2
+ADD                ; 3
+
+PUSH_CONST 2       ; 3
+PUSH_CONST 3       ; 4
+ADD                ; 7
+
+MUL                ; 3 * 7 = 21
+STORE 0            ; x
+
+LOAD 0
+CALL 0             ; print(x)
+RETURN

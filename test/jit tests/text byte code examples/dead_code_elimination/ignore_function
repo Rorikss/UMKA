@@ -1,0 +1,13 @@
+; main
+PUSH_CONST 0
+PUSH_CONST 1
+BUILD_ARR 2
+STORE 0            ; arr
+
+LOAD 0
+CALL 1             ; len(arr)
+POP                ; результат не используется
+
+PUSH_CONST 3
+CALL 0             ; print(42)
+RETURN

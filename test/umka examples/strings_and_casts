@@ -1,0 +1,22 @@
+fun main() -> unit {
+    let num = 42;
+    let d = 3.14;
+    let flag = true;
+
+    let s_num = TO_STRING(num);
+    let d2 = TO_DOUBLE(num);
+    let i2 = TO_INT(d);
+
+    let s_flag = TO_STRING(flag);
+    let i_flag = TO_INT(flag);
+    let d_flag = TO_DOUBLE(flag);
+
+    print(s_num);
+    print(d2);
+    print(i2);
+    print(s_flag);
+    print(i_flag);
+    print(d_flag);
+
+    return;
+}

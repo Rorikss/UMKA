@@ -1,0 +1,14 @@
+; main
+; i = 0; print(0);
+PUSH_CONST 3       ; 0
+CALL 0
+
+; i = 1; print(1);
+PUSH_CONST 4       ; 1
+CALL 0
+
+; i = 2; print(2);
+PUSH_CONST 5       ; 2
+CALL 0
+
+RETURN

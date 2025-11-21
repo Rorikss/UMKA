@@ -1,0 +1,9 @@
+fun main() -> unit {
+    let matrix = [[1, 2], [3, 4]];
+    let row = get(matrix, 0);
+    let value = get(row, 1);
+    print(value);
+    set(matrix, 1, row);
+    print(len(matrix));
+    return;
+}
