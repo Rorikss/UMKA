@@ -1,0 +1,30 @@
+; main
+PUSH_CONST 0
+STORE 0            ; x = 0
+PUSH_CONST 0
+STORE 1            ; i = 0
+
+L_COND:
+LOAD 1
+PUSH_CONST 1       ; 4
+LT
+JMP_IF_FALSE L_END
+
+; x = x + 1
+LOAD 0
+PUSH_CONST 2       ; 1
+ADD
+STORE 0
+
+; i = i + 1
+LOAD 1
+PUSH_CONST 2       ; 1
+ADD
+STORE 1
+
+JMP L_COND
+
+L_END:
+LOAD 0
+CALL 0             ; print(x)
+RETURN

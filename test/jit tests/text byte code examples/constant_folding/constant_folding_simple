@@ -1,0 +1,12 @@
+; main
+; x = 2 + 3 * 4
+PUSH_CONST 0       ; 2
+PUSH_CONST 1       ; 3
+PUSH_CONST 2       ; 4
+MUL                ; 3 * 4
+ADD                ; 2 + (3 * 4)
+STORE 0            ; x
+
+LOAD 0
+CALL 0             ; print(x)
+RETURN
