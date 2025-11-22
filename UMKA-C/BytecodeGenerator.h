@@ -10,9 +10,9 @@
 
 enum Opcode : uint8_t {
     OP_PUSH_CONST = 0x01,
-    OP_POP        = 0x02,
-    OP_STORE      = 0x03,
-    OP_LOAD       = 0x04,
+    OP_POP = 0x02,
+    OP_STORE = 0x03,
+    OP_LOAD = 0x04,
     OP_ADD = 0x10,
     OP_SUB = 0x11,
     OP_MUL = 0x12,
@@ -36,7 +36,7 @@ enum Opcode : uint8_t {
     OP_OPCOT = 0x40,
     OP_TO_STRING = 0x60,
     OP_TO_DOUBLE = 0x61,
-    OP_TO_INT    = 0x62
+    OP_TO_INT = 0x62
 };
 
 struct ConstEntry {
@@ -94,18 +94,18 @@ public:
         FuncBuilder() = default;
         FuncBuilder(std::vector<ConstEntry>* pool) : constPoolRef(pool) {}
 
-        std::string newLabel() { return "L" + std::to_string(labelCounter++); }
-        void placeLabel(const std::string& name) { labelPos[name] = code.size(); }
+        std::string new_label() { return "L" + std::to_string(labelCounter++); }
+        void place_label(const std::string& name) { labelPos[name] = code.size(); }
 
-        void emitByte(uint8_t b) { code.push_back(b); }
-        void emitInt64(int64_t v) {
+        void emit_byte(uint8_t b) { code.push_back(b); }
+        void emit_int64(int64_t v) {
             for (int i = 0; i < 8; ++i) code.push_back((v >> (i*8)) & 0xFF);
         }
 
-        int64_t addConst(const ConstEntry& c) {
-            auto &pool = *constPoolRef;
+        int64_t add_const(const ConstEntry& c) {
+            auto& pool = *constPoolRef;
             for (size_t i = 0; i < pool.size(); ++i) {
-                const auto &e = pool[i];
+                const auto& e = pool[i];
                 if (e.type != c.type) continue;
                 if (e.type == ConstEntry::INT && e.i == c.i) return i;
                 if (e.type == ConstEntry::DOUBLE && e.d == c.d) return i;
@@ -115,20 +115,20 @@ public:
             return pool.size() - 1;
         }
 
-        void emitPushConstIndex(int64_t idx) { emitByte(OP_PUSH_CONST); emitInt64(idx); }
-        void emitLoad(int64_t idx) { emitByte(OP_LOAD); emitInt64(idx); }
-        void emitStore(int64_t idx) { emitByte(OP_STORE); emitInt64(idx); }
-        void emitCall(int64_t id) { emitByte(OP_CALL); emitInt64(id); }
-        void emitReturn() { emitByte(OP_RETURN); }
-        void emitBuildArr(int64_t idx) { emitByte(OP_BUILD_ARR); emitInt64(idx); }
-        void emitJmpPlaceholder(uint8_t opcode, const std::string& label) {
-            emitByte(opcode);
+        void emit_push_const_index(int64_t idx) { emit_byte(OP_PUSH_CONST); emit_int64(idx); }
+        void emit_load(int64_t idx) { emit_byte(OP_LOAD); emit_int64(idx); }
+        void emit_store(int64_t idx) { emit_byte(OP_STORE); emit_int64(idx); }
+        void emit_call(int64_t id) { emit_byte(OP_CALL); emit_int64(id); }
+        void emit_return() { emit_byte(OP_RETURN); }
+        void emit_build_arr(int64_t idx) { emit_byte(OP_BUILD_ARR); emit_int64(idx); }
+        void emit_jmp_place_holder(uint8_t opcode, const std::string& label) {
+            emit_byte(opcode);
             size_t pos = code.size();
             for(int i=0;i<8;i++) code.push_back(0);
             pending.push_back({pos,label,opcode});
         }
-        void resolvePending() {
-            for(auto &pj : pending) {
+        void resolve_pending() {
+            for(auto& pj : pending) {
                 auto it = labelPos.find(pj.label);
                 if(it==labelPos.end()) continue;
                 int64_t target = it->second;
@@ -144,13 +144,13 @@ public:
 
     BytecodeGenerator() = default;
 
-    void generateAll(const std::vector<Stmt*>& program);
-    void writeToFile(const std::string& path);
+    void generate_all(const std::vector<Stmt*>& program);
+    void write_to_file(const std::string& path);
 
 private:
-    void collectFunctions(const std::vector<Stmt*>& program);
-    void buildFunctions(const std::vector<Stmt*>& program);
-    std::vector<uint8_t> concatenateFunctionCodes();
-    void genStmtInFunc(Stmt* s, FuncBuilder &fb);
-    void genExprInFunc(Expr* e, FuncBuilder &fb);
+    void collect_functions(const std::vector<Stmt*>& program);
+    void build_functions(const std::vector<Stmt*>& program);
+    std::vector<uint8_t> concatenate_function_codes();
+    void gen_stmt_in_func(Stmt* s, FuncBuilder& fb);
+    void gen_expr_in_func(Expr* e, FuncBuilder& fb);
 };

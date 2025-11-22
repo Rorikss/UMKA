@@ -37,11 +37,11 @@ int main(int argc, char** argv) {
     }
 
     BytecodeGenerator gen;
-    gen.generateAll(program_stmts);
+    gen.generate_all(program_stmts);
 
     std::string outPath = std::string(inputPath) + ".bin";
     std::cout << "Generating bytecode to " << outPath << "\n";
-    gen.writeToFile(outPath);
+    gen.write_to_file(outPath);
 
     std::cout << "Done.\n";
     return 0;
