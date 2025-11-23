@@ -3,12 +3,21 @@
 #include <iostream>
 #include <cstring>
 
-static void append_int_64(std::vector<uint8_t>& buf, int64_t v) {
-    for (int i = 0; i < 8; ++i) buf.push_back((v >> (i * 8)) & 0xFF);
-}
 
 static void append_byte(std::vector<uint8_t>& buf, uint8_t b) {
     buf.push_back(b);
+}
+
+static void append_uint16(std::vector<uint8_t>& buf, uint16_t v) {
+    for (int i = 0; i < 2; ++i) buf.push_back((v >> (i * 8)) & 0xFF);
+}
+
+static void append_uint32(std::vector<uint8_t>& buf, uint32_t v) {
+    for (int i = 0; i < 4; ++i) buf.push_back((v >> (i * 8)) & 0xFF);
+}
+
+static void append_int64(std::vector<uint8_t>& buf, int64_t v) {
+    for (int i = 0; i < 8; ++i) buf.push_back((v >> (i * 8)) & 0xFF);
 }
 
 static void append_double(std::vector<uint8_t>& buf, double dv) {
@@ -107,48 +116,46 @@ void BytecodeGenerator::generate_all(const std::vector<Stmt*>& program) {
 }
 
 void BytecodeGenerator::write_to_file(const std::string& path) {
+    std::vector<uint8_t> buffer;
+
+    append_byte(buffer, 1);  // version
+    append_uint16(buffer, (uint16_t)constPool.size());
+    append_uint16(buffer, (uint16_t)funcTable.size());
+    append_uint32(buffer, (uint32_t)codeSection.size());
+
+    for (auto& c : constPool) {
+        append_byte(buffer, (uint8_t)c.type);
+
+        if (c.type == ConstEntry::INT) {
+            append_int64(buffer, c._int);
+        }
+        else if (c.type == ConstEntry::DOUBLE) {
+            append_double(buffer, c._double);
+        }
+        else if (c.type == ConstEntry::STRING) {
+            append_int64(buffer, c._str.size());
+            buffer.insert(buffer.end(), c._str.begin(), c._str.end());
+        }
+    }
+
+    for (auto& fe : funcTable) {
+        append_int64(buffer, fe.code_offset_beg);
+        append_int64(buffer, fe.code_offset_end);
+        append_int64(buffer, fe.arg_count);
+        append_int64(buffer, fe.local_count);
+    }
+
+    buffer.insert(buffer.end(), codeSection.begin(), codeSection.end());
+
     std::ofstream file(path, std::ios::binary);
     if (!file) {
         std::cerr << "Cannot open " << path << " for writing\n";
         return;
     }
 
-    uint8_t version = 1;
-    file.write((char*)& version, sizeof(version));
-
-    auto constCount = (uint16_t) constPool.size();
-    file.write((char*)& constCount, sizeof(constCount));
-
-    auto funcCount = (uint16_t) funcTable.size();
-    file.write((char*)& funcCount, sizeof(funcCount));
-
-    auto codeSize = (uint32_t) codeSection.size();
-    file.write((char*)& codeSize, sizeof(codeSize));
-
-    for (auto& c: constPool) {
-        auto t = (uint8_t) c.type;
-        file.write((char*)& t, sizeof(t));
-        if (c.type == ConstEntry::INT){
-            file.write((char*)& c._int, sizeof(c._int));
-        }
-        else if (c.type == ConstEntry::DOUBLE){
-            file.write((char*)& c._double, sizeof(c._double));
-        }
-        else if (c.type == ConstEntry::STRING) {
-            int64_t len = c._str.size();
-            file.write((char*)& len, sizeof(len));
-            if (len) file.write(c._str.data(), len);
-        }
+    if (!buffer.empty()) {
+        file.write((char*)buffer.data(), buffer.size());
     }
-
-    for (auto& fe: funcTable) {
-        file.write((char*)& fe.code_offset_beg, sizeof(fe.code_offset_beg));
-        file.write((char*)& fe.code_offset_end, sizeof(fe.code_offset_end));
-        file.write((char*)& fe.arg_count, sizeof(fe.arg_count));
-        file.write((char*)& fe.local_count, sizeof(fe.local_count));
-    }
-
-    if (!codeSection.empty()) file.write((char*) codeSection.data(), codeSection.size());
 
     std::cout << "Wrote bytecode: " << path
               << " (consts=" << constPool.size()
