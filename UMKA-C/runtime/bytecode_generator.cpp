@@ -1,4 +1,4 @@
-#include "BytecodeGenerator.h"
+#include "bytecode_generator.h"
 #include <fstream>
 #include <iostream>
 
@@ -57,29 +57,30 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
 
 void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
     for (auto s: program) {
-        if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
-            auto it = userFuncIndex.find(fd->name);
-            if (it == userFuncIndex.end()) continue;
-            int64_t fidx = it->second;
-            FuncBuilder& fb = funcBuilders[fidx];
-            fb.constPoolRef = &constPool;
+        if (!dynamic_cast<FunctionDefStmt*>(s)) continue;
+        auto fd = static_cast<FunctionDefStmt*>(s);
 
-            for (size_t i = 0; i < fd->params.size(); ++i) {
-                fb.varIndex[fd->params[i]] = i;
-            }
-            fb.nextVarIndex = fd->params.size();
+        auto it = userFuncIndex.find(fd->name);
+        if (it == userFuncIndex.end()) continue;
+        int64_t fidx = it->second;
+        FuncBuilder& fb = funcBuilders[fidx];
+        fb.constPoolRef = &constPool;
 
-            gen_stmt_in_func(fd->body, fb);
-
-            if (fb.code.empty() || fb.code.back() != OP_RETURN) {
-                fb.emit_return();
-            }
-
-            FunctionEntry fe;
-            fe.argCount = fd->params.size();
-            fe.localCount = fb.nextVarIndex;
-            funcTable[fidx] = fe;
+        for (size_t i = 0; i < fd->params.size(); ++i) {
+            fb.var_index[fd->params[i]] = i;
         }
+        fb.nextVarIndex = fd->params.size();
+
+        gen_stmt_in_func(fd->body, fb);
+
+        if (fb.code.empty() || fb.code.back() != OP_RETURN) {
+            fb.emit_return();
+        }
+
+        FunctionEntry fe;
+        fe.argCount = fd->params.size();
+        fe.localCount = fb.nextVarIndex;
+        funcTable[fidx] = fe;
     }
 }
 
@@ -163,8 +164,8 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
         int64_t idx = fb.add_const(ConstEntry(be->b ? 1LL : 0LL));
         fb.emit_push_const_index(idx);
     } else if (auto id = dynamic_cast<IdentExpr*>(expr)) {
-        auto it = fb.varIndex.find(id->name);
-        if (it == fb.varIndex.end()) {
+        auto it = fb.var_index.find(id->name);
+        if (it == fb.var_index.end()) {
             std::cerr << "genExpr: unknown local var '" << id->name << "'\n";
             int64_t idx = fb.add_const(ConstEntry(0LL));
             fb.emit_push_const_index(idx);
@@ -241,12 +242,12 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
 
     if (auto ls = dynamic_cast<LetStmt*>(s)) {
         int64_t idx = ++fb.nextVarIndex;
-        fb.varIndex[ls->name] = idx;
+        fb.var_index[ls->name] = idx;
         gen_expr_in_func(ls->expr, fb);
         fb.emit_store(idx);
     } else if (auto as = dynamic_cast<AssignStmt*>(s)) {
-        auto it = fb.varIndex.find(as->name);
-        if (it == fb.varIndex.end()) {
+        auto it = fb.var_index.find(as->name);
+        if (it == fb.var_index.end()) {
             std::cerr << "Assign to unknown var '" << as->name << "'\n";
             gen_expr_in_func(as->expr, fb);
             int64_t idx0 = fb.add_const(ConstEntry((int64_t) 0));

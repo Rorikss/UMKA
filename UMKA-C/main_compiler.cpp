@@ -2,13 +2,10 @@
 #include <string>
 #include <cstdio>
 #include <vector>
-#include "BytecodeGenerator.h"
+#include "runtime/bytecode_generator.h"
 
 extern FILE* yyin;
 extern int yyparse();
-
-// program_stmts определён в parser.cpp (bison) — parser.hpp содержит тип Stmt
-// extern std::vector<Stmt*> program_stmts;
 
 int main(int argc, char** argv) {
     if (argc < 2) {
