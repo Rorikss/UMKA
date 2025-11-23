@@ -9,6 +9,8 @@ find_package(FLEX REQUIRED)
 
 set(PARSER_DIR ${CMAKE_SOURCE_DIR}/lexerAndParser)
 set(COMPILER_DIR ${CMAKE_SOURCE_DIR}/UMKA-C)
+set(MODELS_DIR ${COMPILER_DIR}/models)
+set(RUNTIME_DIR ${COMPILER_DIR}/runtime)
 
 BISON_TARGET(Parser
         ${PARSER_DIR}/parser.y
@@ -23,10 +25,9 @@ FLEX_TARGET(Lexer
 
 ADD_FLEX_BISON_DEPENDENCY(Lexer Parser)
 
-# include dir where Bison generates parser.hpp
 set(GEN_DIR ${CMAKE_CURRENT_BINARY_DIR})
 
-# AST viewer (old)
+# AST viewer
 add_executable(umka_parser_lexer
         ${BISON_Parser_OUTPUTS}
         ${FLEX_Lexer_OUTPUTS}
@@ -38,11 +39,11 @@ target_include_directories(umka_parser_lexer PRIVATE
         ${PARSER_DIR}
 )
 
-# Compiler
+# Compiler - ОБНОВЛЕННЫЙ СПИСОК ФАЙЛОВ
 add_executable(umka_compiler
         ${BISON_Parser_OUTPUTS}
         ${FLEX_Lexer_OUTPUTS}
-        ${COMPILER_DIR}/BytecodeGenerator.cpp
+        ${RUNTIME_DIR}/bytecode_generator.cpp
         ${COMPILER_DIR}/main_compiler.cpp
 )
 
@@ -50,4 +51,6 @@ target_include_directories(umka_compiler PRIVATE
         ${GEN_DIR}
         ${PARSER_DIR}
         ${COMPILER_DIR}
+        ${MODELS_DIR}
+        ${RUNTIME_DIR}
 )

@@ -37,9 +37,9 @@ struct FuncBuilder {
         for (size_t i = 0; i < pool.size(); ++i) {
             const auto& e = pool[i];
             if (e.type != c.type) continue;
-            if (e.type == ConstEntry::INT && e.i == c.i) return i;
-            if (e.type == ConstEntry::DOUBLE && e.d == c.d) return i;
-            if (e.type == ConstEntry::STRING && e.s == c.s) return i;
+            if (e.type == ConstEntry::INT && e._int == c._int) return i;
+            if (e.type == ConstEntry::DOUBLE && e._double == c._double) return i;
+            if (e.type == ConstEntry::STRING && e._str == c._str) return i;
         }
         pool.push_back(c);
         return pool.size() - 1;

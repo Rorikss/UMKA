@@ -1,6 +1,7 @@
 #include "bytecode_generator.h"
 #include <fstream>
 #include <iostream>
+#include <cstring>
 
 static void append_int_64(std::vector<uint8_t>& buf, int64_t v) {
     for (int i = 0; i < 8; ++i) buf.push_back((v >> (i * 8)) & 0xFF);
@@ -12,12 +13,13 @@ static void append_byte(std::vector<uint8_t>& buf, uint8_t b) {
 
 static void append_double(std::vector<uint8_t>& buf, double dv) {
     static_assert(sizeof(double) == 8);
-    union {
-        double _double;
-        uint8_t _byte[8];
-    } u;
-    u._double = dv;
-    for (int i = 0; i < 8; ++i) buf.push_back(u._byte[i]);
+
+    uint64_t bits;
+    std::memcpy(&bits, &dv, sizeof(double));
+
+    for (int i = 0; i < 8; ++i) {
+        buf.push_back((bits >> (i * 8)) & 0xFF);
+    }
 }
 
 void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
@@ -34,7 +36,7 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
     int64_t idx = 0;
 
     if (mainFunc) {
-        userFuncIndex["main"] = ++idx;
+        userFuncIndex["main"] = idx++;
     }
 
     for (auto s: program) {
@@ -64,7 +66,7 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
         if (it == userFuncIndex.end()) continue;
         int64_t fidx = it->second;
         FuncBuilder& fb = funcBuilders[fidx];
-        fb.constPoolRef = &constPool;
+        //fb.constPoolRef = &constPool;
 
         for (size_t i = 0; i < fd->params.size(); ++i) {
             fb.var_index[fd->params[i]] = i;
@@ -78,8 +80,8 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
         }
 
         FunctionEntry fe;
-        fe.argCount = fd->params.size();
-        fe.localCount = fb.nextVarIndex;
+        fe.arg_count = fd->params.size();
+        fe.local_count = fb.nextVarIndex;
         funcTable[fidx] = fe;
     }
 }
@@ -90,8 +92,9 @@ std::vector<uint8_t> BytecodeGenerator::concatenate_function_codes() {
     for (size_t i = 0; i < funcBuilders.size(); ++i) {
         FuncBuilder& fb = funcBuilders[i];
         fb.resolve_pending();
-        funcTable[i].codeOffset = offset;
+        funcTable[i].code_offset_beg = offset;
         finalCode.insert(finalCode.end(), fb.code.begin(), fb.code.end());
+        funcTable[i].code_offset_end = offset + fb.code.size();
         offset += fb.code.size();
     }
     return finalCode;
@@ -111,33 +114,38 @@ void BytecodeGenerator::write_to_file(const std::string& path) {
     }
 
     uint8_t version = 1;
-    file.write((char*)& version, 1);
+    file.write((char*)& version, sizeof(version));
 
-    uint16_t constCount = (uint16_t) constPool.size();
-    file.write((char*)& constCount, 2);
+    auto constCount = (uint16_t) constPool.size();
+    file.write((char*)& constCount, sizeof(constCount));
 
-    uint16_t funcCount = (uint16_t) funcTable.size();
-    file.write((char*)& funcCount, 2);
+    auto funcCount = (uint16_t) funcTable.size();
+    file.write((char*)& funcCount, sizeof(funcCount));
 
-    uint32_t codeSize = (uint32_t) codeSection.size();
-    file.write((char*)& codeSize, 4);
+    auto codeSize = (uint32_t) codeSection.size();
+    file.write((char*)& codeSize, sizeof(codeSize));
 
     for (auto& c: constPool) {
-        uint8_t t = (uint8_t) c.type;
-        file.write((char*)& t, 1);
-        if (c.type == ConstEntry::INT) file.write((char*)& c.i, 8);
-        else if (c.type == ConstEntry::DOUBLE) file.write((char*)& c.d, 8);
+        auto t = (uint8_t) c.type;
+        file.write((char*)& t, sizeof(t));
+        if (c.type == ConstEntry::INT){
+            file.write((char*)& c._int, sizeof(c._int));
+        }
+        else if (c.type == ConstEntry::DOUBLE){
+            file.write((char*)& c._double, sizeof(c._double));
+        }
         else if (c.type == ConstEntry::STRING) {
-            int64_t len = c.s.size();
-            file.write((char*)& len, 8);
-            if (len) file.write(c.s.data(), len);
+            int64_t len = c._str.size();
+            file.write((char*)& len, sizeof(len));
+            if (len) file.write(c._str.data(), len);
         }
     }
 
     for (auto& fe: funcTable) {
-        file.write((char*)& fe.codeOffset, 8);
-        file.write((char*)& fe.argCount, 8);
-        file.write((char*)& fe.localCount, 8);
+        file.write((char*)& fe.code_offset_beg, sizeof(fe.code_offset_beg));
+        file.write((char*)& fe.code_offset_end, sizeof(fe.code_offset_end));
+        file.write((char*)& fe.arg_count, sizeof(fe.arg_count));
+        file.write((char*)& fe.local_count, sizeof(fe.local_count));
     }
 
     if (!codeSection.empty()) file.write((char*) codeSection.data(), codeSection.size());
