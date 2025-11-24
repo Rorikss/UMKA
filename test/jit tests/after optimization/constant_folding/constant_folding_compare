@@ -1,0 +1,12 @@
+; main
+PUSH_CONST 2       ; true
+STORE 0            ; b
+
+LOAD 0
+JMP_IF_FALSE L_END
+
+PUSH_CONST 3       ; 1
+CALL 0             ; print(1)
+
+L_END:
+RETURN

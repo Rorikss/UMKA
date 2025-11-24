@@ -169,17 +169,17 @@ fun printHello() -> unit {
 
 #### 3.10 Встроенные функции
 ```
-print("aboba")                  // вывод в консоль
-let arr_length = len(arr);      // взятие длины
-add(arr, elem);                 // добавление в массив
-remove(arr, index);             // удаление из массива
-let elem = get(arr, index);     // получение из массива
-set(arr, index, elem);          // установка в массив по индексу
-let s = str(123);               // конвертация в строку
-write("filename", s);           // запись в файл
-let lines = read("filename");   // чтение из файла
-let double_num = to_double(42);      // конвертация int в double
-let int_num = to_int(3.14);      // конвертация double в int
+print("aboba")                   // вывод в консоль
+let arr_length = len(arr);       // взятие длины
+add(arr, elem);                  // добавление в массив
+remove(arr, index);              // удаление из массива
+let elem = get(arr, index);      // получение из массива
+set(arr, index, elem);           // установка в массив по индексу
+let s = str(123);                // конвертация в строку
+write("filename", s);            // запись в файл
+let lines = read("filename");    // чтение из файла
+let double_num = to_double(42);  // конвертация в double
+let int_num = to_int(3.14);      // конвертация в int
 ```
 
 

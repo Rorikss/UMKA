@@ -1,0 +1,8 @@
+; main
+; x = 14
+PUSH_CONST 3       ; 14
+STORE 0            ; x
+
+LOAD 0
+CALL 0             ; print(x)
+RETURN
