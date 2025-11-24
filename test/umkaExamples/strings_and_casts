@@ -3,13 +3,13 @@ fun main() -> unit {
     let d = 3.14;
     let flag = true;
 
-    let s_num = TO_STRING(num);
-    let d2 = TO_DOUBLE(num);
-    let i2 = TO_INT(d);
+    let s_num = to_string(num);
+    let d2 = to_double(num);
+    let i2 = to_int(d);
 
-    let s_flag = TO_STRING(flag);
-    let i_flag = TO_INT(flag);
-    let d_flag = TO_DOUBLE(flag);
+    let s_flag = to_string(flag);
+    let i_flag = to_int(flag);
+    let d_flag = to_double(flag);
 
     print(s_num);
     print(d2);

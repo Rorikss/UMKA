@@ -1,0 +1,21 @@
+let a = 5 + 3;
+let b = 10 - 2;
+let c = 4 * 7;
+let d = 20 / 4;
+let e = 17 % 5;
+
+print(a);
+print(b);
+print(c);
+print(d);
+print(e);
+
+let f = 10 > 5;
+let g = 10 == 10;
+let h = "hi" != "bye";
+let i = [1,2] == [1,2];
+
+print(f);
+print(g);
+print(h);
+print(i);

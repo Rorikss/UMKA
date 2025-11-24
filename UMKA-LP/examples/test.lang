@@ -1,0 +1,14 @@
+let x = 10;
+let y = 2.5;
+let s = "hello";
+print(x);
+print(y + 1.5);
+let arr = [1, 2, 3];
+add(arr, 99);
+print(len(arr));
+print(get(arr, 3));
+set(arr, 0, 10);
+print(get(arr,0));
+for (let i = 0; i < 3; i = i + 1) {
+    print(i);
+}
