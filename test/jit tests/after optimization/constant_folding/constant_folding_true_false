@@ -1,0 +1,7 @@
+; main
+PUSH_CONST 2       ; true
+STORE 0            ; b
+
+LOAD 0
+CALL 0             ; print(b)
+RETURN

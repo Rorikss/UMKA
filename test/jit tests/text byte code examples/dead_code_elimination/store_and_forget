@@ -1,0 +1,9 @@
+; main
+PUSH_CONST 0
+PUSH_CONST 1
+MUL
+STORE 0           ; y = 20, но y никогда не читается
+
+PUSH_CONST 2
+CALL 0
+RETURN

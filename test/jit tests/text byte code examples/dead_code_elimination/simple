@@ -1,0 +1,12 @@
+; main
+PUSH_CONST 0
+STORE 0            ; x = 10
+
+LOAD 0
+PUSH_CONST 1
+ADD                ; x + 1
+POP                ; результат выброшен
+
+LOAD 0
+CALL 0             ; print(x)
+RETURN
