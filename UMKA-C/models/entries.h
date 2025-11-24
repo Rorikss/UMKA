@@ -16,8 +16,8 @@ struct ConstEntry {
 };
 
 struct FunctionEntry {
-    int64_t code_offset_beg{0};  // ← ИЗМЕНИТЬ НАЗВАНИЕ
-    int64_t code_offset_end{0};  // ← ДОБАВИТЬ НОВОЕ ПОЛЕ
+    int64_t code_offset_beg{0};
+    int64_t code_offset_end{0};
     int64_t arg_count{0};
     int64_t local_count{0};
 };
