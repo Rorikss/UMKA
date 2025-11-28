@@ -1,6 +1,6 @@
 #include "model/model.h"
 #include "runtime/stack_machine.h"
-#include "runtime/command_parser.h"
+#include "parser/command_parser.h"
 #include <fstream>
 #include <iostream>
 

@@ -8,7 +8,8 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(umka_vm
     UMKA-VM/main.cpp
     UMKA-VM/model/model.h
-    UMKA-VM/runtime/command_parser.h
+    UMKA-VM/parser/command_parser.h
+    UMKA-VM/parser/command_parser.cpp
     UMKA-VM/runtime/operations.h
     UMKA-VM/runtime/stack_machine.h
 )

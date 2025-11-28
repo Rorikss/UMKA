@@ -1,6 +1,6 @@
 #pragma once
 #include "model/model.h"
-#include "command_parser.h"
+#include "../parser/command_parser.h"
 #include "operations.h"
 #include <cstdint>
 #include <memory>
@@ -300,7 +300,7 @@ private:
         return {*lhs.lock(), *rhs.lock()};
     }
 
-    Entity get_operand_from_stack(const std::string& op_name) {
+    Entity& get_operand_from_stack(const std::string& op_name) { // возможно нет 
         CHECK_STACK_EMPTY(op_name);
         Reference<Entity> operand = operand_stack.back();
         operand_stack.pop_back();

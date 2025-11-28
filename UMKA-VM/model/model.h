@@ -45,7 +45,7 @@ concept ConvertableToString = requires(T value) {
 };
 
 struct Entity {
-    std::variant<int64_t, double, bool, unit, std::string, std::map<int, Reference<Entity>>> value;
+    std::variant<int64_t, double, bool, unit, std::string, std::map<size_t, Reference<Entity>>> value;
 
     std::string to_string() const {
         return std::visit([](auto&& arg) -> std::string {
@@ -56,6 +56,10 @@ struct Entity {
                 return "unit";
             } else if constexpr (std::is_same_v<T, std::string>) {
                 return arg;
+            } else if constexpr (std::is_same_v<T, std::map<int, Reference<Entity>>>) {
+                for (const auto& [key, value] : arg) {
+                    std::cout << key << ": " << value.lock()->to_string() << "\n";
+                }
             } else {
                 throw std::runtime_error("Cannot convert to string");
             }
