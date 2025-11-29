@@ -275,6 +275,12 @@ private:
                         }
 
                         const FunctionTableEntry& entry = func_table[cmd.arg];
+                        if (entry.code_offset < 0 || entry.code_offset >= commands.size() ||
+                            entry.code_offset_end < 0 || entry.code_offset_end > commands.size() ||
+                            entry.code_offset >= entry.code_offset_end) {
+                            throw std::runtime_error("Invalid function code range");
+                        }
+
                         StackFrame new_frame;
                         new_frame.name = entry.id;
                         new_frame.instruction_ptr = commands.begin() + entry.code_offset;

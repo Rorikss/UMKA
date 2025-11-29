@@ -4,7 +4,8 @@
 #include <fstream>
 #include <iostream>
 
-constexpr const char* DEFAULT_BYTECODE_PATH = "program.umk";
+constexpr const char* DEFAULT_BYTECODE_PATH = "program.umka";
+size_t HOT_REGIONS_COUNT = 10;
 
 int main(int argc, char* argv[]) {
     try {

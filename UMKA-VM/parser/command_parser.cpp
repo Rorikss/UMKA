@@ -23,11 +23,11 @@ void CommandParser::parse(std::istream& bytecode_stream) {
         
         size_t data_size = 0;
         switch (constant.type) {
-            case 0x01: // int64
-            case 0x02: // double
+            case TYPE_INT64:
+            case TYPE_DOUBLE:
                 data_size = 8;
                 break;
-            case 0x03: { // string
+            case TYPE_STRING: {
                 int64_t str_len;
                 bytecode_stream.read(reinterpret_cast<char*>(&str_len), sizeof(int64_t));
                 if (bytecode_stream.gcount() != sizeof(int64_t)) {
@@ -49,12 +49,18 @@ void CommandParser::parse(std::istream& bytecode_stream) {
         const_pool.push_back(constant);
     }
 
-    for (uint16_t i = 0; i < header.func_count; i++) {
+    for (uint16_t i = 0; i < header.func_count; ++i) {
         FunctionTableEntry entry;
-        bytecode_stream.read(reinterpret_cast<char*>(&entry), sizeof(FunctionTableEntry));
-        if (bytecode_stream.gcount() != sizeof(FunctionTableEntry)) {
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.id), sizeof(uint64_t));
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.code_offset), sizeof(int64_t));
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.code_offset_end), sizeof(int64_t));
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.arg_count), sizeof(int64_t));
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.local_count), sizeof(int64_t));
+        
+        if (bytecode_stream.gcount() != sizeof(uint64_t) + 4*sizeof(int64_t)) {
             throw std::runtime_error("Unexpected end of bytecode in function table");
         }
+        entry.call_count = 0;
         func_table.push_back(entry);
     }
 
