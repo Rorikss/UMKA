@@ -243,44 +243,44 @@ private:
                 break;
             case CALL: {
                 switch (cmd.arg) {
-                    case PRINT: call_void_proc([this](auto arg) { print(arg); }); break;
-                    case LEN: call_value_proc([this](auto arg) { return len(arg); }); break;
-                    case GET: {
+                    case PRINT_FUN: call_void_proc([this](auto arg) { print(arg); }); break;
+                    case LEN_FUN: call_value_proc([this](auto arg) { return len(arg); }); break;
+                    case GET_FUN: {
                         auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL GET"));
                         auto arr = get_operand_from_stack("CALL GET");
                         create_and_push(*get(arr, idx).lock());
                         break;
                     }
-                    case SET: {
+                    case SET_FUN: {
                         auto val = stack_pop();
                         auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL SET"));
                         auto arr = get_operand_from_stack("CALL SET");
                         call_void_proc([&](auto) { set(arr, idx, val); });
                         break;
                     }
-                    case ADD: {
+                    case ADD_FUN: {
                         auto val = stack_pop(); // тут сделана функция которая возвращает именно ссылку с вершины стека
                         auto arr = get_operand_from_stack("CALL ADD"); // вот тут мы вроде возвращаем &. но хотим ли мы именно так? правильно ли это? ссылка ли это вообще???? потому что это по идее ссылочный тип? а как это обеспечить? + хотим ли мы операторы по ссылке возвращать? или рил сделать 2 разных методв: по ссылке которая реф и просто ентити???
                         call_void_proc([&](auto) { add_elem(arr, val); });
                         break;
                     }
-                    case REMOVE: {
+                    case REMOVE_FUN: {
                         auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL REMOVE"));
                         auto arr = get_operand_from_stack("CALL REMOVE");
                         call_void_proc([&](auto) { remove(arr, idx); });
                         break;
                     }
-                    case WRITE: {
+                    case WRITE_FUN: {
                         auto content = get_operand_from_stack("CALL WRITE");
                         auto filename = get_operand_from_stack("CALL WRITE");
                         call_void_proc([&](auto) { write(filename.to_string(), content); });
                         break;
                     }
-                    case READ: {
+                    case READ_FUN: {
                         auto filename = get_operand_from_stack("CALL READ");
                         std::vector<std::string> lines = read(filename.to_string());
      
-                        std::map<int, Reference<Entity>> array;
+                        std::map<size_t, Reference<Entity>> array;
                         
                         for (size_t i = 0; i < lines.size(); ++i) {
                             Owner<Entity> line_entity = std::make_shared<Entity>(make_entity(lines[i]));
@@ -288,7 +288,7 @@ private:
                             array[i] = line_entity;
                         }
                      
-                        Entity array_entity = make_entity(array);
+                        auto array_entity = make_entity(array);
                         create_and_push(array_entity);
                         break;
                     }
