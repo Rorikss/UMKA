@@ -349,7 +349,7 @@ private:
                     throw std::runtime_error("Not enough operands for BUILD_ARR");
                 }
 
-                std::map<int, Reference<Entity>> array;
+                std::map<size_t, Reference<Entity>> array;
                 for (size_t i = 0; i < count; ++i) {
                     Reference<Entity> ref = operand_stack.back();
                     operand_stack.pop_back();

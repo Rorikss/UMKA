@@ -57,7 +57,7 @@ struct Entity {
                 return "unit";
             } else if constexpr (std::is_same_v<T, std::string>) {
                 return arg;
-            } else if constexpr (std::is_same_v<T, std::map<int, Reference<Entity>>>) {
+            } else if constexpr (std::is_same_v<T, std::map<size_t, Reference<Entity>>>) {
                 std::stringstream ss;
                 for (const auto& [key, value] : arg) {
                     ss << key << ": " << value.lock()->to_string() << "\n";
