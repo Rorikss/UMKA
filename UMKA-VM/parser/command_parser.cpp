@@ -60,7 +60,7 @@ void CommandParser::parse(std::istream& bytecode_stream) {
         if (bytecode_stream.gcount() != sizeof(uint64_t) + 4*sizeof(int64_t)) {
             throw std::runtime_error("Unexpected end of bytecode in function table");
         }
-        func_table.push_back(entry);
+        func_table[entry.id] = entry;
     }
 
     while (bytecode_stream.peek() != EOF) {
@@ -82,7 +82,7 @@ void CommandParser::parse(std::istream& bytecode_stream) {
 
 const std::vector<Command>& CommandParser::get_commands() const { return commands; }
 const std::vector<Constant>& CommandParser::get_const_pool() const { return const_pool; }
-const std::vector<FunctionTableEntry>& CommandParser::get_func_table() const { return func_table; }
+const std::unordered_map<size_t, FunctionTableEntry>& CommandParser::get_func_table() const { return func_table; }
 
 bool CommandParser::has_operand(uint8_t opcode) const {
     switch(static_cast<OpCode>(opcode)) {

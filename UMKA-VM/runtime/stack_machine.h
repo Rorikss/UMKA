@@ -33,10 +33,6 @@ public:
           func_table(parser.get_func_table()),
           profiler(std::make_unique<Profiler>(func_table, commands))
     {
-        for (const auto& func : func_table) {
-            function_offset_map[func.id] = static_cast<size_t>(func.code_offset);
-        }
-        
         stack_of_functions.emplace_back(StackFrame{
             .name = 0,
             .instruction_ptr = commands.begin(),
@@ -72,12 +68,10 @@ public:
     Profiler* get_profiler() { return profiler.get(); }
     
 private:
-    size_t get_current_function_start_offset() const {
+    size_t get_current_function() const {
         if (!stack_of_functions.empty()) {
             const StackFrame& frame = stack_of_functions.back();
-            if (function_offset_map.contains(frame.name)) {
-                return function_offset_map.at(frame.name);
-            }
+            return frame.name;
         }
         return 0;
     }
@@ -226,18 +220,17 @@ private:
                 CompareOperationDecorator([](auto a, auto b) { return a <= b; });
                 break;
             case JMP:
-                profiler->record_backward_jump(current_offset, cmd.arg, get_current_function_start_offset());
+                profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
                 current_frame.instruction_ptr = commands.begin() + cmd.arg;
                 break;
             case JMP_IF_FALSE:
                 if (!jump_condition()) {
-                    profiler->record_backward_jump(current_offset, cmd.arg, get_current_function_start_offset());
-                    current_frame.instruction_ptr = commands.begin() + cmd.arg;
+                    profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
                 }
                 break;
             case JMP_IF_TRUE:
                 if (jump_condition()) {
-                    profiler->record_backward_jump(current_offset, cmd.arg, get_current_function_start_offset());
+                    profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
                     current_frame.instruction_ptr = commands.begin() + cmd.arg;
                 }
                 break;
@@ -436,8 +429,7 @@ private:
 
     std::vector<Command> commands;
     std::vector<Constant> const_pool;
-    std::vector<FunctionTableEntry> func_table;
-    std::unordered_map<uint64_t, size_t> function_offset_map;
+    std::unordered_map<size_t, FunctionTableEntry> func_table;
     std::unique_ptr<Profiler> profiler;
     std::vector<Owner<Entity>> heap = {};
     std::vector<StackFrame> stack_of_functions;

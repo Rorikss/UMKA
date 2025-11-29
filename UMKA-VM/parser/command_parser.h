@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <vector>
 #include <istream>
+#include <unordered_map>
 
 enum OpCode : uint8_t {
     PUSH_CONST = 0x01,
@@ -49,12 +50,12 @@ public:
     
     const std::vector<Command>& get_commands() const;
     const std::vector<Constant>& get_const_pool() const;
-    const std::vector<FunctionTableEntry>& get_func_table() const;
+    const std::unordered_map<size_t, FunctionTableEntry>& get_func_table() const;
 
 private:
     bool has_operand(uint8_t opcode) const;
     
     std::vector<Command> commands;
     std::vector<Constant> const_pool;
-    std::vector<FunctionTableEntry> func_table;
+    std::unordered_map<size_t, FunctionTableEntry> func_table;
 };
