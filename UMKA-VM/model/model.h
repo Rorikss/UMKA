@@ -6,6 +6,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <sstream>
 #include <type_traits>
 #include <unordered_map>
 #include <variant>
@@ -57,9 +58,11 @@ struct Entity {
             } else if constexpr (std::is_same_v<T, std::string>) {
                 return arg;
             } else if constexpr (std::is_same_v<T, std::map<int, Reference<Entity>>>) {
+                std::stringstream ss;
                 for (const auto& [key, value] : arg) {
-                    std::cout << key << ": " << value.lock()->to_string() << "\n";
+                    ss << key << ": " << value.lock()->to_string() << "\n";
                 }
+                return ss.str();
             } else {
                 throw std::runtime_error("Cannot convert to string");
             }

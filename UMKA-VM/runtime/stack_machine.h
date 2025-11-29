@@ -3,6 +3,7 @@
 #include "../parser/command_parser.h"
 #include "operations.h"
 #include "standart_funcs.h"
+#include "profiler.h"
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -29,8 +30,13 @@ public:
     StackMachine(const auto& parser)
         : commands(parser.get_commands()),
           const_pool(parser.get_const_pool()),
-          func_table(parser.get_func_table())
+          func_table(parser.get_func_table()),
+          profiler(std::make_unique<Profiler>(func_table, commands))
     {
+        for (const auto& func : func_table) {
+            function_offset_map[func.id] = static_cast<size_t>(func.code_offset);
+        }
+        
         stack_of_functions.emplace_back(StackFrame{
             .name = 0,
             .instruction_ptr = commands.begin(),
@@ -49,19 +55,33 @@ public:
             }
             
             auto it = current_frame.instruction_ptr;
+            size_t current_offset = std::distance(commands.begin(), it);
             ++current_frame.instruction_ptr;
             if constexpr (std::is_same_v<Tag, DebugMod>) {
                 auto entity = stack_lookup();
                 debugger(*it, entity.has_value()
-                    ? entity.value().to_string() 
+                    ? entity.value().to_string()
                     : "EMPTY STACK"
                 );
             }
-            execute_command(*it, current_frame);
+            execute_command(*it, current_frame, current_offset);
         }
     }
 
+    // Get the profiler for external access
+    Profiler* get_profiler() { return profiler.get(); }
+    
 private:
+    size_t get_current_function_start_offset() const {
+        if (!stack_of_functions.empty()) {
+            const StackFrame& frame = stack_of_functions.back();
+            if (function_offset_map.contains(frame.name)) {
+                return function_offset_map.at(frame.name);
+            }
+        }
+        return 0;
+    }
+
     Entity parse_constant(const Constant& constant) {
         switch (constant.type) {
             case TYPE_INT64: {
@@ -83,7 +103,7 @@ private:
         }
     }
 
-    void execute_command(const Command& cmd, StackFrame& current_frame) {
+    void execute_command(const Command& cmd, StackFrame& current_frame, size_t current_offset) {
         auto call_void_proc = [this](auto proc) {
             auto arg = get_operand_from_stack("CALL PROC");
             proc(arg);
@@ -206,15 +226,18 @@ private:
                 CompareOperationDecorator([](auto a, auto b) { return a <= b; });
                 break;
             case JMP:
+                profiler->record_backward_jump(current_offset, cmd.arg, get_current_function_start_offset());
                 current_frame.instruction_ptr = commands.begin() + cmd.arg;
                 break;
             case JMP_IF_FALSE:
                 if (!jump_condition()) {
+                    profiler->record_backward_jump(current_offset, cmd.arg, get_current_function_start_offset());
                     current_frame.instruction_ptr = commands.begin() + cmd.arg;
                 }
                 break;
             case JMP_IF_TRUE:
                 if (jump_condition()) {
+                    profiler->record_backward_jump(current_offset, cmd.arg, get_current_function_start_offset());
                     current_frame.instruction_ptr = commands.begin() + cmd.arg;
                 }
                 break;
@@ -256,7 +279,7 @@ private:
                     case READ: {
                         auto filename = get_operand_from_stack("CALL READ");
                         std::vector<std::string> lines = read(filename.to_string());
-    
+     
                         std::map<int, Reference<Entity>> array;
                         
                         for (size_t i = 0; i < lines.size(); ++i) {
@@ -264,7 +287,7 @@ private:
                             heap.push_back(line_entity);
                             array[i] = line_entity;
                         }
-                    
+                     
                         Entity array_entity = make_entity(array);
                         create_and_push(array_entity);
                         break;
@@ -280,6 +303,8 @@ private:
                             entry.code_offset >= entry.code_offset_end) {
                             throw std::runtime_error("Invalid function code range");
                         }
+
+                        profiler->increment_function_call(cmd.arg);
 
                         StackFrame new_frame;
                         new_frame.name = entry.id;
@@ -412,6 +437,8 @@ private:
     std::vector<Command> commands;
     std::vector<Constant> const_pool;
     std::vector<FunctionTableEntry> func_table;
+    std::unordered_map<uint64_t, size_t> function_offset_map;
+    std::unique_ptr<Profiler> profiler;
     std::vector<Owner<Entity>> heap = {};
     std::vector<StackFrame> stack_of_functions;
     std::vector<Reference<Entity>> operand_stack;

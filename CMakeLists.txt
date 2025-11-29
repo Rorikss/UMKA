@@ -12,6 +12,7 @@ add_executable(umka_vm
     UMKA-VM/parser/command_parser.cpp
     UMKA-VM/runtime/operations.h
     UMKA-VM/runtime/stack_machine.h
+    UMKA-VM/runtime/profiler.h
 )
 
 target_include_directories(umka_vm PRIVATE UMKA-VM)
