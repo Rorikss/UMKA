@@ -2,12 +2,14 @@
 #include "model/model.h"
 #include "../parser/command_parser.h"
 #include "operations.h"
+#include "standart_funcs.h"
 #include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
 #include <stdexcept>
 #include <type_traits>
+#include <unordered_map>
 
 #define CHECK_REF(ref) \
     if ((ref).expired()) { \
@@ -62,17 +64,17 @@ public:
 private:
     Entity parse_constant(const Constant& constant) {
         switch (constant.type) {
-            case 0x01: { // int64
+            case TYPE_INT64: {
                 int64_t value;
                 std::memcpy(&value, constant.data.data(), sizeof(int64_t));
                 return make_entity(value);
             }
-            case 0x02: { // double
+            case TYPE_DOUBLE: {
                 double value;
                 std::memcpy(&value, constant.data.data(), sizeof(double));
                 return make_entity(value);
             }
-            case 0x03: { // string
+            case TYPE_STRING: {
                 std::string value(constant.data.begin(), constant.data.end());
                 return make_entity(value);
             }
@@ -82,6 +84,17 @@ private:
     }
 
     void execute_command(const Command& cmd, StackFrame& current_frame) {
+        auto call_void_proc = [this](auto proc) {
+            auto arg = get_operand_from_stack("CALL PROC");
+            proc(arg);
+            create_and_push(make_entity(unit{}));
+        };
+
+        auto call_value_proc = [this](auto proc) {
+            auto arg = get_operand_from_stack("CALL PROC");
+            create_and_push(make_entity(proc(arg)));
+        };
+
         auto BinaryOperationDecoratorWithApplier = [machine = this](const std::string& op_name, auto f, auto applier) {
             auto [lhs, rhs] = machine->get_operands_from_stack(op_name);
             Entity result = applier(lhs, rhs, f);
@@ -206,25 +219,79 @@ private:
                 }
                 break;
             case CALL: {
-                if (func_table.size() <= cmd.arg) {
-                    throw std::runtime_error("Function not found: " + std::to_string(cmd.arg));
-                }
-
-                const FunctionTableEntry& entry = func_table[cmd.arg];
-                StackFrame new_frame;
-                new_frame.name = entry.id;
-                new_frame.instruction_ptr = commands.begin() + entry.code_offset;
-                
-                for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
-                    if (operand_stack.empty()) {
-                        throw std::runtime_error("Not enough arguments for function call");
+                switch (cmd.arg) {
+                    case PRINT: call_void_proc([this](auto arg) { print(arg); }); break;
+                    case LEN: call_value_proc([this](auto arg) { return len(arg); }); break;
+                    case GET: {
+                        auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL GET"));
+                        auto arr = get_operand_from_stack("CALL GET");
+                        create_and_push(*get(arr, idx).lock());
+                        break;
                     }
-                    Reference<Entity> arg_ref = operand_stack.back();
-                    operand_stack.pop_back();
-                    new_frame.name_resolver[i] = arg_ref;
+                    case SET: {
+                        auto val = stack_pop();
+                        auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL SET"));
+                        auto arr = get_operand_from_stack("CALL SET");
+                        call_void_proc([&](auto) { set(arr, idx, val); });
+                        break;
+                    }
+                    case ADD: {
+                        auto val = stack_pop(); // тут сделана функция которая возвращает именно ссылку с вершины стека
+                        auto arr = get_operand_from_stack("CALL ADD"); // вот тут мы вроде возвращаем &. но хотим ли мы именно так? правильно ли это? ссылка ли это вообще???? потому что это по идее ссылочный тип? а как это обеспечить? + хотим ли мы операторы по ссылке возвращать? или рил сделать 2 разных методв: по ссылке которая реф и просто ентити???
+                        call_void_proc([&](auto) { add_elem(arr, val); });
+                        break;
+                    }
+                    case REMOVE: {
+                        auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL REMOVE"));
+                        auto arr = get_operand_from_stack("CALL REMOVE");
+                        call_void_proc([&](auto) { remove(arr, idx); });
+                        break;
+                    }
+                    case WRITE: {
+                        auto content = get_operand_from_stack("CALL WRITE");
+                        auto filename = get_operand_from_stack("CALL WRITE");
+                        call_void_proc([&](auto) { write(filename.to_string(), content); });
+                        break;
+                    }
+                    case READ: {
+                        auto filename = get_operand_from_stack("CALL READ");
+                        std::vector<std::string> lines = read(filename.to_string());
+    
+                        std::map<int, Reference<Entity>> array;
+                        
+                        for (size_t i = 0; i < lines.size(); ++i) {
+                            Owner<Entity> line_entity = std::make_shared<Entity>(make_entity(lines[i]));
+                            heap.push_back(line_entity);
+                            array[i] = line_entity;
+                        }
+                    
+                        Entity array_entity = make_entity(array);
+                        create_and_push(array_entity);
+                        break;
+                    }
+                    default: {
+                        if (func_table.size() <= cmd.arg) {
+                            throw std::runtime_error("Function not found: " + std::to_string(cmd.arg));
+                        }
+
+                        const FunctionTableEntry& entry = func_table[cmd.arg];
+                        StackFrame new_frame;
+                        new_frame.name = entry.id;
+                        new_frame.instruction_ptr = commands.begin() + entry.code_offset;
+                        
+                        for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
+                            if (operand_stack.empty()) {
+                                throw std::runtime_error("Not enough arguments for function call");
+                            }
+                            Reference<Entity> arg_ref = operand_stack.back();
+                            operand_stack.pop_back();
+                            new_frame.name_resolver[i] = arg_ref;
+                        }
+                        
+                        stack_of_functions.push_back(new_frame);
+                        break;
+                    }
                 }
-                
-                stack_of_functions.push_back(new_frame);
                 break;
             }
             case RETURN: {
@@ -306,6 +373,13 @@ private:
         operand_stack.pop_back();
         CHECK_REF(operand);
         return *operand.lock();
+    }
+
+    Reference<Entity> stack_pop() {
+        CHECK_STACK_EMPTY(std::string("STACK_POP"));
+        Reference<Entity> operand = operand_stack.back();
+        operand_stack.pop_back();
+        return operand;
     }
 
     std::optional<Entity> stack_lookup() {
