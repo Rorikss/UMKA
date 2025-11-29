@@ -47,7 +47,7 @@ int main(int argc, char* argv[]) {
         if (hottest_func) {
             std::cout << "Hottest function:" << std::endl;
             std::cout << "  ID: " << hottest_func->id << std::endl;
-            std::cout << "  Call count: " << hottest_func->call_count << std::endl;
+            std::cout << "  Call count: " << profiler->get_function_call_counts().at(hottest_func->id) << std::endl;
             std::cout << "  Code offset: " << hottest_func->code_offset << " - " << hottest_func->code_offset_end << std::endl;
         }
         

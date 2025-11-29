@@ -116,9 +116,8 @@ struct FunctionTableEntry {
     int64_t code_offset_end;
     int64_t arg_count;
     int64_t local_count;
-    mutable int64_t call_count;
     
-    FunctionTableEntry() : id(0), code_offset(0), code_offset_end(0), arg_count(0), local_count(0), call_count(0) {}
+    FunctionTableEntry() : id(0), code_offset(0), code_offset_end(0), arg_count(0), local_count(0) {}
 };
 
 enum BuiltinFunctionIDs : int64_t {

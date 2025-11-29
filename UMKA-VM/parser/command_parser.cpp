@@ -60,7 +60,6 @@ void CommandParser::parse(std::istream& bytecode_stream) {
         if (bytecode_stream.gcount() != sizeof(uint64_t) + 4*sizeof(int64_t)) {
             throw std::runtime_error("Unexpected end of bytecode in function table");
         }
-        entry.call_count = 0;
         func_table.push_back(entry);
     }
 

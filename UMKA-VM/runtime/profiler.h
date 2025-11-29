@@ -24,7 +24,6 @@ public:
     void increment_function_call(uint64_t function_id) {
         if (function_call_counts.find(function_id) != function_call_counts.end()) {
             function_call_counts[function_id]++;
-            func_table[function_id].call_count++;
         }
     }
 
@@ -65,11 +64,11 @@ public:
         }
         
         for (const auto& func : func_table) {
-            if (func.call_count > 0) {
+            if (function_call_counts.at(func.id) > 0) {
                 regions.push_back(HotRegion{
                     static_cast<size_t>(func.code_offset),
                     static_cast<size_t>(func.code_offset_end),
-                    func.call_count,
+                    function_call_counts.at(func.id),
                     0
                 });
             }
@@ -93,8 +92,8 @@ public:
         int64_t max_calls = -1;
         
         for (const auto& func : func_table) {
-            if (func.call_count > max_calls) {
-                max_calls = func.call_count;
+            if (function_call_counts.at(func.id) > max_calls) {
+                max_calls = function_call_counts.at(func.id);
                 hottest = &func;
             }
         }
