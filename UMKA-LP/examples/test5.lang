@@ -1,0 +1,16 @@
+let arr = [1, 2, 4];
+add(arr, 5);
+for (let i = 0; i < len(arr); i = i + 1) {
+    print(get(arr, i));
+}
+remove(arr, 1);
+set(arr, 0, 10);
+print(get(arr, 0));
+print(len(arr));
+
+let s = str(123);
+print(s);
+
+write("test_output.txt", "hello world");
+let lines = read("test_output.txt");
+print(get(lines,0));
