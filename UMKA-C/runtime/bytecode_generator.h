@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <cstdint>
 
-#include "../../build/parser.hpp"
+#include "parser.hpp"
 #include "../models/ast.h"
 #include "../models/opcodes.h"
 #include "../models/funk_builder.h"

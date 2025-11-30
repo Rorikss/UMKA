@@ -12,7 +12,7 @@ struct ConstEntry {
     ConstEntry(int64_t v)  : type(INT), _int(v) {}
     ConstEntry(double v)   : type(DOUBLE), _double(v) {}
     ConstEntry(const std::string& ss) : type(STRING), _str(ss) {}
-    ConstEntry() = default;
+    ConstEntry() : type(INT), _int(0) {}
 };
 
 struct FunctionEntry {

@@ -4,9 +4,22 @@
 #include <string>
 
 void CommandParser::parse(std::istream& bytecode_stream) {
+    // Read header manually to avoid struct padding issues
     BytecodeHeader header;
-    bytecode_stream.read(reinterpret_cast<char*>(&header), sizeof(BytecodeHeader));
-    if (bytecode_stream.gcount() != sizeof(BytecodeHeader)) {
+    bytecode_stream.read(reinterpret_cast<char*>(&header.version), sizeof(header.version));
+    if (bytecode_stream.gcount() != sizeof(header.version)) {
+        throw std::runtime_error("Invalid bytecode - too small for header");
+    }
+    bytecode_stream.read(reinterpret_cast<char*>(&header.const_count), sizeof(header.const_count));
+    if (bytecode_stream.gcount() != sizeof(header.const_count)) {
+        throw std::runtime_error("Invalid bytecode - too small for header");
+    }
+    bytecode_stream.read(reinterpret_cast<char*>(&header.func_count), sizeof(header.func_count));
+    if (bytecode_stream.gcount() != sizeof(header.func_count)) {
+        throw std::runtime_error("Invalid bytecode - too small for header");
+    }
+    bytecode_stream.read(reinterpret_cast<char*>(&header.code_size), sizeof(header.code_size));
+    if (bytecode_stream.gcount() != sizeof(header.code_size)) {
         throw std::runtime_error("Invalid bytecode - too small for header");
     }
     
@@ -37,7 +50,7 @@ void CommandParser::parse(std::istream& bytecode_stream) {
                 break;
             }
             default:
-                throw std::runtime_error("Unknown constant type");
+                throw std::runtime_error("Unknown constant type" + std::to_string(constant.type));
         }
 
         constant.data.resize(data_size);
@@ -51,15 +64,27 @@ void CommandParser::parse(std::istream& bytecode_stream) {
 
     for (uint16_t i = 0; i < header.func_count; ++i) {
         FunctionTableEntry entry;
-        bytecode_stream.read(reinterpret_cast<char*>(&entry.id), sizeof(uint64_t));
-        bytecode_stream.read(reinterpret_cast<char*>(&entry.code_offset), sizeof(int64_t));
-        bytecode_stream.read(reinterpret_cast<char*>(&entry.code_offset_end), sizeof(int64_t));
-        bytecode_stream.read(reinterpret_cast<char*>(&entry.arg_count), sizeof(int64_t));
-        bytecode_stream.read(reinterpret_cast<char*>(&entry.local_count), sizeof(int64_t));
-        
-        if (bytecode_stream.gcount() != sizeof(uint64_t) + 4*sizeof(int64_t)) {
+        entry.id = i;
+        int64_t code_offset_beg;
+        bytecode_stream.read(reinterpret_cast<char*>(&code_offset_beg), sizeof(int64_t));
+        if (bytecode_stream.gcount() != sizeof(int64_t)) {
             throw std::runtime_error("Unexpected end of bytecode in function table");
         }
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.code_offset_end), sizeof(int64_t));
+        if (bytecode_stream.gcount() != sizeof(int64_t)) {
+            throw std::runtime_error("Unexpected end of bytecode in function table");
+        }
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.arg_count), sizeof(int64_t));
+        if (bytecode_stream.gcount() != sizeof(int64_t)) {
+            throw std::runtime_error("Unexpected end of bytecode in function table");
+        }
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.local_count), sizeof(int64_t));
+        if (bytecode_stream.gcount() != sizeof(int64_t)) {
+            throw std::runtime_error("Unexpected end of bytecode in function table");
+        }
+        
+        entry.code_offset = code_offset_beg;
+        
         func_table[entry.id] = entry;
     }
 
@@ -93,7 +118,6 @@ bool CommandParser::has_operand(uint8_t opcode) const {
         case OpCode::JMP_IF_FALSE:
         case OpCode::JMP_IF_TRUE:
         case OpCode::CALL:
-        case OpCode::RETURN:
         case OpCode::BUILD_ARR:
         case OpCode::OPCOT:
         case OpCode::TO_STRING:
