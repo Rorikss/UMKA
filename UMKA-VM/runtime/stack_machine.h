@@ -226,6 +226,7 @@ private:
             case JMP_IF_FALSE:
                 if (!jump_condition()) {
                     profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
+                    current_frame.instruction_ptr = commands.begin() + cmd.arg;
                 }
                 break;
             case JMP_IF_TRUE:

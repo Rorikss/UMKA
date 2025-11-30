@@ -17,7 +17,7 @@ public:
     Profiler(const std::unordered_map<size_t, FunctionTableEntry>& func_table, const std::vector<Command>& commands)
         : func_table(func_table), commands(commands) {
         for (const auto& [id, func] : func_table) {
-            function_call_counts[func.id] = 0;
+            function_call_counts[id] = 0;
         }
     }
 
@@ -52,11 +52,11 @@ public:
         }
         
         for (const auto& [id, func] : func_table) {
-            if (function_call_counts.at(func.id) > 0) {
+            if (function_call_counts.at(id) > 0) {
                 regions.push_back(HotRegion{
                     static_cast<size_t>(func.code_offset),
                     static_cast<size_t>(func.code_offset_end),
-                    function_call_counts.at(func.id),
+                    function_call_counts.at(id),
                     1
                 });
             }

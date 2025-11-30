@@ -5,13 +5,13 @@
 
 class MockCommandParser : public CommandParser {
 public:
-    std::vector<Command> get_commands() const { return commands; }
-    std::vector<Constant> get_const_pool() const { return const_pool; }
-    std::vector<FunctionTableEntry> get_func_table() const { return func_table; }
+    const std::vector<Command>& get_commands() const { return commands; }
+    const std::vector<Constant>& get_const_pool() const { return const_pool; }
+    const std::unordered_map<size_t, FunctionTableEntry>& get_func_table() const { return func_table; }
 
     std::vector<Command> commands;
     std::vector<Constant> const_pool;
-    std::vector<FunctionTableEntry> func_table;
+    std::unordered_map<size_t, FunctionTableEntry> func_table;
 };
 
 // Helper function to create a debugger that validates instruction execution
@@ -123,7 +123,8 @@ TEST_F(StackMachineTest, FunctionCallAndReturn) {
     func.id = 1;
     func.arg_count = 0;
     func.code_offset = 2;  // Points to the RETURN instruction
-    parser.func_table.push_back(func);
+    func.code_offset_end = 3;  // Points after the RETURN instruction
+    parser.func_table[0] = func;
 
     // Setup commands: CALL and RETURN
     Command call, ret;
@@ -145,8 +146,9 @@ TEST_F(StackMachineTest, FunctionCallSum) {
     FunctionTableEntry func;
     func.id = 1;
     func.arg_count = 0;
-    func.code_offset = 2;  // Points to the RETURN instruction
-    parser.func_table.push_back(func);
+    func.code_offset = 2;  // Points to the PUSH_CONST 0 instruction
+    func.code_offset_end = 6;  // Points after the RETURN instruction
+    parser.func_table[0] = func;
 
     // Setup constants
     Constant const1, const2;
@@ -215,7 +217,7 @@ TEST_F(StackMachineTest, LoopExecution) {
     load0.code = LOAD; load0.arg = 0;
     push2.code = PUSH_CONST; push2.arg = 2;
     lt.code = LT;
-    jmp_if_false.code = JMP_IF_FALSE; jmp_if_false.arg = 11;  // Points at last command
+    jmp_if_false.code = JMP_IF_FALSE; jmp_if_false.arg = 11;  // Points at RETURN instruction
     push1.code = PUSH_CONST; push1.arg = 1;
     add.code = ADD;
     jmp.code = JMP; jmp.arg = 2;  // Points to LOAD 0
@@ -268,7 +270,8 @@ TEST_F(StackMachineTest, FunctionCallWithArguments) {
     func.id = 1;
     func.arg_count = 2;  // Takes 2 arguments
     func.code_offset = 4;  // Points to the ADD instruction
-    parser.func_table.push_back(func);
+    func.code_offset_end = 8;  // Points after the RETURN instruction
+    parser.func_table[0] = func;
     
     // Setup commands:
     // 1. PUSH_CONST 0 (push first argument: 5)

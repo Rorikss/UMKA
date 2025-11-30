@@ -81,6 +81,7 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(stack_machine_tests
         UMKA-VM/tests/stack_machine_test.cpp
+        UMKA-VM/runtime/standart_funcs.cpp
 )
 
 set_target_properties(stack_machine_tests PROPERTIES
