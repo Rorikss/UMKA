@@ -2,10 +2,12 @@
 #include <vector>
 #include <unordered_map>
 #include <string>
+#include <algorithm>
 #include "entries.h"
 
 struct FuncBuilder {
     std::vector<uint8_t> code;
+    std::vector<size_t> instruction_positions; // Tracks start of each instruction
     std::unordered_map<std::string, size_t> label_pos;
     struct PendingJump {
         size_t pos;
@@ -26,7 +28,10 @@ struct FuncBuilder {
 
     void place_label(const std::string& name) { label_pos[name] = code.size(); }
 
-    void emit_byte(uint8_t b) { code.push_back(b); }
+    void emit_byte(uint8_t b) {
+        instruction_positions.push_back(code.size());
+        code.push_back(b);
+    }
 
     void emit_int64(int64_t v) {
         for (int i = 0; i < 8; ++i) code.push_back((v >> (i * 8)) & 0xFF);
@@ -73,19 +78,31 @@ struct FuncBuilder {
     }
 
     void emit_jmp_place_holder(uint8_t opcode, const std::string& label) {
+        size_t current_pos = instruction_positions.size();
         emit_byte(opcode);
-        size_t pos = code.size();
-        for (int i = 0; i < 8; i++) code.push_back(0);
-        pending.push_back({pos, label, opcode});
+        emit_int64(0); // Placeholder
+        pending.push_back({current_pos, label, opcode});
     }
 
     void resolve_pending() {
         for (auto& pj: pending) {
             auto it = label_pos.find(pj.label);
             if (it == label_pos.end()) continue;
-            int64_t target = it->second;
-            int64_t offset = target - (int64_t) (pj.pos + 8);
-            for (int i = 0; i < 8; i++) code[pj.pos + i] = (offset >> (i * 8)) & 0xFF;
+            
+            // Find target instruction index
+            size_t target_idx = std::distance(
+                instruction_positions.begin(),
+                std::lower_bound(instruction_positions.begin(),
+                               instruction_positions.end(),
+                               it->second)
+            );
+            
+            int64_t offset = target_idx - (pj.pos + 1);
+            size_t arg_pos = instruction_positions[pj.pos] + 1;
+            
+            for (int i = 0; i < 8; i++) {
+                code[arg_pos + i] = (offset >> (i * 8)) & 0xFF;
+            }
         }
         pending.clear();
     }
