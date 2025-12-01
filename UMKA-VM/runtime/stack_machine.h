@@ -43,6 +43,12 @@ public:
     using debugger_t = std::function<void(Command, std::string)>;
     template<typename Tag = ReleaseMod>
     void run(debugger_t debugger = [](auto, auto){}) {
+        for (int i = 0; i < commands.size(); ++i) {
+            std::cout << i << " " << (long long)(commands[i].code) << " " << (long long)(commands[i].arg) << "\n";
+        }
+        std::cout << "\n";
+        size_t instruction_count = 0;
+        
         while (!stack_of_functions.empty()) {
             StackFrame& current_frame = stack_of_functions.back();
             if (current_frame.instruction_ptr >= commands.end()) {
@@ -53,6 +59,7 @@ public:
             auto it = current_frame.instruction_ptr;
             size_t current_offset = std::distance(commands.begin(), it);
             ++current_frame.instruction_ptr;
+            
             if constexpr (std::is_same_v<Tag, DebugMod>) {
                 auto entity = stack_lookup();
                 debugger(*it, entity.has_value()
@@ -64,7 +71,6 @@ public:
         }
     }
 
-    // Get the profiler for external access
     Profiler* get_profiler() { return profiler.get(); }
     
 private:
@@ -147,8 +153,10 @@ private:
                 break;
             }
             case POP:
+                std::cout << "POP instruction, stack size before: " << operand_stack.size() << std::endl;
                 CHECK_STACK_EMPTY(std::string("POP"));
                 operand_stack.pop_back();
+                std::cout << "POP instruction, stack size after: " << operand_stack.size() << std::endl;
                 break;
             case STORE: {
                 int64_t var_index = cmd.arg;
@@ -187,7 +195,7 @@ private:
             case DIV:
                 BinaryOperationDecorator("DIV", [](auto a, auto b) { return a / b; });
                 break;
-            case MOD: {
+            case REM: {
                 auto f = [](auto a, auto b) { return a % b; };
                 BinaryOperationDecoratorWithApplier("REM", f, mod_applier<decltype(f)>);
                 break;
@@ -221,18 +229,20 @@ private:
                 break;
             case JMP:
                 profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
-                current_frame.instruction_ptr = commands.begin() + cmd.arg;
+                std::cout << "JUMP " << cmd.arg << " " << current_offset << std::endl;
+                current_frame.instruction_ptr += cmd.arg;
                 break;
             case JMP_IF_FALSE:
                 if (!jump_condition()) {
                     profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
-                    current_frame.instruction_ptr = commands.begin() + cmd.arg;
+                    std::cout << "JUNP_FALSE " << cmd.arg << " " << current_offset << std::endl;
+                    current_frame.instruction_ptr += cmd.arg;
                 }
                 break;
             case JMP_IF_TRUE:
                 if (jump_condition()) {
                     profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
-                    current_frame.instruction_ptr = commands.begin() + cmd.arg;
+                    current_frame.instruction_ptr += cmd.arg;
                 }
                 break;
             case CALL: {
@@ -376,7 +386,7 @@ private:
                 break;
             }
             default:
-                throw std::runtime_error("Unknown opcode: " + std::to_string(cmd.code));
+                throw std::runtime_error("Unknown opcode: " + std::to_string(cmd.code) + " at " + std::to_string(current_offset));
         }
     }
 

@@ -4,7 +4,6 @@
 #include <string>
 
 void CommandParser::parse(std::istream& bytecode_stream) {
-    // Read header manually to avoid struct padding issues
     BytecodeHeader header;
     bytecode_stream.read(reinterpret_cast<char*>(&header.version), sizeof(header.version));
     if (bytecode_stream.gcount() != sizeof(header.version)) {
@@ -88,17 +87,29 @@ void CommandParser::parse(std::istream& bytecode_stream) {
         func_table[entry.id] = entry;
     }
 
-    while (bytecode_stream.peek() != EOF) {
+    size_t bytes_read = 0;
+    while (bytes_read < header.code_size) {
+        if (bytecode_stream.peek() == EOF) {
+            throw std::runtime_error("Unexpected end of bytecode in code section");
+        }
+        
         uint8_t opcode;
         bytecode_stream.read(reinterpret_cast<char*>(&opcode), 1);
-        if (bytecode_stream.gcount() != 1) break;
+        if (bytecode_stream.gcount() != 1) {
+            throw std::runtime_error("Unexpected end of bytecode in code section");
+        }
+        bytes_read += 1;
         
         int64_t arg = 0;
         if (has_operand(opcode)) {
-            bytecode_stream.read(reinterpret_cast<char*>(&arg), sizeof(int64_t));
-            if (bytecode_stream.gcount() != sizeof(int64_t)) {
+            if (bytes_read + sizeof(int64_t) > header.code_size) {
                 throw std::runtime_error("Missing operand for opcode");
             }
+            bytecode_stream.read(reinterpret_cast<char*>(&arg), sizeof(int64_t));
+            if (bytecode_stream.gcount() != sizeof(int64_t)) {
+                throw std::runtime_error("Unexpected end of bytecode in code section");
+            }
+            bytes_read += sizeof(int64_t);
         }
         
         commands.push_back(Command{opcode, arg});
@@ -123,6 +134,7 @@ bool CommandParser::has_operand(uint8_t opcode) const {
         case OpCode::TO_STRING:
         case OpCode::TO_INT:
         case OpCode::TO_DOUBLE:
+        case OpCode::REM:
             return true;
         default:
             return false;

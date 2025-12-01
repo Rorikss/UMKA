@@ -15,7 +15,7 @@ enum OpCode : uint8_t {
     SUB = 0x11,
     MUL = 0x12,
     DIV = 0x13,
-    MOD = 0x14,
+    REM = 0x14,
     NOT = 0x17,
     AND = 0x18,
     OR = 0x19,
@@ -44,7 +44,7 @@ public:
         uint16_t const_count;
         uint16_t func_count;
         uint32_t code_size;
-    };
+    } __attribute__((packed));
 
     void parse(std::istream& bytecode_stream);
     
