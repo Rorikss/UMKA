@@ -193,8 +193,9 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
         fb.emit_load(it->second);
     } else if (auto arr = dynamic_cast<ArrayExpr*>(expr)) {
         for (auto el: arr->elems) gen_expr_in_func(el, fb);
-        int64_t countIdx = fb.add_const(ConstEntry((int64_t) arr->elems.size()));
-        fb.emit_build_arr(countIdx);
+        // int64_t countIdx = fb.add_const(ConstEntry((int64_t) arr->elems.size()));
+        // fb.emit_build_arr(countIdx);
+        fb.emit_build_arr(arr->elems.size());
     } else if (auto call = dynamic_cast<CallExpr*>(expr)) {
         if (call->name == "to_int" ||
             call->name == "to_double" ||
