@@ -131,9 +131,6 @@ bool CommandParser::has_operand(uint8_t opcode) const {
         case OpCode::CALL:
         case OpCode::BUILD_ARR:
         case OpCode::OPCOT:
-        case OpCode::TO_STRING:
-        case OpCode::TO_INT:
-        case OpCode::TO_DOUBLE:
         case OpCode::REM:
             return true;
         default:

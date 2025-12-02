@@ -22,7 +22,19 @@ int main(int argc, char* argv[]) {
         parser.parse(bytecode_file);
         
         StackMachine vm(parser);
-        vm.run();
+        vm.run<DebugMod>([init = false](Command cmd, std::string stack_top) mutable {
+            if (!init) {
+                init = true;
+                std::cout << "Executing command" << std::endl;
+            }
+            std::cout 
+                << std::hex << "0x"
+                << (int)cmd.code 
+                << std::dec
+                << ' ' << cmd.arg 
+                << ' ' << stack_top 
+                << std::endl;
+        });
         
         auto profiler = vm.get_profiler();
         auto hot_regions = profiler->get_hot_regions(HOT_REGIONS_COUNT);

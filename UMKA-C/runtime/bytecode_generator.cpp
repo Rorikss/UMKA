@@ -60,9 +60,9 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
     }
 
     funcBuilders.clear();
-    funcBuilders.resize(idx, FuncBuilder(&constPool));
+    funcBuilders.resize(idx + 1, FuncBuilder(&constPool));
     funcTable.clear();
-    funcTable.resize(idx);
+    funcTable.resize(idx + 1);
 }
 
 
@@ -74,11 +74,11 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
         auto it = userFuncIndex.find(fd->name);
         if (it == userFuncIndex.end()) continue;
         int64_t fidx = it->second;
-        FuncBuilder& fb = funcBuilders[fidx];
+        FuncBuilder& fb = funcBuilders.at(fidx);
         //fb.constPoolRef = &constPool;
 
         for (size_t i = 0; i < fd->params.size(); ++i) {
-            fb.var_index[fd->params[i]] = i;
+            fb.var_index[fd->params.at(i)] = i;
         }
         fb.nextVarIndex = fd->params.size();
 
@@ -91,20 +91,24 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
         FunctionEntry fe;
         fe.arg_count = fd->params.size();
         fe.local_count = fb.nextVarIndex;
-        funcTable[fidx] = fe;
+        funcTable.at(fidx) = fe;
     }
 }
 
 std::vector<uint8_t> BytecodeGenerator::concatenate_function_codes() {
     std::vector<uint8_t> finalCode;
-    int64_t offset = 0;
+    int64_t instruction_offset = 0;
     for (size_t i = 0; i < funcBuilders.size(); ++i) {
-        FuncBuilder& fb = funcBuilders[i];
+        FuncBuilder& fb = funcBuilders.at(i);
         fb.resolve_pending();
-        funcTable[i].code_offset_beg = offset;
+        
+        // Calculate instruction count for this function
+        int64_t function_instruction_count = fb.instruction_positions.size();
+        
+        funcTable.at(i).instruction_offset_beg = instruction_offset;
         finalCode.insert(finalCode.end(), fb.code.begin(), fb.code.end());
-        funcTable[i].code_offset_end = offset + fb.code.size();
-        offset += fb.code.size();
+        funcTable.at(i).instruction_offset_end = instruction_offset + function_instruction_count;
+        instruction_offset += function_instruction_count;
     }
     return finalCode;
 }
@@ -139,8 +143,8 @@ void BytecodeGenerator::write_to_file(const std::string& path) {
     }
 
     for (auto& fe : funcTable) {
-        append_int64(buffer, fe.code_offset_beg);
-        append_int64(buffer, fe.code_offset_end);
+        append_int64(buffer, fe.instruction_offset_beg);
+        append_int64(buffer, fe.instruction_offset_end);
         append_int64(buffer, fe.arg_count);
         append_int64(buffer, fe.local_count);
     }
@@ -200,7 +204,7 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
             }
 
             if (!call->args.empty()){
-                gen_expr_in_func(call->args[0], fb);
+                gen_expr_in_func(call->args.at(0), fb);
             }
 
             if (call->name == "to_int") {

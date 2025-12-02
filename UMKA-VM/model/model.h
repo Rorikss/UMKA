@@ -17,6 +17,8 @@ using Reference = std::weak_ptr<T>;
 template<typename T>
 using Owner = std::shared_ptr<T>;
 
+struct Entity;
+using Array = std::map<size_t, Reference<Entity>>;
 using unit = std::monostate;
 
 #define for_all_types(X) \
@@ -46,7 +48,14 @@ concept ConvertableToString = requires(T value) {
 };
 
 struct Entity {
-    std::variant<int64_t, double, bool, unit, std::string, std::map<size_t, Reference<Entity>>> value;
+    std::variant<
+        int64_t,
+        double,
+        bool, 
+        unit, 
+        std::string, 
+        Array
+    > value;
 
     std::string to_string() const {
         return std::visit([](auto&& arg) -> std::string {
@@ -57,11 +66,13 @@ struct Entity {
                 return "unit";
             } else if constexpr (std::is_same_v<T, std::string>) {
                 return arg;
-            } else if constexpr (std::is_same_v<T, std::map<size_t, Reference<Entity>>>) {
+            } else if constexpr (std::is_same_v<T, Array>) {
                 std::stringstream ss;
+                ss << "[";
                 for (const auto& [key, value] : arg) {
-                    ss << key << ": " << value.lock()->to_string() << "\n";
+                    ss << key << ": " << value.lock()->to_string() << ", ";
                 }
+                ss << "]";
                 return ss.str();
             } else {
                 throw std::runtime_error("Cannot convert to string");
@@ -148,4 +159,4 @@ struct StackFrame {
     std::unordered_map<int64_t, Reference<Entity>> name_resolver = {};
 };
 
-Entity make_entity(auto x) { return Entity { .value = x }; }
+Entity make_entity(auto&& x) { return Entity { .value = x }; }

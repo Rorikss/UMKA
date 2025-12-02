@@ -43,6 +43,24 @@ public:
     using debugger_t = std::function<void(Command, std::string)>;
     template<typename Tag = ReleaseMod>
     void run(debugger_t debugger = [](auto, auto){}) {
+        auto funcs = std::vector(func_table.begin(), func_table.end());
+        // std::sort(funcs.begin(), funcs.end(), [](auto& a, auto& b) { return a.second.id < b.second.id; });
+        std::cout << "Functions:\n";
+        for (auto [id, f] : funcs) {
+            std::cout << id << " " << f.id << ' ' 
+            << '[' << f.code_offset << ", " << f.code_offset_end << "] "
+            << "\n";
+        }
+        std::cout << "\nConsts\n";
+        for (int id = 0; id < (int)const_pool.size(); ++id) {
+            std::cout << id << " " << parse_constant(const_pool[id]).to_string() << "\n";
+        }
+        std::cout << "\nCommands:\n";
+        for (int i = 0; i < commands.size(); ++i) {
+            std::cout << i << " " << (long long)(commands[i].code) << " " << (long long)(commands[i].arg) << "\n";
+        }
+        std::cout << "\n";
+        
         while (!stack_of_functions.empty()) {
             StackFrame& current_frame = stack_of_functions.back();
             if (current_frame.instruction_ptr >= commands.end()) {
@@ -99,13 +117,13 @@ private:
 
     void execute_command(const Command& cmd, StackFrame& current_frame, size_t current_offset) {
         auto call_void_proc = [this](auto proc) {
-            auto arg = get_operand_from_stack("CALL PROC");
+            auto arg = stack_pop(/*"CALL PROC"*/);
             proc(arg);
             create_and_push(make_entity(unit{}));
         };
 
         auto call_value_proc = [this](auto proc) {
-            auto arg = get_operand_from_stack("CALL PROC");
+            auto arg = stack_pop(/*"CALL PROC"*/);
             create_and_push(make_entity(proc(arg)));
         };
 
@@ -221,13 +239,11 @@ private:
                 break;
             case JMP:
                 profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
-                // std::cout << "JUMP " << cmd.arg << " " << current_offset << std::endl;
                 current_frame.instruction_ptr += cmd.arg;
                 break;
             case JMP_IF_FALSE:
                 if (!jump_condition()) {
                     profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
-                    // std::cout << "JUNP_FALSE " << cmd.arg << " " << current_offset << std::endl;
                     current_frame.instruction_ptr += cmd.arg;
                 }
                 break;
@@ -243,40 +259,42 @@ private:
                     case LEN_FUN: call_value_proc([this](auto arg) { return len(arg); }); break;
                     case GET_FUN: {
                         auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL GET"));
-                        auto arr = get_operand_from_stack("CALL GET");
+                        auto arr = stack_pop(/*"CALL GET"*/);
                         create_and_push(*get(arr, idx).lock());
                         break;
                     }
                     case SET_FUN: {
                         auto val = stack_pop();
                         auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL SET"));
-                        auto arr = get_operand_from_stack("CALL SET");
-                        call_void_proc([&](auto) { set(arr, idx, val); });
+                        // auto arr = get_operand_from_stack("CALL SET");
+                        call_void_proc([&](auto arr) { set(arr, idx, val); });
                         break;
                     }
                     case ADD_FUN: {
                         auto val = stack_pop(); // тут сделана функция которая возвращает именно ссылку с вершины стека
-                        auto arr = get_operand_from_stack("CALL ADD"); // вот тут мы вроде возвращаем &. но хотим ли мы именно так? правильно ли это? ссылка ли это вообще???? потому что это по идее ссылочный тип? а как это обеспечить? + хотим ли мы операторы по ссылке возвращать? или рил сделать 2 разных методв: по ссылке которая реф и просто ентити???
-                        call_void_proc([&](auto) { add_elem(arr, val); });
+                        auto arr = stack_pop(); // вот тут мы вроде возвращаем &. но хотим ли мы именно так? правильно ли это? ссылка ли это вообще???? потому что это по идее ссылочный тип? а как это обеспечить? + хотим ли мы операторы по ссылке возвращать? или рил сделать 2 разных методв: по ссылке которая реф и просто ентити???
+                        add_elem(arr, val);
+                        create_and_push(make_entity(unit{}));
                         break;
                     }
                     case REMOVE_FUN: {
                         auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL REMOVE"));
-                        auto arr = get_operand_from_stack("CALL REMOVE");
-                        call_void_proc([&](auto) { remove(arr, idx); });
+                        // auto arr = get_operand_from_stack("CALL REMOVE");
+                        call_void_proc([&](auto arr) { remove(arr, idx); });
                         break;
                     }
                     case WRITE_FUN: {
-                        auto content = get_operand_from_stack("CALL WRITE");
+                        auto content = stack_pop(/*"CALL WRITE"*/);
                         auto filename = get_operand_from_stack("CALL WRITE");
-                        call_void_proc([&](auto) { write(filename.to_string(), content); });
+                        write(filename.to_string(), content);
+                        create_and_push(make_entity(unit{}));
                         break;
                     }
                     case READ_FUN: {
                         auto filename = get_operand_from_stack("CALL READ");
                         std::vector<std::string> lines = read(filename.to_string());
      
-                        std::map<size_t, Reference<Entity>> array;
+                        Array array;
                         
                         for (size_t i = 0; i < lines.size(); ++i) {
                             Owner<Entity> line_entity = std::make_shared<Entity>(make_entity(lines[i]));
@@ -345,7 +363,7 @@ private:
                     throw std::runtime_error("Not enough operands for BUILD_ARR");
                 }
 
-                std::map<size_t, Reference<Entity>> array;
+                Array array;
                 for (size_t i = 0; i < count; ++i) {
                     Reference<Entity> ref = operand_stack.back();
                     operand_stack.pop_back();
@@ -353,8 +371,8 @@ private:
                     array[i] = ref;
                 }
 
-                Entity array_entity = make_entity(array);
-                create_and_push(array_entity);
+                Entity array_entity = make_entity(std::move(array));
+                create_and_push(std::move(array_entity));
                 break;
             }
             case OPCOT: {
@@ -416,9 +434,13 @@ private:
         return *operand_stack.back().lock();
     }
 
+    Owner<Entity> create(Entity result) {
+        heap.emplace_back(std::make_shared<Entity>(std::move(result)));
+        return heap.back();
+    }
+
     void create_and_push(Entity result) {
-        heap.push_back(std::make_shared<Entity>(std::move(result)));
-        operand_stack.push_back(heap.back());
+        operand_stack.push_back(create(std::move(result)));
     }
 
     bool jump_condition() {

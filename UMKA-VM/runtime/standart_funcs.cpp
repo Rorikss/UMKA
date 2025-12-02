@@ -7,15 +7,15 @@
 #include <variant>
 #include <vector>
 
-void out(std::ostream& os, Entity entity) {
-    os << entity.to_string();
+void out(std::ostream& os, Reference<Entity> entity) {
+    os << entity.lock()->to_string() << "\n";
 }
 
-void print(Entity entity) {
+void print(Reference<Entity> entity) {
     out(std::cout, entity);
 }
 
-void write(const std::string& filename, Entity entity) {
+void write(const std::string& filename, Reference<Entity> entity) {
     auto file = std::ofstream(filename);
     out(file, entity);
 }
@@ -36,40 +36,41 @@ std::vector<std::string> read(const std::string& filename) {
     return lines;
 }
 
-int64_t len(Entity& entity) {
-    return std::get<std::map<size_t, Reference<Entity>>>(entity.value).size();
+int64_t len(Reference<Entity> entity) {
+    return std::get<Array>(entity.lock()->value).size();
 }
 
-void add_elem(Entity& array, Reference<Entity> elem) {
-    auto size = std::get<std::map<size_t, Reference<Entity>>>(array.value).size();
-    std::get<std::map<size_t, Reference<Entity>>>(array.value)[size] = elem;
+void add_elem(Reference<Entity> array, Reference<Entity> elem) {
+    auto owner = array.lock();
+    auto size = std::get<Array>(owner->value).size();
+    std::get<Array>(owner->value)[size] = elem;
 }
 
-void remove(Entity& array, int64_t index) {
-    auto& map = std::get<std::map<size_t, Reference<Entity>>>(array.value);
+void remove(Reference<Entity> array, int64_t index) {
+    auto& map = std::get<Array>(array.lock()->value);
     if (index < 0 || index >= static_cast<int64_t>(map.size())) {
         throw std::out_of_range("Array index out of bounds");
     }
     map.erase(index);
     
-    std::map<size_t, Reference<Entity>> new_map;
+    Array new_map;
     size_t new_index = 0;
     for (auto& [_, value] : map) {
         new_map[new_index++] = value;
     }
-    array.value = new_map;
+    array.lock()->value = new_map;
 }
 
-Reference<Entity> get(Entity& array, int64_t index) {
-    auto& map = std::get<std::map<size_t, Reference<Entity>>>(array.value);
+Reference<Entity> get(Reference<Entity> array, int64_t index) {
+    auto& map = std::get<Array>(array.lock()->value);
     if (index < 0 || index >= static_cast<int64_t>(map.size())) {
         throw std::out_of_range("Array index out of bounds");
     }
     return map.at(index);
 }
 
-void set(Entity& array, int64_t index, Reference<Entity> elem) {
-    auto& map = std::get<std::map<size_t, Reference<Entity>>>(array.value);
+void set(Reference<Entity> array, int64_t index, Reference<Entity> elem) {
+    auto& map = std::get<Array>(array.lock()->value);
     if (index < 0 || index >= static_cast<int64_t>(map.size())) {
         throw std::out_of_range("Array index out of bounds");
     }

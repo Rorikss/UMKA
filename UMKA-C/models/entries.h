@@ -16,8 +16,8 @@ struct ConstEntry {
 };
 
 struct FunctionEntry {
-    int64_t code_offset_beg{0};
-    int64_t code_offset_end{0};
+    int64_t instruction_offset_beg{0};
+    int64_t instruction_offset_end{0};
     int64_t arg_count{0};
     int64_t local_count{0};
 };
