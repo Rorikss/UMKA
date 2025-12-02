@@ -43,23 +43,9 @@ public:
     using debugger_t = std::function<void(Command, std::string)>;
     template<typename Tag = ReleaseMod>
     void run(debugger_t debugger = [](auto, auto){}) {
-        auto funcs = std::vector(func_table.begin(), func_table.end());
-        // std::sort(funcs.begin(), funcs.end(), [](auto& a, auto& b) { return a.second.id < b.second.id; });
-        std::cout << "Functions:\n";
-        for (auto [id, f] : funcs) {
-            std::cout << id << " " << f.id << ' ' 
-            << '[' << f.code_offset << ", " << f.code_offset_end << "] "
-            << "\n";
+        if constexpr (std::is_same_v<Tag, DebugMod>) {
+            printDebugParsedInfo();
         }
-        std::cout << "\nConsts\n";
-        for (int id = 0; id < (int)const_pool.size(); ++id) {
-            std::cout << id << " " << parse_constant(const_pool[id]).to_string() << "\n";
-        }
-        std::cout << "\nCommands:\n";
-        for (int i = 0; i < commands.size(); ++i) {
-            std::cout << i << " " << (long long)(commands[i].code) << " " << (long long)(commands[i].arg) << "\n";
-        }
-        std::cout << "\n";
         
         while (!stack_of_functions.empty()) {
             StackFrame& current_frame = stack_of_functions.back();
@@ -402,10 +388,10 @@ private:
 
     std::pair<Entity, Entity> get_operands_from_stack(const std::string& op_name) {
         CHECK_STACK_EMPTY(op_name);
-        Reference<Entity> rhs = operand_stack.back();
+        Reference<Entity> lhs = operand_stack.back();
         operand_stack.pop_back();
         CHECK_STACK_EMPTY(op_name);
-        Reference<Entity> lhs = operand_stack.back();
+        Reference<Entity> rhs = operand_stack.back();
         operand_stack.pop_back();
         CHECK_REF(lhs);
         CHECK_REF(rhs);
@@ -450,6 +436,25 @@ private:
         if (condition_ref.expired()) throw std::runtime_error("Condition expired");
         Entity condition = *condition_ref.lock();
         return umka_cast<bool>(condition);
+    }
+
+    void printDebugParsedInfo() {
+        auto funcs = std::vector(func_table.begin(), func_table.end());
+        std::cout << "Functions:\n";
+        for (auto [id, f] : funcs) {
+            std::cout << id << " " << f.id << ' ' 
+            << '[' << f.code_offset << ", " << f.code_offset_end << "] "
+            << "\n";
+        }
+        std::cout << "\nConsts\n";
+        for (int id = 0; id < (int)const_pool.size(); ++id) {
+            std::cout << id << " " << parse_constant(const_pool[id]).to_string() << "\n";
+        }
+        std::cout << "\nCommands:\n";
+        for (int i = 0; i < commands.size(); ++i) {
+            std::cout << i << " " << (long long)(commands[i].code) << " " << (long long)(commands[i].arg) << "\n";
+        }
+        std::cout << "\n";
     }
 
     std::vector<Command> commands;

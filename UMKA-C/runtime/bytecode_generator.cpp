@@ -233,8 +233,8 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
             }
         }
     } else if (auto bex = dynamic_cast<BinaryExpr*>(expr)) {
-        gen_expr_in_func(bex->left, fb);
         gen_expr_in_func(bex->right, fb);
+        gen_expr_in_func(bex->left, fb);
         auto it = BINOP_MAP.find(bex->op);
         if (it == BINOP_MAP.end()) {
             std::cerr << "genExpr: unknown binary op '" << bex->op << "'\n";

@@ -22,7 +22,7 @@ int main(int argc, char* argv[]) {
         parser.parse(bytecode_file);
         
         StackMachine vm(parser);
-        vm.run<DebugMod>([init = false](Command cmd, std::string stack_top) mutable {
+        vm.run<ReleaseMod>([init = false](Command cmd, std::string stack_top) mutable {
             if (!init) {
                 init = true;
                 std::cout << "Executing command" << std::endl;
