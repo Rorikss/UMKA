@@ -45,6 +45,7 @@ struct FuncBuilder {
             if (e.type == ConstEntry::INT && e._int == c._int) return i;
             if (e.type == ConstEntry::DOUBLE && e._double == c._double) return i;
             if (e.type == ConstEntry::STRING && e._str == c._str) return i;
+            if (e.type == ConstEntry::UNIT) return i;
         }
         pool.push_back(c);
         return pool.size() - 1;
