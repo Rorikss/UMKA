@@ -85,6 +85,8 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
         gen_stmt_in_func(fd->body, fb);
 
         if (fb.code.empty() || fb.code.back() != OP_RETURN) {
+            int64_t idx = fb.add_const(ConstEntry());
+            fb.emit_push_const_index(idx);
             fb.emit_return();
         }
 
@@ -140,6 +142,7 @@ void BytecodeGenerator::write_to_file(const std::string& path) {
             append_int64(buffer, c._str.size());
             buffer.insert(buffer.end(), c._str.begin(), c._str.end());
         }
+        else if (c.type == ConstEntry::UNIT) { /* No action needed */ }
     }
 
     for (auto& fe : funcTable) {
@@ -318,6 +321,10 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         fb.place_label(endL);
     } else if (auto rs = dynamic_cast<ReturnStmt*>(s)) {
         if (rs->expr) gen_expr_in_func(rs->expr, fb);
+        else {
+            int64_t idx = fb.add_const(ConstEntry());
+            fb.emit_push_const_index(idx);
+        }
         fb.emit_return();
     } else if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
         // processed in build_functions, ignore here

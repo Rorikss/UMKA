@@ -48,6 +48,9 @@ void CommandParser::parse(std::istream& bytecode_stream) {
                 data_size = str_len;
                 break;
             }
+            case TYPE_UNIT:
+                data_size = 0;
+                break;
             default:
                 throw std::runtime_error("Unknown constant type" + std::to_string(constant.type));
         }

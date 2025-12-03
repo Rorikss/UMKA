@@ -96,6 +96,8 @@ private:
                 std::string value(constant.data.begin(), constant.data.end());
                 return make_entity(value);
             }
+            case TYPE_UNIT:
+                return make_entity(unit{});
             default:
                 throw std::runtime_error("Unknown constant type");
         }
@@ -103,13 +105,13 @@ private:
 
     void execute_command(const Command& cmd, StackFrame& current_frame, size_t current_offset) {
         auto call_void_proc = [this](auto proc) {
-            auto arg = stack_pop(/*"CALL PROC"*/);
+            auto arg = get_operand_from_stack("CALL PROC");
             proc(arg);
             create_and_push(make_entity(unit{}));
         };
 
         auto call_value_proc = [this](auto proc) {
-            auto arg = stack_pop(/*"CALL PROC"*/);
+            auto arg = get_operand_from_stack("CALL PROC");
             create_and_push(make_entity(proc(arg)));
         };
 
@@ -245,50 +247,42 @@ private:
                     case LEN_FUN: call_value_proc([this](auto arg) { return len(arg); }); break;
                     case GET_FUN: {
                         auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL GET"));
-                        auto arr = stack_pop(/*"CALL GET"*/);
+                        auto arr = get_operand_from_stack("CALL GET");
                         create_and_push(*get(arr, idx).lock());
                         break;
                     }
                     case SET_FUN: {
                         auto val = stack_pop();
                         auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL SET"));
-                        // auto arr = get_operand_from_stack("CALL SET");
                         call_void_proc([&](auto arr) { set(arr, idx, val); });
                         break;
                     }
                     case ADD_FUN: {
-                        auto val = stack_pop(); // тут сделана функция которая возвращает именно ссылку с вершины стека
-                        auto arr = stack_pop(); // вот тут мы вроде возвращаем &. но хотим ли мы именно так? правильно ли это? ссылка ли это вообще???? потому что это по идее ссылочный тип? а как это обеспечить? + хотим ли мы операторы по ссылке возвращать? или рил сделать 2 разных методв: по ссылке которая реф и просто ентити???
-                        add_elem(arr, val);
-                        create_and_push(make_entity(unit{}));
+                        auto val = stack_pop();
+                        call_void_proc([&](auto arr) { add_elem(arr, val); });
                         break;
                     }
                     case REMOVE_FUN: {
                         auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL REMOVE"));
-                        // auto arr = get_operand_from_stack("CALL REMOVE");
                         call_void_proc([&](auto arr) { remove(arr, idx); });
                         break;
                     }
                     case WRITE_FUN: {
-                        auto content = stack_pop(/*"CALL WRITE"*/);
-                        auto filename = get_operand_from_stack("CALL WRITE");
-                        write(filename.to_string(), content);
-                        create_and_push(make_entity(unit{}));
+                        auto content = get_operand_from_stack("CALL WRITE");
+                        call_void_proc([&](auto filename) { write(filename.to_string(), content); });
                         break;
                     }
                     case READ_FUN: {
                         auto filename = get_operand_from_stack("CALL READ");
                         std::vector<std::string> lines = read(filename.to_string());
      
-                        Array array;
-                        
+                        Entity array_entity = make_array();
+                        Array& array = *std::get<Owner<Array>>(array_entity.value); 
                         for (size_t i = 0; i < lines.size(); ++i) {
-                            Owner<Entity> line_entity = std::make_shared<Entity>(make_entity(lines[i]));
-                            heap.push_back(line_entity);
+                            Owner<Entity> line_entity = create(make_entity(lines[i]));
                             array[i] = line_entity;
                         }
-                     
-                        auto array_entity = make_entity(array);
+
                         create_and_push(array_entity);
                         break;
                     }
@@ -349,7 +343,8 @@ private:
                     throw std::runtime_error("Not enough operands for BUILD_ARR");
                 }
 
-                Array array;
+                Entity array_entity = make_array();
+                Array& array = *std::get<Owner<Array>>(array_entity.value);
                 for (size_t i = 0; i < count; ++i) {
                     Reference<Entity> ref = operand_stack.back();
                     operand_stack.pop_back();
@@ -357,7 +352,6 @@ private:
                     array[i] = ref;
                 }
 
-                Entity array_entity = make_entity(std::move(array));
                 create_and_push(std::move(array_entity));
                 break;
             }
@@ -398,7 +392,7 @@ private:
         return {*lhs.lock(), *rhs.lock()};
     }
 
-    Entity& get_operand_from_stack(const std::string& op_name) { // возможно нет 
+    Entity get_operand_from_stack(const std::string& op_name) {
         CHECK_STACK_EMPTY(op_name);
         Reference<Entity> operand = operand_stack.back();
         operand_stack.pop_back();

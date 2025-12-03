@@ -60,6 +60,7 @@ target_include_directories(umka_compiler PRIVATE
 add_executable(umka_vm
     UMKA-VM/main.cpp
     UMKA-VM/model/model.h
+    UMKA-VM/model/model.cpp
     UMKA-VM/parser/command_parser.h
     UMKA-VM/parser/command_parser.cpp
     UMKA-VM/runtime/operations.h

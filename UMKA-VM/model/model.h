@@ -43,6 +43,24 @@ concept Equtable = requires(T a, U b) {
 };
 
 template <typename T>
+struct ReferencableImpl {
+    static constexpr bool value = false;
+};
+
+template <typename T>
+struct ReferencableImpl<Reference<T>> {
+    static constexpr bool value = true;
+};
+
+template <typename T>
+struct ReferencableImpl<Owner<T>> {
+    static constexpr bool value = true;
+};
+
+template <typename T>
+concept Referencable = ReferencableImpl<T>::value;
+
+template <typename T>
 concept ConvertableToString = requires(T value) {
     { std::to_string(value) } -> std::same_as<std::string>;
 };
@@ -54,7 +72,7 @@ struct Entity {
         bool, 
         unit, 
         std::string, 
-        Array
+        Owner<Array>
     > value;
 
     std::string to_string() const {
@@ -66,10 +84,10 @@ struct Entity {
                 return "unit";
             } else if constexpr (std::is_same_v<T, std::string>) {
                 return arg;
-            } else if constexpr (std::is_same_v<T, Array>) {
+            } else if constexpr (std::is_same_v<T, Owner<Array>>) {
                 std::stringstream ss;
                 ss << "[";
-                for (const auto& [key, value] : arg) {
+                for (const auto& [key, value] : *arg) {
                     ss << key << ": " << value.lock()->to_string() << ", ";
                 }
                 ss << "]";
@@ -146,6 +164,7 @@ enum ConstantType : uint8_t {
     TYPE_INT64 = 0x01,
     TYPE_DOUBLE = 0x02,
     TYPE_STRING = 0x03,
+    TYPE_UNIT = 0x04,
 };
 
 struct Constant {
@@ -160,3 +179,4 @@ struct StackFrame {
 };
 
 Entity make_entity(auto&& x) { return Entity { .value = x }; }
+Entity make_array();
