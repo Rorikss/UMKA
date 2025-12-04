@@ -7,6 +7,14 @@
 #include <stdexcept>
 #include <cstdint>
 
+// Платформенно-зависимые заголовки для определения объема физической памяти
+#if defined(_WIN32)
+  #define NOMINMAX
+  #include <windows.h>
+#elif defined(__unix__) || defined(__APPLE__)
+  #include <unistd.h>
+#endif
+
 class GarbageCollector {
 public:
   // Константы
@@ -17,10 +25,8 @@ public:
       : bytes_allocated(0),
         gc_threshold(0),
         total_available_ram_bytes(0) {
-    // Получаем общий объем доступной RAM
-    // Для Windows используем GetPhysicallyInstalledSystemMemory или приблизительную оценку
-    // По умолчанию используем 8GB как базовое значение
-    total_available_ram_bytes = 8ULL * 1024 * 1024 * 1024; // 8GB в байтах
+    // Получаем общий объем доступной RAM из системы
+    total_available_ram_bytes = detect_total_ram_bytes();
     gc_threshold = static_cast<size_t>(total_available_ram_bytes * GC_PERCENT);
   }
 
@@ -102,6 +108,40 @@ private:
 
   // Множество всех объектов в куче (для быстрой проверки)
   std::unordered_map<const Entity*, bool> heap_objects;
+
+  // Платформенно-зависимое определение общего объема физической памяти
+  static size_t detect_total_ram_bytes() {
+#if defined(_WIN32)
+    // Вариант 1: GlobalMemoryStatusEx (дает общий объем физической памяти)
+    MEMORYSTATUSEX statex;
+    statex.dwLength = sizeof(statex);
+    if (GlobalMemoryStatusEx(&statex)) {
+      return static_cast<size_t>(statex.ullTotalPhys);
+    }
+
+    // Вариант 2: GetPhysicallyInstalledSystemMemory (KB)
+    // Оставлен как резервный, если нужно, но не обязателен.
+    // DWORDLONG total_kb = 0;
+    // if (GetPhysicallyInstalledSystemMemory(&total_kb)) {
+    //   return static_cast<size_t>(total_kb) * 1024;
+    // }
+
+    // Фолбэк: 8GB, если системные вызовы не сработали
+    return 8ULL * 1024 * 1024 * 1024;
+#elif defined(__unix__) || defined(__APPLE__)
+    // POSIX: количество страниц * размер страницы
+    long pages = sysconf(_SC_PHYS_PAGES);
+    long page_size = sysconf(_SC_PAGE_SIZE);
+    if (pages > 0 && page_size > 0) {
+      return static_cast<size_t>(pages) * static_cast<size_t>(page_size);
+    }
+    // Фолбэк: 8GB
+    return 8ULL * 1024 * 1024 * 1024;
+#else
+    // Неизвестная платформа — используем разумное значение по умолчанию
+    return 8ULL * 1024 * 1024 * 1024;
+#endif
+  }
 
   // Mark phase: пометить все достижимые объекты
   void mark(
