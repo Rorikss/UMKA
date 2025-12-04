@@ -8,6 +8,17 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 find_package(BISON REQUIRED)
 find_package(FLEX REQUIRED)
 
+if(APPLE)
+    find_program(HOMEBREW_BISON bison HINTS /opt/homebrew/opt/bison/bin /usr/local/opt/bison/bin)
+
+    if(HOMEBREW_BISON)
+        message(STATUS "Using Homebrew bison: ${HOMEBREW_BISON}")
+        set(BISON_EXECUTABLE ${HOMEBREW_BISON})
+    else()
+        message(WARNING "System bison on macOS is too old (<2.7). Install Homebrew bison: brew install bison")
+    endif()
+endif()
+
 set(PARSER_DIR ${CMAKE_SOURCE_DIR}/UMKA-LP)
 set(COMPILER_DIR ${CMAKE_SOURCE_DIR}/UMKA-C)
 set(COMPILER_MODELS_DIR ${COMPILER_DIR}/models)
@@ -83,6 +94,7 @@ FetchContent_MakeAvailable(googletest)
 add_executable(stack_machine_tests
         UMKA-VM/tests/stack_machine_test.cpp
         UMKA-VM/runtime/standart_funcs.cpp
+        UMKA-VM/model/model.cpp
 )
 
 set_target_properties(stack_machine_tests PROPERTIES
