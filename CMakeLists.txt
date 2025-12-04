@@ -66,6 +66,23 @@ target_include_directories(umka_compiler PRIVATE
         ${COMPILER_MODELS_DIR}
         ${COMPILER_RUNTIME_DIR}
 )
+#JIT
+
+add_library(umka_jit
+        UMKA-JIT/jit_runner.cc
+        UMKA-JIT/optimizations/base_optimization.h
+        UMKA-JIT/optimizations/const_folding.h
+)
+
+target_include_directories(umka_jit PUBLIC
+        ${CMAKE_SOURCE_DIR}/UMKA-JIT
+        ${CMAKE_SOURCE_DIR}/UMKA-JIT/optimizations
+
+        ${CMAKE_SOURCE_DIR}/UMKA-VM
+        ${CMAKE_SOURCE_DIR}/UMKA-VM/model
+        ${CMAKE_SOURCE_DIR}/UMKA-VM/parser
+        ${CMAKE_SOURCE_DIR}/UMKA-VM/runtime
+)
 
 # VM
 add_executable(umka_vm
@@ -82,6 +99,9 @@ add_executable(umka_vm
 
 target_include_directories(umka_vm PRIVATE UMKA-VM)
 
+#target_link_libraries(umka_vm PRIVATE umka_jit)
+#target_include_directories(umka_vm PRIVATE UMKA-VM UMKA-JIT)
+
 # VM tests
 include(FetchContent)
 FetchContent_Declare(
@@ -97,6 +117,33 @@ add_executable(stack_machine_tests
         UMKA-VM/model/model.cpp
 )
 
+# ==========================
+# JIT TESTS
+# ==========================
+add_executable(jit_tests
+        UMKA-JIT/tests/jit_tests.cpp
+
+        UMKA-JIT/jit_runner.cc
+        UMKA-VM/model/model.cpp
+)
+
+target_include_directories(jit_tests PRIVATE
+        UMKA-JIT
+        UMKA-JIT/optimizations
+        UMKA-VM
+        UMKA-VM/model
+        UMKA-VM/parser
+        UMKA-VM/runtime
+)
+
+target_link_libraries(jit_tests PRIVATE gtest_main)
+
+set_target_properties(jit_tests PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test
+)
+
+add_test(NAME jit_tests COMMAND jit_tests)
+ #=====
 set_target_properties(stack_machine_tests PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test
 )
