@@ -1,6 +1,7 @@
 #include <model/model.h>
 #include <parser/command_parser.h>
 #include "const_folding.h"
+#include "dce.h"
 
 #include "gtest/gtest.h"
 
@@ -44,12 +45,12 @@ TEST(JitConstFolding, ArithmeticNested) {
   // ожидается: PUSH_CONST 14, STORE 0
   ASSERT_EQ(code.size(), 2);
 
-  ASSERT_EQ((OpCode)code[0].code, OpCode::PUSH_CONST);
+  ASSERT_EQ(static_cast<OpCode>(code[0].code), OpCode::PUSH_CONST);
   int64_t result = 0;
   memcpy(&result, pool[code[0].arg].data.data(), 8);
   ASSERT_EQ(result, 14);
 
-  ASSERT_EQ((OpCode)code[1].code, OpCode::STORE);
+  ASSERT_EQ(static_cast<OpCode>(code[1].code), OpCode::STORE);
   ASSERT_EQ(code[1].arg, 0);
 }
 
@@ -181,6 +182,164 @@ TEST(JitConstFolding, CannotFoldMixedStackValues)
   EXPECT_EQ(static_cast<OpCode>(code[1].code), OpCode::LOAD);
   EXPECT_EQ(static_cast<OpCode>(code[2].code), OpCode::PUSH_CONST);
   EXPECT_EQ(static_cast<OpCode>(code[3].code), OpCode::ADD);
+}
+
+TEST(JitDCE, RemoveUnusedArithmetic) {
+  std::vector pool = { make_int(1), make_int(2) };
+
+  std::vector code = {
+    cmd(OpCode::PUSH_CONST, 0),
+    cmd(OpCode::PUSH_CONST, 1),
+    cmd(OpCode::ADD),        // <- result unused
+    cmd(OpCode::PUSH_CONST, 0),
+    cmd(OpCode::RETURN)
+};
+
+  FunctionTableEntry meta{};
+  umka::jit::DeadCodeElimination dce;
+  dce.run(code, pool, meta);
+
+  ASSERT_EQ(code.size(), 2);
+  EXPECT_EQ(static_cast<OpCode>(code[0].code), OpCode::PUSH_CONST);
+  EXPECT_EQ(static_cast<OpCode>(code[1].code), OpCode::RETURN);
+}
+
+TEST(JitDCE, KeepProducerBeforeStore) {
+  std::vector pool = { make_int(10) };
+
+  std::vector code = {
+    cmd(OpCode::PUSH_CONST, 0),
+    cmd(OpCode::STORE, 0)
+};
+
+  FunctionTableEntry meta{};
+  umka::jit::DeadCodeElimination dce;
+  dce.run(code, pool, meta);
+
+  ASSERT_EQ(code.size(), 2);
+  EXPECT_EQ(static_cast<OpCode>(code[0].code), OpCode::PUSH_CONST);
+  EXPECT_EQ(static_cast<OpCode>(code[1].code), OpCode::STORE);
+}
+
+TEST(JitDCE, KeepCallEvenIfResultUnused) {
+  std::vector<Constant> pool = {};
+
+  std::vector<Command> code = {
+    cmd(OpCode::CALL, 2),  // needs 2 args
+    cmd(OpCode::POP)       // return value unused
+};
+
+  FunctionTableEntry meta{};
+  umka::jit::DeadCodeElimination dce;
+  dce.run(code, pool, meta);
+
+  ASSERT_EQ(code.size(), 1);
+  EXPECT_EQ((OpCode)code[0].code, OpCode::CALL);
+}
+
+TEST(JitDCE, CallArgumentsAreNeeded) {
+  std::vector pool = { make_int(1), make_int(2) };
+
+  std::vector code = {
+    cmd(OpCode::PUSH_CONST, 0),
+    cmd(OpCode::PUSH_CONST, 1),
+    cmd(OpCode::CALL, 2),
+    cmd(OpCode::POP)   // result unused
+};
+
+  FunctionTableEntry meta{};
+  umka::jit::DeadCodeElimination dce;
+  dce.run(code, pool, meta);
+
+  ASSERT_EQ(code.size(), 3);
+  EXPECT_EQ(static_cast<OpCode>(code[0].code), OpCode::PUSH_CONST);
+  EXPECT_EQ(static_cast<OpCode>(code[1].code), OpCode::PUSH_CONST);
+  EXPECT_EQ(static_cast<OpCode>(code[2].code), OpCode::CALL);
+}
+
+TEST(JitDCE, RemoveUnreachableAfterJump) {
+  std::vector<Constant> pool = {};
+
+  std::vector<Command> code = {
+    cmd(OpCode::JMP, 2),      // skip 2
+    cmd(OpCode::ADD),         // unreachable
+    cmd(OpCode::MUL),         // live
+    cmd(OpCode::RETURN)       // live
+};
+
+  FunctionTableEntry meta{};
+  umka::jit::DeadCodeElimination dce;
+  dce.run(code, pool, meta);
+
+  ASSERT_EQ(code.size(), 3);
+  EXPECT_EQ(static_cast<OpCode>(code[0].code), OpCode::JMP);
+  EXPECT_EQ(static_cast<OpCode>(code[1].code), OpCode::MUL);
+  EXPECT_EQ(static_cast<OpCode>(code[2].code), OpCode::RETURN);
+
+  EXPECT_EQ(code[0].arg, 1); // from JMP to RETURN
+}
+
+TEST(JitDCE, DeadAfterReturn) {
+  std::vector pool = { make_int(10), make_int(20) };
+
+  std::vector code = {
+    cmd(OpCode::PUSH_CONST, 0),
+    cmd(OpCode::RETURN),
+    cmd(OpCode::PUSH_CONST, 1), // dead
+    cmd(OpCode::ADD),           // dead
+};
+
+  FunctionTableEntry meta{};
+  umka::jit::DeadCodeElimination dce;
+  dce.run(code, pool, meta);
+
+  ASSERT_EQ(code.size(), 2);
+  EXPECT_EQ(static_cast<OpCode>(code[0].code), OpCode::PUSH_CONST);
+  EXPECT_EQ(static_cast<OpCode>(code[1].code), OpCode::RETURN);
+}
+
+
+TEST(JitDCE, DeadPopAndTrailingCodeAfterCall) {
+  std::vector pool = { make_int(1), make_int(2), make_int(3) };
+
+  std::vector code = {
+    cmd(OpCode::PUSH_CONST, 0),
+    cmd(OpCode::PUSH_CONST, 1),
+    cmd(OpCode::CALL, 2),
+    cmd(OpCode::POP),               // dead
+    cmd(OpCode::PUSH_CONST, 2),     // dead
+};
+
+  FunctionTableEntry meta{};
+  umka::jit::DeadCodeElimination dce;
+  dce.run(code, pool, meta);
+
+  ASSERT_EQ(code.size(), 3);
+  EXPECT_EQ(static_cast<OpCode>(code[0].code), OpCode::PUSH_CONST);
+  EXPECT_EQ(static_cast<OpCode>(code[1].code), OpCode::PUSH_CONST);
+  EXPECT_EQ(static_cast<OpCode>(code[2].code), OpCode::CALL);
+}
+
+TEST(JitDCE, DeadLoopConstantFalse) {
+  std::vector pool = { make_int(0) };
+
+  std::vector code = {
+    cmd(OpCode::PUSH_CONST, 0),
+    cmd(OpCode::JMP_IF_FALSE, 4),
+    cmd(OpCode::LOAD, 0),   // dead
+    cmd(OpCode::ADD),       // dead
+    cmd(OpCode::JMP, -2),   // dead
+    cmd(OpCode::RETURN),
+};
+
+  FunctionTableEntry meta{};
+  umka::jit::DeadCodeElimination dce;
+  dce.run(code, pool, meta);
+
+  ASSERT_EQ(code.size(), 3);
+  EXPECT_EQ(static_cast<OpCode>(code[0].code), OpCode::PUSH_CONST);
+  EXPECT_EQ(static_cast<OpCode>(code[1].code), OpCode::JMP_IF_FALSE);
+  EXPECT_EQ(static_cast<OpCode>(code[2].code), OpCode::RETURN);
 }
 
 
