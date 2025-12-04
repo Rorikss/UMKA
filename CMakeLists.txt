@@ -11,6 +11,7 @@ add_executable(umka_vm
     UMKA-VM/runtime/command_parser.h
     UMKA-VM/runtime/operations.h
     UMKA-VM/runtime/stack_machine.h
+    UMKA-GC/garbage_collector.h
 )
 
 target_include_directories(umka_vm PRIVATE UMKA-VM)

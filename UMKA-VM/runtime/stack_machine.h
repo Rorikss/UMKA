@@ -2,6 +2,7 @@
 #include "model/model.h"
 #include "command_parser.h"
 #include "operations.h"
+#include "../UMKA-GC/garbage_collector.h"
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -27,7 +28,8 @@ public:
     StackMachine(const auto& parser)
         : commands(parser.get_commands()),
           const_pool(parser.get_const_pool()),
-          func_table(parser.get_func_table())
+          func_table(parser.get_func_table()),
+          gc()
     {
         stack_of_functions.emplace_back(StackFrame{
             .name = 0,
@@ -316,8 +318,27 @@ private:
     }
 
     void create_and_push(Entity result) {
+        // Подсчитываем размер выделяемой памяти
+        size_t entity_size = GarbageCollector::calculate_entity_size(result);
+        
+        // Проверяем, нужно ли запустить GC перед выделением
+        if (gc.should_collect()) {
+            // Stop the world: запускаем сборку мусора
+            gc.collect(heap, operand_stack, stack_of_functions);
+            
+            // После GC проверяем, достаточно ли памяти
+            // Если все еще превышен порог, выбрасываем OutOfMemory
+            if (gc.should_collect()) {
+                throw std::runtime_error("OutOfMemory: Garbage collection did not free enough memory");
+            }
+        }
+        
+        // Выделяем память
         heap.push_back(std::make_shared<Entity>(std::move(result)));
         operand_stack.push_back(heap.back());
+        
+        // Увеличиваем счетчик выделенной памяти
+        gc.add_allocated_bytes(entity_size);
     }
 
     bool jump_condition() {
@@ -335,6 +356,7 @@ private:
     std::vector<Owner<Entity>> heap = {};
     std::vector<StackFrame> stack_of_functions;
     std::vector<Reference<Entity>> operand_stack;
+    GarbageCollector gc;
 };
 
 #undef CHECK_STACK_EMPTY
