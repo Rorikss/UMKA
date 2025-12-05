@@ -1,4 +1,5 @@
-# UMKA
+# <img src="logo.png" alt="UMKA Logo" width="60" height="75" style="vertical-align: middle;"> <span style="font-size: 2em; vertical-align: middle; color: ">UMKA</span>
+
 
 Минималистичный императивный язык программирования со статической типизацией, включающий виртуальную
 машину со сборщиком мусора и JIT-компилятором.
