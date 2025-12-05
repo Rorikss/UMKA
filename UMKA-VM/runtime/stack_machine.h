@@ -318,26 +318,19 @@ private:
     }
 
     void create_and_push(Entity result) {
-        // Подсчитываем размер выделяемой памяти
         size_t entity_size = GarbageCollector::calculate_entity_size(result);
         
-        // Проверяем, нужно ли запустить GC перед выделением
         if (gc.should_collect()) {
-            // Stop the world: запускаем сборку мусора
             gc.collect(heap, operand_stack, stack_of_functions);
             
-            // После GC проверяем, достаточно ли памяти
-            // Если все еще превышен порог, выбрасываем OutOfMemory
             if (gc.should_collect()) {
                 throw std::runtime_error("OutOfMemory: Garbage collection did not free enough memory");
             }
         }
         
-        // Выделяем память
         heap.push_back(std::make_shared<Entity>(std::move(result)));
         operand_stack.push_back(heap.back());
         
-        // Увеличиваем счетчик выделенной памяти
         gc.add_allocated_bytes(entity_size);
     }
 
