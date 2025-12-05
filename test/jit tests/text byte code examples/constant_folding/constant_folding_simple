@@ -8,5 +8,5 @@ ADD                ; 2 + (3 * 4)
 STORE 0            ; x
 
 LOAD 0
-CALL 0             ; print(x)
+CALL 0
 RETURN
