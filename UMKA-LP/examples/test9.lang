@@ -6,3 +6,7 @@ class Aboba {
 method Aboba do(self, c) -> unit {
     print(c);
 }
+
+let b = Aboba;
+b:a = 100;
+b$do(5);
