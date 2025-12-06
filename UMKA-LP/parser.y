@@ -136,9 +136,10 @@ struct ReturnStmt : Stmt {
 struct FunctionDefStmt : Stmt {
     string name;
     vector<string> params;
+    string ret_type;
     StmtPtr body;
-    FunctionDefStmt(const string& n, const vector<string>& p, StmtPtr b)
-        : name(n), params(p), body(b) {}
+    FunctionDefStmt(const string& n, const vector<string>& p, const string& rt, StmtPtr b)
+        : name(n), params(p), ret_type(rt), body(b) {}
 };
 
 struct ClassDefStmt : Stmt {
@@ -151,9 +152,10 @@ struct MethodDefStmt : Stmt {
     string class_name;
     string method_name;
     vector<string> params;
+    string ret_type;
     StmtPtr body;
-    MethodDefStmt(const string& cn, const string& mn, const vector<string>& p, StmtPtr b)
-        : class_name(cn), method_name(mn), params(p), body(b) {}
+    MethodDefStmt(const string& cn, const string& mn, const vector<string>& p, const string& rt, StmtPtr b)
+        : class_name(cn), method_name(mn), params(p), ret_type(rt), body(b) {}
 };
 
 struct MemberAccessExpr : Expr {
@@ -355,7 +357,7 @@ static void print_stmt(Stmt* s, int indent) {
         for (size_t i = 0; i < fd->params.size(); ++i) {
             std::cerr << (i ? ", " : " ") << fd->params[i];
         }
-        std::cerr << " )\n";
+         std::cerr << " ) -> " << fd->ret_type << "\n";
         print_indent(indent);
         std::cerr << " Body:\n";
         print_stmt(fd->body, indent + 1);
@@ -371,7 +373,7 @@ static void print_stmt(Stmt* s, int indent) {
         for (size_t i = 0; i < md->params.size(); ++i) {
             std::cerr << (i ? ", " : " ") << md->params[i];
         }
-        std::cerr << " )\n";
+        std::cerr << " ) -> " << md->ret_type << "\n";
         print_indent(indent);
         std::cerr << " Body:\n";
         print_stmt(md->body, indent + 1);
@@ -429,6 +431,7 @@ void yyerror(const char* s) {
 %type <expr_list> expression_list argument_list
 %type <param_list> parameter_list
 %type <stmt_list> statement_list class_body
+%type <sval> return_type
 
 
 /* токены */
@@ -556,12 +559,13 @@ for_statement:
 
 /* return type */
 return_type:
-      TYPE_UNIT
-    | TYPE_INT
-    | TYPE_DOUBLE
-    | TYPE_STRING
-    | TYPE_BOOL
-    | '[' ']'   /* array type */
+      TYPE_UNIT         { $$ = strdup("unit"); }
+    | TYPE_INT          { $$ = strdup("int"); }
+    | TYPE_DOUBLE       { $$ = strdup("double"); }
+    | TYPE_STRING       { $$ = strdup("string"); }
+    | TYPE_BOOL         { $$ = strdup("bool"); }
+    | '[' ']'           { $$ = strdup("[]"); } /* array type */
+    | IDENT             { $$ = $1; }
     ;
 
 /* function definition */
@@ -575,7 +579,9 @@ function_definition:
             }
             delete $4;
         }
-        $$ = new FunctionDefStmt(std::string($2), params, $8);
+        std::string rt = $7 ? std::string($7) : std::string("");
+        if($7) free($7);
+        $$ = new FunctionDefStmt(std::string($2), params, rt, $8);
         free($2);
     }
   ;
@@ -612,7 +618,9 @@ method_definition:
             for (auto p : *$5) { params.push_back(std::string(p)); free(p); }
             delete $5;
         }
-        $$ = new MethodDefStmt(std::string($2), std::string($3), params, $9);
+        std::string rt = $8 ? std::string($8) : std::string("");
+        if($8) free($8);
+        $$ = new MethodDefStmt(std::string($2), std::string($3), params, rt, $9);
         free($2);
         free($3);
     }
