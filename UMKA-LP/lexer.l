@@ -31,6 +31,7 @@ ESC     \\["\\nrt\\]
 "false"                                 { yylval.boolval = false; return BOOLEAN; }
 
 "class"                                 { return CLASS; }
+"method"                                { return METHOD; }
 
 "int"                                   { return TYPE_INT; }
 "double"                                { return TYPE_DOUBLE; }

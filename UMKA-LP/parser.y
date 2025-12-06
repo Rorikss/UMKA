@@ -147,6 +147,15 @@ struct ClassDefStmt : Stmt {
     ClassDefStmt(const string& n, const vector<StmtPtr>& f):name(n), fields(f){}
 };
 
+struct MethodDefStmt : Stmt {
+    string class_name;
+    string method_name;
+    vector<string> params;
+    StmtPtr body;
+    MethodDefStmt(const string& cn, const string& mn, const vector<string>& p, StmtPtr b)
+        : class_name(cn), method_name(mn), params(p), body(b) {}
+};
+
 /* --- вспом. контейнеры для списков --- */
 vector<StmtPtr> program_stmts;
 
@@ -322,6 +331,16 @@ static void print_stmt(Stmt* s, int indent) {
         print_indent(indent);
         std::cerr << " Fields:\n";
         print_stmt_list(cd->fields, indent + 1);
+    } else if (auto md = dynamic_cast<MethodDefStmt*>(s)) {
+        print_indent(indent);
+        std::cerr << "MethodDef: class=" << md->class_name << " name=" << md->method_name << " (params:";
+        for (size_t i = 0; i < md->params.size(); ++i) {
+            std::cerr << (i ? ", " : " ") << md->params[i];
+        }
+        std::cerr << " )\n";
+        print_indent(indent);
+        std::cerr << " Body:\n";
+        print_stmt(md->body, indent + 1);
     } else {
         print_indent(indent);
         std::cerr << "Unknown Stmt node\n";
@@ -371,7 +390,7 @@ void yyerror(const char* s) {
 }
 
 /* --- типы нетерминалов --- */
-%type <stmt> block_statement statement let_statement assignment_statement expression_statement if_statement while_statement for_statement return_statement function_definition class_definition
+%type <stmt> block_statement statement let_statement assignment_statement expression_statement if_statement while_statement for_statement return_statement function_definition method_definition class_definition
 %type <expr> expression cat_expression logical_expression logical_or logical_and logical_comparison comparison arithmetic_expression term factor unary_arithmetic arithmetic_primary function_call array_literal
 %type <expr_list> expression_list argument_list
 %type <param_list> parameter_list
@@ -390,6 +409,7 @@ void yyerror(const char* s) {
 %token CAT
 %token ARROW
 %token CLASS
+%token METHOD
 %token TYPE_INT
 %token TYPE_DOUBLE
 %token TYPE_STRING
@@ -420,6 +440,7 @@ statement:
     | block_statement                      { $$ = $1; }
     | function_definition                  { $$ = $1; }
     | class_definition                     { $$ = $1; }
+    | method_definition                    { $$ = $1; }
     ;
 
 /* let and assignment */
@@ -541,6 +562,20 @@ class_definition:
         }
         $$ = new ClassDefStmt(std::string($2), fields);
         free($2);
+    }
+  ;
+
+/* method definition */
+method_definition:
+    METHOD IDENT IDENT '(' parameter_list ')' ARROW return_type block_statement {
+        vector<string> params;
+        if ($5) {
+            for (auto p : *$5) { params.push_back(std::string(p)); free(p); }
+            delete $5;
+        }
+        $$ = new MethodDefStmt(std::string($2), std::string($3), params, $9);
+        free($2);
+        free($3);
     }
   ;
 
