@@ -51,6 +51,10 @@ struct BoolExpr : Expr {
     BoolExpr(bool bb) : b(bb) {}
 };
 
+struct UnitExpr : Expr {
+    UnitExpr() {}
+};
+
 struct IdentExpr : Expr {
     string name;
     IdentExpr(const string& n) : name(n) {}
@@ -198,6 +202,9 @@ static void print_expr(Expr* e, int indent) {
     } else if (auto be = dynamic_cast<BoolExpr*>(e)) {
         print_indent(indent);
         std::cerr << "Bool: " << (be->b ? "true" : "false") << "\n";
+    } else if (auto ue = dynamic_cast<UnitExpr*>(e)) {
+        print_indent(indent);
+        std::cerr << "Unit\n";
     } else if (auto id = dynamic_cast<IdentExpr*>(e)) {
         print_indent(indent);
         std::cerr << "Ident: " << id->name << "\n";
@@ -591,6 +598,7 @@ arithmetic_primary:
   | DOUBLE          { $$ = new DoubleExpr($1); }
   | STRING          { $$ = new StringExpr(string($1)); free($1); }
   | BOOLEAN         { $$ = new BoolExpr($1); }
+  | TYPE_UNIT       { $$ = new UnitExpr(); }
   | IDENT           { $$ = new IdentExpr(string($1)); free($1); }
   | array_literal   { $$ = $1; }
   | function_call   { $$ = $1; }
