@@ -30,6 +30,8 @@ ESC     \\["\\nrt\\]
 "true"                                  { yylval.boolval = true; return BOOLEAN; }
 "false"                                 { yylval.boolval = false; return BOOLEAN; }
 
+"class"                                 { return CLASS; }
+
 "int"                                   { return TYPE_INT; }
 "double"                                { return TYPE_DOUBLE; }
 "string"                                { return TYPE_STRING; }

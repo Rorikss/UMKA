@@ -1,0 +1,4 @@
+class Aboba {
+    let a = 10;
+    let s = "smth";
+}

@@ -141,6 +141,12 @@ struct FunctionDefStmt : Stmt {
         : name(n), params(p), body(b) {}
 };
 
+struct ClassDefStmt : Stmt {
+    string name;
+    vector<StmtPtr> fields;
+    ClassDefStmt(const string& n, const vector<StmtPtr>& f):name(n), fields(f){}
+};
+
 /* --- вспом. контейнеры для списков --- */
 vector<StmtPtr> program_stmts;
 
@@ -310,6 +316,12 @@ static void print_stmt(Stmt* s, int indent) {
         print_indent(indent);
         std::cerr << " Body:\n";
         print_stmt(fd->body, indent + 1);
+    } else if (auto cd = dynamic_cast<ClassDefStmt*>(s)) {
+        print_indent(indent);
+        std::cerr << "ClassDef: " << cd->name << "\n";
+        print_indent(indent);
+        std::cerr << " Fields:\n";
+        print_stmt_list(cd->fields, indent + 1);
     } else {
         print_indent(indent);
         std::cerr << "Unknown Stmt node\n";
@@ -359,11 +371,11 @@ void yyerror(const char* s) {
 }
 
 /* --- типы нетерминалов --- */
-%type <stmt> block_statement statement let_statement assignment_statement expression_statement if_statement while_statement for_statement return_statement function_definition
+%type <stmt> block_statement statement let_statement assignment_statement expression_statement if_statement while_statement for_statement return_statement function_definition class_definition
 %type <expr> expression cat_expression logical_expression logical_or logical_and logical_comparison comparison arithmetic_expression term factor unary_arithmetic arithmetic_primary function_call array_literal
 %type <expr_list> expression_list argument_list
 %type <param_list> parameter_list
-%type <stmt_list> statement_list
+%type <stmt_list> statement_list class_body
 
 
 /* токены */
@@ -377,6 +389,7 @@ void yyerror(const char* s) {
 %token LET FUN IF ELSE WHILE FOR RETURN PRINT READ WRITE LEN ADD REMOVE GET SET STR INT_TO_DOUBLE DOUBLE_TO_INT
 %token CAT
 %token ARROW
+%token CLASS
 %token TYPE_INT
 %token TYPE_DOUBLE
 %token TYPE_STRING
@@ -406,6 +419,7 @@ statement:
     | return_statement ';'                 { $$ = $1; }
     | block_statement                      { $$ = $1; }
     | function_definition                  { $$ = $1; }
+    | class_definition                     { $$ = $1; }
     ;
 
 /* let and assignment */
@@ -502,6 +516,30 @@ function_definition:
             delete $4;
         }
         $$ = new FunctionDefStmt(std::string($2), params, $8);
+        free($2);
+    }
+  ;
+
+/* class body: только let statements внутри */
+class_body:
+      /* empty */ { $$ = new std::vector<Stmt*>(); }
+    | class_body let_statement ';' {
+          if (!$1) $1 = new std::vector<Stmt*>();
+          $1->push_back($2);
+          $$ = $1;
+      }
+    ;
+
+/* class definition */
+class_definition:
+    CLASS IDENT '{' class_body '}' {
+        // $2 = IDENT (char*); $4 = class_body (vector<Stmt*>*)
+        vector<Stmt*> fields;
+        if ($4) {
+            for (auto s : *$4) fields.push_back(s);
+            delete $4;
+        }
+        $$ = new ClassDefStmt(std::string($2), fields);
         free($2);
     }
   ;
