@@ -1,9 +1,12 @@
 #pragma once
+
 #include "model/model.h"
 #include "../parser/command_parser.h"
+#include "../garbage_collector/garbage_collector.h"
 #include "operations.h"
 #include "standart_funcs.h"
 #include "profiler.h"
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -31,7 +34,8 @@ public:
         : commands(parser.get_commands()),
           const_pool(parser.get_const_pool()),
           func_table(parser.get_func_table()),
-          profiler(std::make_unique<Profiler>(func_table, commands))
+          profiler(std::make_unique<Profiler>(func_table, commands)),
+          garbage_collector()
     {
         stack_of_functions.emplace_back(StackFrame{
             .name = 0,
@@ -415,7 +419,16 @@ private:
     }
 
     Owner<Entity> create(Entity result) {
+        size_t entity_size = GarbageCollector::calculate_entity_size(result);
+        
+        if (garbage_collector.should_collect()) {
+            garbage_collector.collect(heap, operand_stack, stack_of_functions);
+            if (garbage_collector.should_collect()) {
+                throw std::runtime_error("OutOfMemory: Garbage collection did not free enough memory");
+            }
+        }
         heap.emplace_back(std::make_shared<Entity>(std::move(result)));
+        garbage_collector.add_allocated_bytes(entity_size);
         return heap.back();
     }
 
@@ -458,6 +471,7 @@ private:
     std::vector<Owner<Entity>> heap = {};
     std::vector<StackFrame> stack_of_functions;
     std::vector<Reference<Entity>> operand_stack;
+    GarbageCollector garbage_collector;
 };
 
 #undef CHECK_STACK_EMPTY

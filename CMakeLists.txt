@@ -87,6 +87,7 @@ target_include_directories(umka_jit PUBLIC
 # VM
 add_executable(umka_vm
     UMKA-VM/main.cpp
+    UMKA-VM/garbage_collector/garbage_collector.h
     UMKA-VM/model/model.h
     UMKA-VM/model/model.cpp
     UMKA-VM/parser/command_parser.h
