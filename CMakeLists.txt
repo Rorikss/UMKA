@@ -8,6 +8,8 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 find_package(BISON REQUIRED)
 find_package(FLEX REQUIRED)
 
+set(CMAKE_BUILD_TYPE "Debug")
+
 if(APPLE)
     find_program(HOMEBREW_BISON bison HINTS /opt/homebrew/opt/bison/bin /usr/local/opt/bison/bin)
 

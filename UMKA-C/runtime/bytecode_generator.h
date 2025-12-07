@@ -34,6 +34,13 @@ public:
             {"^-^", OP_OPCOT}
     };
 
+    // Map class name to field names and their indices
+    std::unordered_map<std::string, std::unordered_map<std::string, int64_t>> classFieldIndices;
+    // Map class name to field count
+    std::unordered_map<std::string, int64_t> classFieldCount;
+    // Map class name to field default values (as expression pointers)
+    std::unordered_map<std::string, std::unordered_map<std::string, Expr*>> classFieldDefaults;
+
     std::vector<FuncBuilder> funcBuilders;
     std::vector<uint8_t> codeSection;
 
@@ -48,4 +55,10 @@ private:
     std::vector<uint8_t> concatenate_function_codes();
     void gen_stmt_in_func(Stmt* s, FuncBuilder& fb);
     void gen_expr_in_func(Expr* e, FuncBuilder& fb);
+    
+    // Helper functions for class operations
+    void gen_member_access_expr(MemberAccessExpr* expr, FuncBuilder& fb);
+    void gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb);
+    void gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuilder& fb);
+    void gen_class_instantiation(const std::string& className, const std::string& varName, FuncBuilder& fb);
 };

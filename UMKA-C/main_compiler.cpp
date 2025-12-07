@@ -6,6 +6,7 @@
 
 extern FILE* yyin;
 extern int yyparse();
+extern void print_program_ast();
 
 int main(int argc, char** argv) {
     if (argc < 2) {
@@ -33,6 +34,7 @@ int main(int argc, char** argv) {
         return 1;
     }
 
+    print_program_ast();
     BytecodeGenerator gen;
     gen.generate_all(program_stmts);
 

@@ -16,6 +16,7 @@ struct FuncBuilder {
     };
     std::vector<PendingJump> pending;
     std::unordered_map<std::string, int64_t> var_index;
+    std::unordered_map<std::string, std::string> var_types; // variable name -> type name
     int64_t nextVarIndex = 0;
     int labelCounter = 0;
     std::vector<ConstEntry> *constPoolRef = nullptr;
