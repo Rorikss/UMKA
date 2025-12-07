@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../model/model.h"
+
+#include <iostream>
 #include <unordered_map>
 #include <vector>
 #include <memory>
@@ -16,7 +18,7 @@
 
 class GarbageCollector {
 public:
-  static constexpr double GC_PERCENT = 0.25;
+  static constexpr double GC_PERCENT = 0.001;
 
   GarbageCollector()
       : bytes_allocated(0),
@@ -52,6 +54,7 @@ public:
   }
 
   void subtract_allocated_bytes(size_t bytes) {
+    std::cout << "Freed: " << bytes << " bytes\n";
     if (bytes_allocated >= bytes) {
       bytes_allocated -= bytes;
     } else {
@@ -68,8 +71,10 @@ public:
       const std::vector<Reference<Entity>>& operand_stack,
       const std::vector<StackFrame>& stack_of_functions
   ) {
+    std::cout << "Mark\n";
     mark(heap, operand_stack, stack_of_functions);
 
+    std::cout << "Sweep\n";
     sweep(heap);
   }
 
@@ -158,11 +163,11 @@ private:
   void mark_recursive(Owner<Entity> entity_owner) {
     if (!entity_owner) return;
 
-    if (heap_objects.find(entity_owner) == heap_objects.end()) {
+    if (!heap_objects.contains(entity_owner)) {
       return;
     }
 
-    if (marked_objects.find(entity_owner) != marked_objects.end() && marked_objects[entity_owner]) {
+    if (marked_objects.contains(entity_owner) && marked_objects[entity_owner]) {
       return;
     }
 
@@ -171,7 +176,7 @@ private:
     if (!std::holds_alternative<Owner<Array>>(entity_owner->value)) {
       return;
     }
-
+    std::cout << "Marking array" << std::endl;
     const auto& arr = std::get<Owner<Array>>(entity_owner->value);
     for (const auto& [key, ref] : *arr) {
       if (!ref.expired()) {
@@ -184,18 +189,25 @@ private:
   void sweep(std::vector<Owner<Entity>>& heap) {
     size_t freed_bytes = 0;
 
+    auto erase = [&heap](auto it) {
+        if (it != std::prev(heap.end())) {
+          std::swap(*it, heap.back());
+        }
+        heap.pop_back();
+    };
+
     auto it = heap.begin();
+    std::cout << "Heap size: " << heap.size() << "\n";
     while (it != heap.end()) {
       if (!(*it)) {
-        it = heap.erase(it);
+        erase(it);
         continue;
       }
       const Owner<Entity>& entity_owner = *it;
 
-      if (marked_objects.find(entity_owner) == marked_objects.end() ||
-        !marked_objects[entity_owner]) {
+      if (!marked_objects.contains(entity_owner) || !marked_objects[entity_owner]) {
         freed_bytes += calculate_entity_size(**it);
-        it = heap.erase(it);
+        erase(it);
       } else {
         ++it;
       }
@@ -204,5 +216,6 @@ private:
     subtract_allocated_bytes(freed_bytes);
 
     heap.shrink_to_fit();
+    std::cout << "New heap size: " << heap.size() << "\n";
   }
 };
