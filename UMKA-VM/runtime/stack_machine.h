@@ -15,6 +15,7 @@
 #include <type_traits>
 #include <unordered_map>
 
+namespace umka::vm {
 #define CHECK_REF(ref) \
     if ((ref).expired()) { \
         throw std::runtime_error("Reference expired at " + std::string(__FILE__) + ":" + std::to_string(__LINE__)); \
@@ -476,3 +477,4 @@ private:
 
 #undef CHECK_STACK_EMPTY
 #undef CHECK_REF
+}

@@ -7,6 +7,7 @@
 #include <variant>
 #include <vector>
 
+namespace umka::vm {
 void out(std::ostream& os, Entity entity) {
     os << entity.to_string() << "\n";
 }
@@ -72,4 +73,5 @@ void set(Entity array, int64_t index, Reference<Entity> elem) {
         throw std::out_of_range("Array index out of bounds");
     }
     (*map)[index] = elem;
+}
 }

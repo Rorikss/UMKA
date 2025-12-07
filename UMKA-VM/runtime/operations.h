@@ -4,6 +4,7 @@
 #include <exception>
 #include <type_traits>
 
+namespace umka::vm {
 #define if_get_then_apply_op(T, S) \
     if (std::get_if<T>(&a.value) && std::get_if<S>(&b.value)) { \
         return make_entity(op(std::get<T>(a.value), std::get<S>(b.value))); \
@@ -62,4 +63,5 @@ T umka_cast(Entity a) {
         }
     }, a.value);
     return new_value;
+}
 }

@@ -3,6 +3,7 @@
 #include <stdexcept>
 #include <string>
 
+namespace umka::vm {
 void CommandParser::parse(std::istream& bytecode_stream) {
     BytecodeHeader header;
     bytecode_stream.read(reinterpret_cast<char*>(&header.version), sizeof(header.version));
@@ -139,4 +140,5 @@ bool CommandParser::has_operand(uint8_t opcode) const {
         default:
             return false;
     }
+}
 }

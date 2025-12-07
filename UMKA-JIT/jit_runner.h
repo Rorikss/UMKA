@@ -33,7 +33,7 @@ class JitRunner {
         FunctionTableEntry& meta
     ) {
       std::vector<Command> local(begin, end);
-      for (auto& p : passes)
+      for (auto& p : optimizations)
         p->run(local, const_pool, meta);
       return local;
     }
@@ -61,6 +61,6 @@ class JitRunner {
     std::vector<Command> &commands;
     std::vector<Constant> &const_pool;
     std::unordered_map<size_t, FunctionTableEntry> &func_table;
-    std::vector<std::unique_ptr<IOptimize> > optimizations;
+    std::vector<std::unique_ptr<IOptimize>> optimizations;
 };
 } // namespace umka::jit

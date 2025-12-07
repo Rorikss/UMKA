@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <cstdint>
 
+namespace umka::vm {
 class Profiler {
 public:
     struct HotRegion {
@@ -83,3 +84,4 @@ private:
     std::unordered_map<size_t, size_t> function_of_jump; // jump_offset -> function_start_offset
     std::unordered_map<size_t, int64_t> backward_jump_counts;
 };
+}

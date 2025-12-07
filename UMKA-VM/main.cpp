@@ -5,6 +5,8 @@
 #include <fstream>
 #include <iostream>
 
+using namespace umka::vm;
+
 constexpr const char* DEFAULT_BYTECODE_PATH = "program.umka";
 size_t HOT_REGIONS_COUNT = 10;
 

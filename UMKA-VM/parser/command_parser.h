@@ -6,6 +6,7 @@
 #include <istream>
 #include <unordered_map>
 
+namespace umka::vm {
 enum OpCode : uint8_t {
     PUSH_CONST = 0x01,
     POP = 0x02,
@@ -59,3 +60,4 @@ private:
     std::vector<Constant> const_pool;
     std::unordered_map<size_t, FunctionTableEntry> func_table;
 };
+}

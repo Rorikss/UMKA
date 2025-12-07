@@ -12,6 +12,7 @@
 #include <variant>
 #include <vector>
 
+namespace umka::vm {
 template<typename T>
 using Reference = std::weak_ptr<T>;
 template<typename T>
@@ -180,3 +181,4 @@ struct StackFrame {
 
 Entity make_entity(auto&& x) { return Entity { .value = x }; }
 Entity make_array();
+}

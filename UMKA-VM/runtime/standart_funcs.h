@@ -7,6 +7,7 @@
 #include <variant>
 #include <vector>
 
+namespace umka::vm {
 void out(std::ostream& os, Reference<Entity> entity);
 void print(Entity entity);
 void write(const std::string& filename, Entity entity);
@@ -16,3 +17,4 @@ void add_elem(Entity array, Reference<Entity> elem);
 void remove(Entity array, int64_t index);
 Reference<Entity> get(Entity array, int64_t index);
 void set(Entity array, int64_t index, Reference<Entity> elem);
+}

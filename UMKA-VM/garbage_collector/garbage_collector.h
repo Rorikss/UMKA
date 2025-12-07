@@ -16,6 +16,7 @@
   #include <unistd.h>
 #endif
 
+namespace umka::vm {
 class GarbageCollector {
 public:
   static constexpr double GC_PERCENT = 0.001;
@@ -219,3 +220,4 @@ private:
     std::cout << "New heap size: " << heap.size() << "\n";
   }
 };
+}
