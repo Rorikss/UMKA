@@ -17,14 +17,17 @@
 #endif
 
 namespace umka::vm {
+template<typename Tag = ReleaseMod>
 class GarbageCollector {
 public:
   static constexpr double GC_PERCENT = 0.001;
 
   GarbageCollector()
-      : bytes_allocated(0),
-        gc_threshold(0),
-        total_available_ram_bytes(0) {
+      : bytes_allocated(0)
+      , gc_threshold(0)
+      , total_available_ram_bytes(0)
+      , after_last_clean(0)
+      {
     total_available_ram_bytes = detect_total_ram_bytes();
     gc_threshold = static_cast<size_t>(total_available_ram_bytes * GC_PERCENT);
   }
@@ -55,7 +58,9 @@ public:
   }
 
   void subtract_allocated_bytes(size_t bytes) {
-    std::cout << "Freed: " << bytes << " bytes\n";
+    if constexpr (std::is_same_v<Tag, DebugMod>) {
+      std::cout << "Subtracted: " << bytes << " bytes" << std::endl;
+    }
     if (bytes_allocated >= bytes) {
       bytes_allocated -= bytes;
     } else {
@@ -64,7 +69,7 @@ public:
   }
 
   bool should_collect() const {
-    return bytes_allocated > gc_threshold;
+    return (bytes_allocated - after_last_clean) > gc_threshold;
   }
 
   void collect(
@@ -72,10 +77,14 @@ public:
       const std::vector<Reference<Entity>>& operand_stack,
       const std::vector<StackFrame>& stack_of_functions
   ) {
-    std::cout << "Mark\n";
+    if constexpr (std::is_same_v<Tag, DebugMod>) {
+      std::cout << "Mark" << std::endl;
+    }
     mark(heap, operand_stack, stack_of_functions);
 
-    std::cout << "Sweep\n";
+    if constexpr (std::is_same_v<Tag, DebugMod>) {
+      std::cout << "Sweep" << std::endl;
+    }
     sweep(heap);
   }
 
@@ -91,6 +100,7 @@ private:
   size_t bytes_allocated;
   size_t gc_threshold;
   size_t total_available_ram_bytes;
+  size_t after_last_clean;
 
   std::unordered_map<Owner<Entity>, bool> marked_objects;
 
@@ -177,7 +187,7 @@ private:
     if (!std::holds_alternative<Owner<Array>>(entity_owner->value)) {
       return;
     }
-    std::cout << "Marking array" << std::endl;
+
     const auto& arr = std::get<Owner<Array>>(entity_owner->value);
     for (const auto& [key, ref] : *arr) {
       if (!ref.expired()) {
@@ -197,8 +207,11 @@ private:
         heap.pop_back();
     };
 
+    if constexpr (std::is_same_v<Tag, DebugMod>) {
+      std::cout << "Heap size: " << heap.size() << std::endl;
+    }
+
     auto it = heap.begin();
-    std::cout << "Heap size: " << heap.size() << "\n";
     while (it != heap.end()) {
       if (!(*it)) {
         erase(it);
@@ -215,9 +228,12 @@ private:
     }
 
     subtract_allocated_bytes(freed_bytes);
+    after_last_clean = bytes_allocated;
 
     heap.shrink_to_fit();
-    std::cout << "New heap size: " << heap.size() << "\n";
+    if constexpr (std::is_same_v<Tag, DebugMod>) {
+      std::cout << "New heap size: " << heap.size() << std::endl;
+    }
   }
 };
 }

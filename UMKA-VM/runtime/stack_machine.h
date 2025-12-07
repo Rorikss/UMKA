@@ -26,9 +26,8 @@ namespace umka::vm {
         throw std::runtime_error("Stack underflow at operation: " + op_name); \
     }
 
-struct ReleaseMod {};
-struct DebugMod {};
 
+template<typename Tag = ReleaseMod>
 class StackMachine {
 public:
     StackMachine(const auto& parser)
@@ -46,7 +45,6 @@ public:
     }
 
     using debugger_t = std::function<void(Command, std::string)>;
-    template<typename Tag = ReleaseMod>
     void run(debugger_t debugger = [](auto, auto){}) {
         if constexpr (std::is_same_v<Tag, DebugMod>) {
             printDebugParsedInfo();
@@ -420,7 +418,7 @@ private:
     }
 
     Owner<Entity> create(Entity result) {
-        size_t entity_size = GarbageCollector::calculate_entity_size(result);
+        size_t entity_size = GarbageCollector<Tag>::calculate_entity_size(result);
         
         if (garbage_collector.should_collect()) {
             garbage_collector.collect(heap, operand_stack, stack_of_functions);
@@ -472,7 +470,7 @@ private:
     std::vector<Owner<Entity>> heap = {};
     std::vector<StackFrame> stack_of_functions;
     std::vector<Reference<Entity>> operand_stack;
-    GarbageCollector garbage_collector;
+    GarbageCollector<Tag> garbage_collector;
 };
 
 #undef CHECK_STACK_EMPTY

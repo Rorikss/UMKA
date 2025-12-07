@@ -181,4 +181,8 @@ struct StackFrame {
 
 Entity make_entity(auto&& x) { return Entity { .value = x }; }
 Entity make_array();
+
+struct ReleaseMod {};
+struct DebugMod {};
+
 }
