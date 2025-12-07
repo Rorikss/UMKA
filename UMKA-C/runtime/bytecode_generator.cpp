@@ -35,7 +35,6 @@ static void append_double(std::vector<uint8_t>& buf, double dv) {
 void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
     for (auto s: program) {
         if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
-            std::cout << "Building function " << fd->name << std::endl;
             auto it = userFuncIndex.find(fd->name);
             if (it == userFuncIndex.end()) continue;
             int64_t fidx = it->second;
@@ -45,9 +44,7 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
                 fb.var_index[fd->params.at(i)] = i;
             }
             fb.nextVarIndex = fd->params.size();
-            std::cout << "Building function " << fd->name << " gen()" << std::endl;
             gen_stmt_in_func(fd->body, fb);
-            std::cout << "Building function " << fd->name << " gen() done" << std::endl; std::cout.flush();
 
             if (fb.code.empty() || fb.code.back() != OP_RETURN) {
                 int64_t idx = fb.add_const(ConstEntry());
@@ -62,18 +59,16 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
         } else if (auto md = dynamic_cast<MethodDefStmt*>(s)) {
             // Method names are prefixed with class name
             std::string methodFullName = md->class_name + "$" + md->method_name;
-            std::cout << "Building method " << methodFullName << std::endl;
             auto it = userFuncIndex.find(methodFullName);
             if (it == userFuncIndex.end()) continue;
             int64_t fidx = it->second;
             FuncBuilder& fb = funcBuilders.at(fidx);
 
-            // First parameter is always 'self' for methods
-            fb.var_index["self"] = 0;
+            // Explicit self! No need in +1
             for (size_t i = 0; i < md->params.size(); ++i) {
-                fb.var_index[md->params.at(i)] = i + 1; // +1 because 'self' is parameter 0
+                fb.var_index[md->params.at(i)] = i;
             }
-            fb.nextVarIndex = md->params.size() + 1; // +1 for 'self'
+            fb.nextVarIndex = md->params.size();
 
             gen_stmt_in_func(md->body, fb);
 
@@ -84,7 +79,7 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
             }
 
             FunctionEntry fe;
-            fe.arg_count = md->params.size() + 1; // +1 for 'self'
+            fe.arg_count = md->params.size();
             fe.local_count = fb.nextVarIndex;
             funcTable.at(fidx) = fe;
         }
@@ -99,10 +94,8 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
     classFieldDefaults.clear();
 
     // First pass: collect class definitions and their fields
-    std::cout << "Collecting class definitions" << std::endl;
     for (auto s: program) {
         if (auto cd = dynamic_cast<ClassDefStmt*>(s)) {
-            std::cout << "Collecting class definition for " << cd->name << std::endl;
             std::unordered_map<std::string, int64_t> fieldIndices;
             std::unordered_map<std::string, Expr*> fieldDefaults;
             int64_t fieldCount = 0;
@@ -125,7 +118,6 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
 
 
     // Second pass: collect functions and methods
-    std::cout << "Collecting func definitions: finding main()" << std::endl;
     FunctionDefStmt* mainFunc = nullptr;
     for (auto s: program) {
         if (auto fd = dynamic_cast<FunctionDefStmt*>(s); fd && fd->name == "main") {
@@ -140,10 +132,8 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
         userFuncIndex["main"] = idx++;
     }
 
-    std::cout << "Collecting func definitions: building" << std::endl; std::cout.flush();
     for (auto s: program) {
         if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
-            std::cout << "Collecting func definition for function " << fd->name << std::endl;
             if (fd->name == "main") continue;
             if (userFuncIndex.find(fd->name) == userFuncIndex.end()) {
                 userFuncIndex[fd->name] = ++idx;
@@ -152,7 +142,6 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
             }
         } else if (auto md = dynamic_cast<MethodDefStmt*>(s)) {
             // Method names are prefixed with class name
-            std::cout << "Collecting func definition for method " << md->class_name << "$" << md->method_name << std::endl;
             std::string methodFullName = md->class_name + "$" + md->method_name;
             if (userFuncIndex.find(methodFullName) == userFuncIndex.end()) {
                 userFuncIndex[methodFullName] = ++idx;
@@ -165,7 +154,6 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
             std::cerr << "Warning: unknown statement type\n";
         }
     }
-    std::cout << "Collecting fun definitions: done" << std::endl;
 
     funcBuilders.clear();
     funcBuilders.resize(idx + 1, FuncBuilder(&constPool));
@@ -194,7 +182,6 @@ std::vector<uint8_t> BytecodeGenerator::concatenate_function_codes() {
 
 void BytecodeGenerator::generate_all(const std::vector<Stmt*>& program) {
     collect_functions(program);
-    std::cout << "Collecting func definitions: done" << std::endl;
     build_functions(program);
     codeSection = concatenate_function_codes();
 }
@@ -358,15 +345,11 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
     if (!s) return;
 
     if (auto ls = dynamic_cast<LetStmt*>(s)) {
-        std::cout << "gen_stmt_in_func::LetStmt" << std::endl; std::cout.flush();
-        
-        std::cout << "gen_stmt_in_func::LetStmt" << ls->name << std::endl; std::cout.flush();
         int64_t idx = ++fb.nextVarIndex;
         fb.var_index[ls->name] = idx;
         
         // Check if the expression is an identifier that refers to a class
         if (auto idExpr = dynamic_cast<IdentExpr*>(ls->expr)) {
-            std::cout << "gen_stmt_in_func::IdentExpr" << idExpr->name << std::endl; std::cout.flush();
             auto classIt = classFieldCount.find(idExpr->name);
             if (classIt != classFieldCount.end()) {
                 // This is a class instantiation, track the type
@@ -377,7 +360,6 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
                 gen_expr_in_func(ls->expr, fb);
             }
         } else {
-            std::cout << "gen_stmt_in_func::???" << std::endl; std::cout.flush();
             // Regular expression assignment
             gen_expr_in_func(ls->expr, fb);
         }
@@ -400,17 +382,11 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         gen_expr_in_func(es->expr, fb);
         fb.emit_byte(OP_POP);
     } else if (auto bs = dynamic_cast<BlockStmt*>(s)) {
-        std::cout << "gen_stmt_in_func::BlockStmt" << std::endl; std::cout.flush();
-        
-        std::cout << "gen_stmt_in_func::BlockStmt sz=" << bs->stmts.size() << std::endl; std::cout.flush();
 
         for (auto st: bs->stmts) { 
-            std::cout << "gen_stmt_in_func::BlockStmt st=" << (int64_t)st << std::endl; std::cout.flush();
-            
             gen_stmt_in_func(st, fb); 
         }
     } else if (auto is = dynamic_cast<IfStmt*>(s)) {
-        std::cout << "gen_stmt_in_func::IfStmt" << std::endl; std::cout.flush();
         
         std::string elseL = fb.new_label();
         std::string endL = fb.new_label();
@@ -422,7 +398,6 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         if (is->elseb) gen_stmt_in_func(is->elseb, fb);
         fb.place_label(endL);
     } else if (auto ws = dynamic_cast<WhileStmt*>(s)) {
-        std::cout << "gen_stmt_in_func::WhileStmt" << std::endl; std::cout.flush();
         
         std::string startL = fb.new_label();
         std::string endL = fb.new_label();
@@ -433,7 +408,6 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         fb.emit_jmp_place_holder(OP_JMP, startL);
         fb.place_label(endL);
     } else if (auto fs = dynamic_cast<ForStmt*>(s)) {
-        std::cout << "gen_stmt_in_func::ForStmt" << std::endl; std::cout.flush();
         
         if (fs->init) gen_stmt_in_func(fs->init, fb);
         std::string startL = fb.new_label();
@@ -450,7 +424,6 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         fb.emit_jmp_place_holder(OP_JMP, startL);
         fb.place_label(endL);
     } else if (auto rs = dynamic_cast<ReturnStmt*>(s)) {
-        std::cout << "gen_stmt_in_func::ReturnStmt" << std::endl; std::cout.flush();
         
         if (rs->expr) gen_expr_in_func(rs->expr, fb);
         else {
@@ -459,24 +432,19 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         }
         fb.emit_return();
     } else if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
-        std::cout << "gen_stmt_in_func::FunctionDefStmt" << std::endl; std::cout.flush();
         
         // processed in build_functions, ignore here
     } else if (auto cd = dynamic_cast<ClassDefStmt*>(s)) {
-        std::cout << "gen_stmt_in_func::ClassDefStmt" << std::endl; std::cout.flush();
         
         // Class definitions are handled at the top level, not inside functions
     } else if (auto md = dynamic_cast<MethodDefStmt*>(s)) {
-        std::cout << "gen_stmt_in_func::MethodDefStmt" << std::endl; std::cout.flush();
         
         // Method definitions are handled at the top level, not inside functions
     } else if (auto mas = dynamic_cast<MemberAssignStmt*>(s)) {
-        std::cout << "gen_stmt_in_func::MemberAssignStmt" << std::endl; std::cout.flush();
         
         gen_member_assign_stmt(mas, fb);
     } else {
-        std::cerr << "gen_stmt_in_func: unknown stmt node" << std::endl; std::cerr.flush(); std::cout.flush();
-        
+        std::cerr << "gen_stmt_in_func: unknown stmt node" << std::endl; std::cerr.flush();
     }
     
 }
@@ -617,6 +585,7 @@ void BytecodeGenerator::gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuild
     auto itb = builtinIDs.find("set");
     if (itb != builtinIDs.end()) {
         fb.emit_call(itb->second);
+        fb.emit_byte(OP_POP);
     }
 }
 
@@ -633,12 +602,12 @@ void BytecodeGenerator::gen_class_instantiation(const std::string& className, co
     
     // Initialize fields with default values
     if (varName.empty()) {
-        std::cout << "No variable name for class " << className << std::endl;
+        std::cerr << "No variable name for class " << className << std::endl;
         return;
     }
     auto defaultsIt = classFieldDefaults.find(className);
     if (defaultsIt == classFieldDefaults.end()) {
-        std::cout << "No default values for class " << className << std::endl;
+        std::cerr << "No default values for class " << className << std::endl;
         return;
     }
     const auto& fieldDefaults = defaultsIt->second;
@@ -649,45 +618,20 @@ void BytecodeGenerator::gen_class_instantiation(const std::string& className, co
         
         // Get field index
         auto indicesIt = classFieldIndices.find(className);
-        std::cout << "Field index for " << fieldName << ": " << indicesIt->second[fieldName] << std::endl;
         if (indicesIt == classFieldIndices.end()) continue;
-        
+
         auto fieldIt = indicesIt->second.find(fieldName);
         if (fieldIt == indicesIt->second.end()) continue;
         
         int64_t fieldIndex = fieldIt->second;
 
-        // Duplicate the array (object) on the stack
-        // auto varIt = fb.var_index.find(varName);
-        // if (varIt != fb.var_index.end()) {
-        //     fb.emit_load(varIt->second);
-        // }
-        
-        // Add field index as constant
-        // int64_t fieldIdx = fb.add_const(ConstEntry(fieldIndex));
-        // fb.emit_push_const_index(fieldIdx);
-        
-        // Evaluate the default expression
         to_push.push_back(defaultExpr);
-        
-        // Use the existing SET operation for arrays
-        // auto itb = builtinIDs.find("set");
-        // if (itb != builtinIDs.end()) {
-        //     fb.emit_call(itb->second);
-        // } else {
-        //     // Pop the result if set is not available
-        //     fb.emit_byte(OP_POP);
-        // }
-        
-        // Pop the result of the set operation
-        // fb.emit_byte(OP_POP);
     }
     std::reverse(to_push.begin(), to_push.end());
     for (auto expr : to_push) {
         gen_expr_in_func(expr, fb);
     }
 
-    // Create an array with the appropriate number of fields
     fb.emit_build_arr(fieldCount);
 }
 
