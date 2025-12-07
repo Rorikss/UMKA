@@ -1,4 +1,4 @@
-fun sort(arr) -> [] {
+fun sort(arr) -> unit {
     let n = len(arr);
     for (let i = 0; i < n; i = i + 1) {
         for (let j = 0; j < n - i - 1; j = j + 1) {
@@ -9,12 +9,11 @@ fun sort(arr) -> [] {
             }
         }
     }
-    return arr;
 }
 
 fun main() -> unit {
-    let arr = [3, 1, 4, 2];
-    let sorted = sort(arr);
-    print(sorted);
+    let arr = [3, 1, 4, 2, 0.44, true];
+    sort(arr);
+    print(arr);
     return;
 }

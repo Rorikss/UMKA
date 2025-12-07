@@ -27,7 +27,7 @@ fun primes(limit) -> [] {
 }
 
 fun main() -> unit {
-    let primes_list = primes(20);
+    let primes_list = primes(100000);
     print(primes_list);
     return;
 }

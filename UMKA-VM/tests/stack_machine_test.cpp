@@ -3,6 +3,8 @@
 #include "../runtime/stack_machine.h"
 #include "../parser/command_parser.h"
 
+using namespace umka::vm;
+
 class MockCommandParser : public CommandParser {
 public:
     const std::vector<Command>& get_commands() const { return commands; }

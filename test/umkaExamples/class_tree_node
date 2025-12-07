@@ -1,0 +1,64 @@
+class TreeNode {
+    let left = unit;
+    let right = unit;
+    let item = 0;
+}
+
+fun MakeNode(l, r, x) -> TreeNode {
+    let n = TreeNode;
+    n:left = l; n:right = r; n:item = x;
+    return n;
+}
+
+method TreeNode ItemCheck(self) -> int {
+    if (self:left == unit) { return self:item; }
+    return self:item + self:left$ItemCheck() - self:right$ItemCheck();
+}
+
+fun BottomUpTree(item, depth) -> TreeNode {
+    if (depth > 0) {
+        MakeNode(
+            BottomUpTree(2*item-1, depth-1)
+           ,BottomUpTree(2*item, depth-1)
+           ,item
+        )
+    }
+    return MakeNode(unit, unit, item);
+}
+
+fun pow(x, y) -> int {
+    let ret = 1;
+    for (let i = 0; i < y; i = i + 1) {
+        ret = ret * x;
+    }
+    return ret;
+}
+
+fun max(a, b) -> int {
+    if (a > b) { return a; } else { return b; }
+}
+
+fun main() -> unit {
+    let ret = 0;
+
+    for (let n = 4; n <= 7; n = n + 1) {
+        let minDepth = 4;
+        let maxDepth = max(minDepth + 2, n);
+        let stretchDepth = maxDepth + 1;
+        let check = BottomUpTree(0, stretchDepth)$ItemCheck();
+        let longLivedTree = BottomUpTree(0, maxDepth);
+        for (let depth = minDepth; depth <= maxDepth; depth = depth + 2) {
+            let iterations = pow(2, maxDepth - depth + minDepth);
+            let check = 0;
+            for (let i = 1; i <= iterations; i = i + 1) {
+                check = check + longLivedTree$ItemCheck();
+                check = check + longLivedTree$ItemCheck();
+            }
+        }
+
+        ret = ret + longLivedTree$ItemCheck();
+    }
+    let expected = -4;
+    assert(ret == expected);
+    print(ret)
+}
