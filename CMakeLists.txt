@@ -72,6 +72,7 @@ add_library(umka_jit
         UMKA-JIT/jit_runner.cc
         UMKA-JIT/optimizations/base_optimization.h
         UMKA-JIT/optimizations/const_folding.h
+        UMKA-JIT/optimizations/dce.h
 )
 
 target_include_directories(umka_jit PUBLIC
