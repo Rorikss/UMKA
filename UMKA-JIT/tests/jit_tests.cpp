@@ -14,8 +14,8 @@ static Constant make_int(int64_t v) {
   return c;
 }
 
-static Command cmd(OpCode op, int64_t arg = 0) {
-  return Command{ (uint8_t)op, arg };
+static Command cmd(const OpCode op, const int64_t arg = 0) {
+  return Command{ static_cast<uint8_t>(op), arg };
 }
 
 TEST(JitConstFolding, ArithmeticNested) {
