@@ -6,7 +6,7 @@
 
 namespace umka::jit {
 struct JittedFunction {
-  std::vector<Command> code;
+  std::vector<vm::Command> code;
   int64_t arg_count{};
   int64_t local_count{};
 };

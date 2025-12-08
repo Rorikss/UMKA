@@ -101,10 +101,10 @@ add_executable(umka_vm
     UMKA-VM/runtime/standart_funcs.cpp
 )
 
-target_include_directories(umka_vm PRIVATE UMKA-VM)
+target_include_directories(umka_vm PRIVATE UMKA-VM UMKA-JIT)
 
-#target_link_libraries(umka_vm PRIVATE umka_jit)
-#target_include_directories(umka_vm PRIVATE UMKA-VM UMKA-JIT)
+target_link_libraries(umka_vm PRIVATE umka_jit)
+
 
 # VM tests
 include(FetchContent)

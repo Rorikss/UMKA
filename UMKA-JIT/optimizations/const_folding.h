@@ -6,27 +6,27 @@ namespace umka::jit {
 class ConstFolding final: public IOptimize {
   public:
     void run(
-      std::vector<Command> &code,
-      std::vector<Constant> &const_pool,
-      FunctionTableEntry &meta
+      std::vector<vm::Command> &code,
+      std::vector<vm::Constant> &const_pool,
+      vm::FunctionTableEntry &meta
     ) override {
-      std::vector<Command> out;
+      std::vector<vm::Command> out;
       out.reserve(code.size());
 
       std::vector<int64_t> stack;
 
       auto flush_stack = [&]() {
         for (int64_t v: stack) {
-          Constant c;
-          c.type = TYPE_INT64;
+          vm::Constant c;
+          c.type = vm::TYPE_INT64;
           c.data.resize(8);
           memcpy(c.data.data(), &v, 8);
 
           const_pool.push_back(c);
           const int64_t idx = const_pool.size() - 1;
 
-          out.push_back(Command{
-            static_cast<uint8_t>(OpCode::PUSH_CONST), idx
+          out.push_back(vm::Command{
+            static_cast<uint8_t>(vm::OpCode::PUSH_CONST), idx
           });
         }
         stack.clear();
@@ -34,9 +34,9 @@ class ConstFolding final: public IOptimize {
 
 
       for (size_t i = 0; i < code.size(); ++i) {
-        const auto op = static_cast<OpCode>(code[i].code);
+        const auto op = static_cast<vm::OpCode>(code[i].code);
 
-        if (op == OpCode::PUSH_CONST) {
+        if (op == vm::OpCode::PUSH_CONST) {
           int64_t value = load_int(const_pool[code[i].arg]);
           stack.push_back(value);
           continue;
@@ -69,52 +69,53 @@ class ConstFolding final: public IOptimize {
     }
 
   private:
-    static bool is_foldable_binary(const OpCode op) {
-      switch (op) {
-        case OpCode::ADD:
-        case OpCode::SUB:
-        case OpCode::MUL:
-        case OpCode::DIV:
-        case OpCode::REM:
-        case OpCode::LT:
-        case OpCode::GT:
-        case OpCode::LTE:
-        case OpCode::GTE:
-        case OpCode::EQ:
-        case OpCode::NEQ:
-        case OpCode::AND:
-        case OpCode::OR:
-          return true;
-        default:
-          return false;
-      }
-    }
+    static bool is_foldable_binary(const vm::OpCode op);
 
-    static int64_t load_int(const Constant &c) {
+    static int64_t load_int(const vm::Constant &c) {
       int64_t v;
       memcpy(&v, c.data.data(), 8);
       return v;
     }
 
-    static int64_t eval(int64_t a, int64_t b, OpCode op) {
+    static int64_t eval(int64_t a, int64_t b, vm::OpCode op) {
       switch (op) {
-        case OpCode::ADD: return a + b;
-        case OpCode::SUB: return a - b;
-        case OpCode::MUL: return a * b;
-        case OpCode::DIV: return a / b;
-        case OpCode::REM: return a % b;
+        case vm::OpCode::ADD: return a + b;
+        case vm::OpCode::SUB: return a - b;
+        case vm::OpCode::MUL: return a * b;
+        case vm::OpCode::DIV: return a / b;
+        case vm::OpCode::REM: return a % b;
 
-        case OpCode::LT: return a < b;
-        case OpCode::GT: return a > b;
-        case OpCode::LTE: return a <= b;
-        case OpCode::GTE: return a >= b;
-        case OpCode::EQ: return a == b;
-        case OpCode::NEQ: return a != b;
-        case OpCode::AND: return (a && b);
-        case OpCode::OR: return (a || b);
+        case vm::OpCode::LT: return a < b;
+        case vm::OpCode::GT: return a > b;
+        case vm::OpCode::LTE: return a <= b;
+        case vm::OpCode::GTE: return a >= b;
+        case vm::OpCode::EQ: return a == b;
+        case vm::OpCode::NEQ: return a != b;
+        case vm::OpCode::AND: return (a && b);
+        case vm::OpCode::OR: return (a || b);
         default:
           return a;
       }
     }
 };
+inline bool ConstFolding::is_foldable_binary(const vm::OpCode op) {
+  switch (op) {
+    case vm::OpCode::ADD:
+    case vm::OpCode::SUB:
+    case vm::OpCode::MUL:
+    case vm::OpCode::DIV:
+    case vm::OpCode::REM:
+    case vm::OpCode::LT:
+    case vm::OpCode::GT:
+    case vm::OpCode::LTE:
+    case vm::OpCode::GTE:
+    case vm::OpCode::EQ:
+    case vm::OpCode::NEQ:
+    case vm::OpCode::AND:
+    case vm::OpCode::OR:
+      return true;
+    default:
+      return false;
+  }
+}
 } // namespace umka::jit
