@@ -43,20 +43,16 @@ int64_t len(Entity entity) {
 
 void add_elem(Entity array, Reference<Entity> elem) {
     auto owner = std::get<Owner<Array>>(array.value);
-    auto size = owner->size();
-    (*owner)[size] = elem;
+    owner->emplace_back(elem);
 }
 
 void remove(Entity array, int64_t index) {
-    auto& map = std::get<Owner<Array>>(array.value);
-    if (index < 0 || index >= static_cast<int64_t>(map->size())) {
+    auto& arr = std::get<Owner<Array>>(array.value);
+    if (index < 0 || index >= static_cast<int64_t>(arr->size())) {
         throw std::out_of_range("Array index out of bounds");
     }
 
-    for (auto it = map->lower_bound(index); it != map->end(); ++it) {
-        (*map)[it->first - 1] = it->second;
-    }
-    map->erase(std::prev(map->end()));
+    arr->erase(arr->begin() + index);
 }
 
 Reference<Entity> get(Entity array, int64_t index) {

@@ -189,7 +189,7 @@ private:
     }
 
     const auto& arr = std::get<Owner<Array>>(entity_owner->value);
-    for (const auto& [key, ref] : *arr) {
+    for (const auto& ref : *arr) {
       if (!ref.expired()) {
         auto owner = ref.lock();
         if (owner) mark_recursive(owner);

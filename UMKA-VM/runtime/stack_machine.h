@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <ranges>
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -357,6 +358,7 @@ private:
 
                 Entity array_entity = make_array();
                 Array& array = *std::get<Owner<Array>>(array_entity.value);
+                array.resize(count);
                 for (int64_t i = count - 1; i >= 0; --i) {
                     Reference<Entity> ref = operand_stack.back();
                     operand_stack.pop_back();
@@ -388,34 +390,23 @@ private:
                 break;
             }
             case CALL_METHOD: {
-                // cmd.arg contains method_id
-                // Stack: [object, arg1, arg2, ...]
-                // Object array has class_id at the last index
-                
                 int64_t method_id = cmd.arg;
                 
-                // Get object from stack (it should be at the bottom of arguments)
-                // For now, we need to know arg_count - this is a limitation
-                // We'll get the object reference which should be first on stack
                 if (operand_stack.empty()) {
                     throw std::runtime_error("CALL_METHOD: empty stack");
                 }
                 
-                // The object should be the first argument (self)
-                // We need to peek at it to get class_id
                 Reference<Entity> obj_ref = operand_stack[operand_stack.size() - 1];
                 CHECK_REF(obj_ref);
                 Entity obj = *obj_ref.lock();
                 
-                // Get class_id from object (last element in array)
                 if (!std::holds_alternative<Owner<Array>>(obj.value)) {
                     throw std::runtime_error("CALL_METHOD: object is not an array");
                 }
                 Owner<Array>& arr = std::get<Owner<Array>>(obj.value);
                 
-                // Class ID is at the last index
                 size_t class_id_index = 0;
-                if (arr->find(class_id_index) == arr->end()) {
+                if (arr->size() <= class_id_index) {
                     throw std::runtime_error("CALL_METHOD: class_id not found in object");
                 }
                 
@@ -423,7 +414,6 @@ private:
                 CHECK_REF(class_id_ref);
                 int64_t class_id = umka_cast<int64_t>(*class_id_ref.lock());
                 
-                // Lookup function_id in vmethod_map
                 auto key = std::make_pair(class_id, method_id);
                 auto it = vmethod_map.find(key);
                 if (it == vmethod_map.end()) {
@@ -433,7 +423,6 @@ private:
                 
                 int64_t function_id = it->second;
                 
-                // Now perform regular CALL with function_id
                 if (func_table.size() <= function_id) {
                     throw std::runtime_error("Function not found: " + std::to_string(function_id));
                 }
@@ -464,24 +453,17 @@ private:
                 break;
             }
             case GET_FIELD: {
-                // cmd.arg contains field_id
-                // Stack: [object]
-                // Object array has class_id at the last index
-                
                 int64_t field_id = cmd.arg;
                 
-                // Get object from stack
                 Entity obj = get_operand_from_stack("GET_FIELD");
                 
-                // Get class_id from object (last element in array)
                 if (!std::holds_alternative<Owner<Array>>(obj.value)) {
                     throw std::runtime_error("GET_FIELD: object is not an array");
                 }
                 Owner<Array>& arr = std::get<Owner<Array>>(obj.value);
                 
-                // Class ID is at the last index
                 size_t class_id_index = 0;
-                if (arr->find(class_id_index) == arr->end()) {
+                if (arr->size() <= class_id_index) {
                     throw std::runtime_error("GET_FIELD: class_id not found in object");
                 }
                 
@@ -499,8 +481,7 @@ private:
                 
                 int64_t field_index = it->second;
                 
-                // Get field value from array
-                if (arr->find(field_index) == arr->end()) {
+                if (arr->size() <= field_index) {
                     throw std::runtime_error("GET_FIELD: field_index not found in object");
                 }
                 

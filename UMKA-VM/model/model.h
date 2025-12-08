@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <ranges>
 #include <string>
 #include <sstream>
 #include <type_traits>
@@ -19,7 +20,7 @@ template<typename T>
 using Owner = std::shared_ptr<T>;
 
 struct Entity;
-using Array = std::map<size_t, Reference<Entity>>;
+using Array = std::vector<Reference<Entity>>;
 using unit = std::monostate;
 
 #define for_all_types(X) \
@@ -88,8 +89,13 @@ struct Entity {
             } else if constexpr (std::is_same_v<T, Owner<Array>>) {
                 std::stringstream ss;
                 ss << "[";
-                for (const auto& [key, value] : *arg) {
-                    ss << key << ": " << value.lock()->to_string() << ", ";
+                for (size_t it = 0; const auto& value : *arg) {
+                    ss 
+                        << it << ": " 
+                        << value.lock()->to_string() 
+                        << (it + 1 == arg->size() ? "" : ", ")
+                    ;
+                    ++it;
                 }
                 ss << "]";
                 return ss.str();
