@@ -1,6 +1,15 @@
+class Aboba_nested {
+    let w = 0;
+}
+
+method Aboba_nested do_nested(self, c) -> unit {
+    print(c);
+}
+
 class Aboba {
     let a = 10;
     let s = "smth";
+    let an = Aboba_nested;
 }
 
 method Aboba do(self, c) -> unit {
@@ -10,3 +19,4 @@ method Aboba do(self, c) -> unit {
 let b = Aboba;
 b:a = 100;
 b$do(5);
+b:an$do_nested(5);
