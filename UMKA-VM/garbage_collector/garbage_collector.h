@@ -20,7 +20,7 @@ namespace umka::vm {
 template<typename Tag = ReleaseMod>
 class GarbageCollector {
 public:
-  static constexpr double GC_PERCENT = 0.001;
+  static constexpr double GC_PERCENT = 0.01;
 
   GarbageCollector()
       : bytes_allocated(0)

@@ -2,6 +2,7 @@
 #include <fstream>
 #include <iostream>
 #include <cstring>
+#include <ranges>
 
 
 static void append_byte(std::vector<uint8_t>& buf, uint8_t b) {
@@ -259,7 +260,7 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
         if (classIt != classFieldCount.end()) {
             // This is a class name, so we need to instantiate the class
             // We don't have a variable name here, so we pass empty string
-            gen_class_instantiation(id->name, "", fb);
+            gen_class_instantiation(id->name, fb);
         } else {
             // This is a regular variable
             auto it = fb.var_index.find(id->name);
@@ -272,9 +273,7 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
             fb.emit_load(it->second);
         }
     } else if (auto arr = dynamic_cast<ArrayExpr*>(expr)) {
-        for (auto el: arr->elems) gen_expr_in_func(el, fb);
-        // int64_t countIdx = fb.add_const(ConstEntry((int64_t) arr->elems.size()));
-        // fb.emit_build_arr(countIdx);
+        for (auto el: arr->elems | std::views::reverse) gen_expr_in_func(el, fb);
         fb.emit_build_arr(arr->elems.size());
     } else if (auto call = dynamic_cast<CallExpr*>(expr)) {
         if (call->name == "to_int" ||
@@ -354,7 +353,7 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
             if (classIt != classFieldCount.end()) {
                 // This is a class instantiation, track the type
                 fb.var_types[ls->name] = idExpr->name;
-                gen_class_instantiation(idExpr->name, ls->name, fb);
+                gen_class_instantiation(idExpr->name, fb);
             } else {
                 // Regular variable assignment
                 gen_expr_in_func(ls->expr, fb);
@@ -590,21 +589,10 @@ void BytecodeGenerator::gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuild
 }
 
 // Add new function to handle class instantiation
-void BytecodeGenerator::gen_class_instantiation(const std::string& className, const std::string& varName, FuncBuilder& fb) {
-    // For class instantiation: let obj = ClassName;
-    // We need to:
-    // 1. Create an array with the appropriate number of fields
-    // 2. Initialize fields with default values
-    
-    // Get the number of fields for this class
+void BytecodeGenerator::gen_class_instantiation(const std::string& className, FuncBuilder& fb) {
     auto countIt = classFieldCount.find(className);
     int64_t fieldCount = (countIt != classFieldCount.end()) ? countIt->second : 0;
-    
-    // Initialize fields with default values
-    if (varName.empty()) {
-        std::cerr << "No variable name for class " << className << std::endl;
-        return;
-    }
+
     auto defaultsIt = classFieldDefaults.find(className);
     if (defaultsIt == classFieldDefaults.end()) {
         std::cerr << "No default values for class " << className << std::endl;
@@ -627,14 +615,9 @@ void BytecodeGenerator::gen_class_instantiation(const std::string& className, co
 
         to_push.push_back(defaultExpr);
     }
-    std::reverse(to_push.begin(), to_push.end());
-    for (auto expr : to_push) {
+    for (auto expr : to_push | std::views::reverse) {
         gen_expr_in_func(expr, fb);
     }
 
     fb.emit_build_arr(fieldCount);
 }
-
-// Update gen_expr_in_func to handle member access and method calls
-// We need to modify the existing gen_expr_in_func function to handle new expression types
-// But first, let's update gen_stmt_in_func to handle member assignment

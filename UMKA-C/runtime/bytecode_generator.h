@@ -60,5 +60,5 @@ private:
     void gen_member_access_expr(MemberAccessExpr* expr, FuncBuilder& fb);
     void gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb);
     void gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuilder& fb);
-    void gen_class_instantiation(const std::string& className, const std::string& varName, FuncBuilder& fb);
+    void gen_class_instantiation(const std::string& className, FuncBuilder& fb);
 };
