@@ -179,6 +179,20 @@ struct StackFrame {
     std::unordered_map<int64_t, Reference<Entity>> name_resolver = {};
 };
 
+// Virtual method table entry: (class_id, method_id) -> function_id
+struct VMethodTableEntry {
+    int64_t class_id;
+    int64_t method_id;
+    int64_t function_id;
+};
+
+// Virtual field table entry: (class_id, field_id) -> field_index
+struct VFieldTableEntry {
+    int64_t class_id;
+    int64_t field_id;
+    int64_t field_index;
+};
+
 Entity make_entity(auto&& x) { return Entity { .value = x }; }
 Entity make_array();
 

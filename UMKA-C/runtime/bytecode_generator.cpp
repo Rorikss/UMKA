@@ -1,7 +1,8 @@
 #include "bytecode_generator.h"
+#include <cstring>
 #include <fstream>
 #include <iostream>
-#include <cstring>
+#include <map>
 #include <ranges>
 
 
@@ -93,19 +94,58 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
     classFieldIndices.clear();
     classFieldCount.clear();
     classFieldDefaults.clear();
+    classIDs.clear();
+    methodIDs.clear();
+    fieldIDs.clear();
+    vmethodTable.clear();
+    vfieldTable.clear();
 
-    // First pass: collect class definitions and their fields
+    // First pass: collect all unique method and field names across all classes
+    int64_t nextMethodID = 0;
+    int64_t nextFieldID = 0;
+    
+    for (auto s: program) {
+        if (auto cd = dynamic_cast<ClassDefStmt*>(s)) {
+            // Collect field names
+            for (auto fieldStmt: cd->fields) {
+                if (auto ls = dynamic_cast<LetStmt*>(fieldStmt)) {
+                    if (fieldIDs.find(ls->name) == fieldIDs.end()) {
+                        fieldIDs[ls->name] = nextFieldID++;
+                    }
+                }
+            }
+        } else if (auto md = dynamic_cast<MethodDefStmt*>(s)) {
+            // Collect method names
+            if (methodIDs.find(md->method_name) == methodIDs.end()) {
+                methodIDs[md->method_name] = nextMethodID++;
+            }
+        }
+    }
+
+    // Second pass: collect class definitions and build vtables
+    int64_t nextClassID = 0;
     for (auto s: program) {
         if (auto cd = dynamic_cast<ClassDefStmt*>(s)) {
             std::unordered_map<std::string, int64_t> fieldIndices;
             std::unordered_map<std::string, Expr*> fieldDefaults;
             int64_t fieldCount = 0;
             
+            // Assign unique class ID
+            int64_t classID = nextClassID++;
+            classIDs[cd->name] = classID;
+
             // Assign indices to fields and store default values
+            // Field indices start from 1, class ID will be at index 0
             for (auto fieldStmt: cd->fields) {
                 if (auto ls = dynamic_cast<LetStmt*>(fieldStmt)) {
-                    fieldIndices[ls->name] = fieldCount++;
+                    int64_t fieldIndex = fieldCount + 1;  // +1 because index 0 is for class_id
+                    fieldIndices[ls->name] = fieldIndex;
                     fieldDefaults[ls->name] = ls->expr;
+                    fieldCount++;
+                    
+                    // Add to virtual field table: (class_id, field_id, field_index)
+                    int64_t fieldID = fieldIDs[ls->name];
+                    vfieldTable.push_back(std::make_tuple(classID, fieldID, fieldIndex));
                 } else {
                     std::cerr << "Warning: class field must be a let statement\n";
                 }
@@ -118,7 +158,7 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
     }
 
 
-    // Second pass: collect functions and methods
+    // Third pass: collect functions and methods, build method vtable
     FunctionDefStmt* mainFunc = nullptr;
     for (auto s: program) {
         if (auto fd = dynamic_cast<FunctionDefStmt*>(s); fd && fd->name == "main") {
@@ -145,7 +185,19 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
             // Method names are prefixed with class name
             std::string methodFullName = md->class_name + "$" + md->method_name;
             if (userFuncIndex.find(methodFullName) == userFuncIndex.end()) {
-                userFuncIndex[methodFullName] = ++idx;
+                int64_t functionID = ++idx;
+                userFuncIndex[methodFullName] = functionID;
+                
+                // Add to virtual method table: (class_id, method_id, function_id)
+                auto classIDIt = classIDs.find(md->class_name);
+                auto methodIDIt = methodIDs.find(md->method_name);
+                if (classIDIt != classIDs.end() && methodIDIt != methodIDs.end()) {
+                    vmethodTable.push_back(std::make_tuple(
+                        classIDIt->second,  // class_id
+                        methodIDIt->second, // method_id
+                        functionID          // function_id
+                    ));
+                }
             } else {
                 std::cerr << "Warning: duplicate method name '" << methodFullName << "'\n";
             }
@@ -194,6 +246,8 @@ void BytecodeGenerator::write_to_file(const std::string& path) {
     append_uint16(buffer, (uint16_t)constPool.size());
     append_uint16(buffer, (uint16_t)funcTable.size());
     append_uint32(buffer, (uint32_t)codeSection.size());
+    append_uint16(buffer, (uint16_t)vmethodTable.size());
+    append_uint16(buffer, (uint16_t)vfieldTable.size());
 
     for (auto& c : constPool) {
         append_byte(buffer, (uint8_t)c.type);
@@ -218,6 +272,20 @@ void BytecodeGenerator::write_to_file(const std::string& path) {
         append_int64(buffer, fe.local_count);
     }
 
+    // Write virtual method table
+    for (const auto& [class_id, method_id, function_id] : vmethodTable) {
+        append_int64(buffer, class_id);
+        append_int64(buffer, method_id);
+        append_int64(buffer, function_id);
+    }
+
+    // Write virtual field table
+    for (const auto& [class_id, field_id, field_index] : vfieldTable) {
+        append_int64(buffer, class_id);
+        append_int64(buffer, field_id);
+        append_int64(buffer, field_index);
+    }
+
     buffer.insert(buffer.end(), codeSection.begin(), codeSection.end());
 
     std::ofstream file(path, std::ios::binary);
@@ -233,6 +301,8 @@ void BytecodeGenerator::write_to_file(const std::string& path) {
     std::cout << "Wrote bytecode: " << path
               << " (consts=" << constPool.size()
               << ", funcs=" << funcTable.size()
+              << ", vmethods=" << vmethodTable.size()
+              << ", vfields=" << vfieldTable.size()
               << ", code=" << codeSection.size() << " bytes)\n";
 }
 
@@ -273,7 +343,7 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
             fb.emit_load(it->second);
         }
     } else if (auto arr = dynamic_cast<ArrayExpr*>(expr)) {
-        for (auto el: arr->elems | std::views::reverse) gen_expr_in_func(el, fb);
+        for (auto el: arr->elems) gen_expr_in_func(el, fb);
         fb.emit_build_arr(arr->elems.size());
     } else if (auto call = dynamic_cast<CallExpr*>(expr)) {
         if (call->name == "to_int" ||
@@ -450,12 +520,6 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
 
 // Add new function to handle member access expressions
 void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuilder& fb) {
-    // For member access: obj:field
-    // We need to:
-    // 1. Load the object
-    // 2. Add field index as constant
-    // 3. Emit GET operation using existing array operations
-    
     // Load the object
     auto it = fb.var_index.find(expr->object_name);
     if (it == fb.var_index.end()) {
@@ -466,73 +530,50 @@ void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuild
     }
     fb.emit_load(it->second);
     
-    // Get the class name from the variable type
-    auto typeIt = fb.var_types.find(expr->object_name);
-    if (typeIt == fb.var_types.end()) {
-        std::cerr << "Member access on object with unknown type '" << expr->object_name << "'\n";
+    // Get field_id for this field name
+    auto fieldIDIt = fieldIDs.find(expr->field);
+    if (fieldIDIt == fieldIDs.end()) {
+        std::cerr << "Member access to unknown field '" << expr->field << "'\n";
         int64_t idx = fb.add_const(ConstEntry(0LL));
         fb.emit_push_const_index(idx);
         return;
     }
     
-    // Get the field index from the class field indices
-    std::string className = typeIt->second;
-    auto classIt = classFieldIndices.find(className);
-    if (classIt == classFieldIndices.end()) {
-        std::cerr << "Member access on object of unknown class '" << className << "'\n";
-        int64_t idx = fb.add_const(ConstEntry(0LL));
-        fb.emit_push_const_index(idx);
-        return;
-    }
+    int64_t field_id = fieldIDIt->second;
     
-    auto fieldIt = classIt->second.find(expr->field);
-    if (fieldIt == classIt->second.end()) {
-        std::cerr << "Member access to unknown field '" << expr->field << "' in class '" << className << "'\n";
-        int64_t idx = fb.add_const(ConstEntry(0LL));
-        fb.emit_push_const_index(idx);
-        return;
-    }
-    
-    int64_t fieldIdx = fb.add_const(ConstEntry(fieldIt->second));
-    fb.emit_push_const_index(fieldIdx);
-    
-    // Use the existing GET operation for arrays
-    auto itb = builtinIDs.find("get");
-    if (itb != builtinIDs.end()) {
-        fb.emit_call(itb->second);
-    }
+    // Emit GET_FIELD with field_id
+    fb.emit_byte(OP_GET_FIELD);
+    fb.emit_int64(field_id);
 }
 
 // Add new function to handle method calls
 void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb) {
-    // For method call: obj$method(args...)
-    // We need to:
-    // 1. Load the object (as first argument to the method)
-    // 2. Evaluate all arguments
-    // 3. Call the method (which is a function with the object as first parameter)
-    
-    // Load the object
     auto it = fb.var_index.find(expr->object_name);
     if (it == fb.var_index.end()) {
         std::cerr << "Method call on unknown object '" << expr->object_name << "'\n";
         return;
     }
+    
+    // Load object (self)
     fb.emit_load(it->second);
     
     // Evaluate all arguments
     for (auto arg: expr->args) gen_expr_in_func(arg, fb);
     
-    // Find the method function using the object's type instead of its name
-    auto typeIt = fb.var_types.find(expr->object_name);
-    std::string className = (typeIt != fb.var_types.end()) ? typeIt->second : expr->object_name;
-    std::string methodFullName = className + "$" + expr->method_name;
-    auto itf = userFuncIndex.find(methodFullName);
-    if (itf == userFuncIndex.end()) {
-        std::cerr << "genExpr: call to unknown method '" << expr->method_name << "'\n";
-        fb.emit_call(-1);
-    } else {
-        fb.emit_call(itf->second);
+    // Get method_id for this method name
+    auto methodIDIt = methodIDs.find(expr->method_name);
+    if (methodIDIt == methodIDs.end()) {
+        std::cerr << "Method call to unknown method '" << expr->method_name << "'\n";
+        fb.emit_byte(OP_CALL_METHOD);
+        fb.emit_int64(-1);
+        return;
     }
+    
+    int64_t method_id = methodIDIt->second;
+    
+    // Emit CALL_METHOD with method_id
+    fb.emit_byte(OP_CALL_METHOD);
+    fb.emit_int64(method_id);
 }
 
 // Add new function to handle member assignment statements
@@ -598,8 +639,17 @@ void BytecodeGenerator::gen_class_instantiation(const std::string& className, Fu
         std::cerr << "No default values for class " << className << std::endl;
         return;
     }
+    
+    // Get class ID
+    auto classIDIt = classIDs.find(className);
+    if (classIDIt == classIDs.end()) {
+        std::cerr << "No class ID for class " << className << std::endl;
+        return;
+    }
+    int64_t classID = classIDIt->second;
+    
     const auto& fieldDefaults = defaultsIt->second;
-    std::vector<Expr*> to_push;
+    std::map<size_t, Expr*> to_push;
     for (const auto& pair : fieldDefaults) {
         const std::string& fieldName = pair.first;
         Expr* defaultExpr = pair.second;
@@ -612,12 +662,22 @@ void BytecodeGenerator::gen_class_instantiation(const std::string& className, Fu
         if (fieldIt == indicesIt->second.end()) continue;
         
         int64_t fieldIndex = fieldIt->second;
+        // std::cout 
+        // << "fieldName: " << fieldName 
+        // << " -> " << fieldIndex
+        // << " | " << className
+        // << std::endl;
 
-        to_push.push_back(defaultExpr);
+        to_push[fieldIndex] = defaultExpr;
     }
-    for (auto expr : to_push | std::views::reverse) {
+
+    // Push class ID last (will be at the first index)
+    int64_t classIDConstIdx = fb.add_const(ConstEntry(classID));
+    fb.emit_push_const_index(classIDConstIdx);
+
+    for (auto [_, expr] : to_push) {
         gen_expr_in_func(expr, fb);
     }
 
-    fb.emit_build_arr(fieldCount);
+    fb.emit_build_arr(fieldCount + 1);
 }

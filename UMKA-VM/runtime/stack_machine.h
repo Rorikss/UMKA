@@ -34,9 +34,18 @@ public:
         : commands(parser.get_commands()),
           const_pool(parser.get_const_pool()),
           func_table(parser.get_func_table()),
+          vmethod_table(parser.get_vmethod_table()),
+          vfield_table(parser.get_vfield_table()),
           profiler(std::make_unique<Profiler>(func_table, commands)),
           garbage_collector()
     {
+        // Build lookup maps for fast dispatch
+        for (const auto& entry : vmethod_table) {
+            vmethod_map[{entry.class_id, entry.method_id}] = entry.function_id;
+        }
+        for (const auto& entry : vfield_table) {
+            vfield_map[{entry.class_id, entry.field_id}] = entry.field_index;
+        }
         stack_of_functions.emplace_back(StackFrame{
             .name = 0,
             .instruction_ptr = commands.begin(),
@@ -348,7 +357,7 @@ private:
 
                 Entity array_entity = make_array();
                 Array& array = *std::get<Owner<Array>>(array_entity.value);
-                for (size_t i = 0; i < count; ++i) {
+                for (int64_t i = count - 1; i >= 0; --i) {
                     Reference<Entity> ref = operand_stack.back();
                     operand_stack.pop_back();
                     CHECK_REF(ref);
@@ -376,6 +385,128 @@ private:
             case TO_DOUBLE: {
                 auto casted_value = umka_cast<double>(get_operand_from_stack("CAST_TO_DOUBLE"));
                 create_and_push(make_entity(casted_value));
+                break;
+            }
+            case CALL_METHOD: {
+                // cmd.arg contains method_id
+                // Stack: [object, arg1, arg2, ...]
+                // Object array has class_id at the last index
+                
+                int64_t method_id = cmd.arg;
+                
+                // Get object from stack (it should be at the bottom of arguments)
+                // For now, we need to know arg_count - this is a limitation
+                // We'll get the object reference which should be first on stack
+                if (operand_stack.empty()) {
+                    throw std::runtime_error("CALL_METHOD: empty stack");
+                }
+                
+                // The object should be the first argument (self)
+                // We need to peek at it to get class_id
+                Reference<Entity> obj_ref = operand_stack[operand_stack.size() - 1];
+                CHECK_REF(obj_ref);
+                Entity obj = *obj_ref.lock();
+                
+                // Get class_id from object (last element in array)
+                if (!std::holds_alternative<Owner<Array>>(obj.value)) {
+                    throw std::runtime_error("CALL_METHOD: object is not an array");
+                }
+                Owner<Array>& arr = std::get<Owner<Array>>(obj.value);
+                
+                // Class ID is at the last index
+                size_t class_id_index = 0;
+                if (arr->find(class_id_index) == arr->end()) {
+                    throw std::runtime_error("CALL_METHOD: class_id not found in object");
+                }
+                
+                Reference<Entity> class_id_ref = (*arr)[class_id_index];
+                CHECK_REF(class_id_ref);
+                int64_t class_id = umka_cast<int64_t>(*class_id_ref.lock());
+                
+                // Lookup function_id in vmethod_map
+                auto key = std::make_pair(class_id, method_id);
+                auto it = vmethod_map.find(key);
+                if (it == vmethod_map.end()) {
+                    throw std::runtime_error("CALL_METHOD: method not found for class_id=" +
+                                           std::to_string(class_id) + ", method_id=" + std::to_string(method_id));
+                }
+                
+                int64_t function_id = it->second;
+                
+                // Now perform regular CALL with function_id
+                if (func_table.size() <= function_id) {
+                    throw std::runtime_error("Function not found: " + std::to_string(function_id));
+                }
+
+                const FunctionTableEntry& entry = func_table[function_id];
+                if (entry.code_offset < 0 || entry.code_offset >= commands.size() ||
+                    entry.code_offset_end < 0 || entry.code_offset_end > commands.size() ||
+                    entry.code_offset >= entry.code_offset_end) {
+                    throw std::runtime_error("Invalid function code range");
+                }
+
+                profiler->increment_function_call(function_id);
+
+                StackFrame new_frame;
+                new_frame.name = entry.id;
+                new_frame.instruction_ptr = commands.begin() + entry.code_offset;
+                
+                for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
+                    if (operand_stack.empty()) {
+                        throw std::runtime_error("Not enough arguments for method call");
+                    }
+                    Reference<Entity> arg_ref = operand_stack.back();
+                    operand_stack.pop_back();
+                    new_frame.name_resolver[i] = arg_ref;
+                }
+                
+                stack_of_functions.push_back(new_frame);
+                break;
+            }
+            case GET_FIELD: {
+                // cmd.arg contains field_id
+                // Stack: [object]
+                // Object array has class_id at the last index
+                
+                int64_t field_id = cmd.arg;
+                
+                // Get object from stack
+                Entity obj = get_operand_from_stack("GET_FIELD");
+                
+                // Get class_id from object (last element in array)
+                if (!std::holds_alternative<Owner<Array>>(obj.value)) {
+                    throw std::runtime_error("GET_FIELD: object is not an array");
+                }
+                Owner<Array>& arr = std::get<Owner<Array>>(obj.value);
+                
+                // Class ID is at the last index
+                size_t class_id_index = 0;
+                if (arr->find(class_id_index) == arr->end()) {
+                    throw std::runtime_error("GET_FIELD: class_id not found in object");
+                }
+                
+                Reference<Entity> class_id_ref = (*arr)[class_id_index];
+                CHECK_REF(class_id_ref);
+                int64_t class_id = umka_cast<int64_t>(*class_id_ref.lock());
+                
+                // Lookup field_index in vfield_map
+                auto key = std::make_pair(class_id, field_id);
+                auto it = vfield_map.find(key);
+                if (it == vfield_map.end()) {
+                    throw std::runtime_error("GET_FIELD: field not found for class_id=" +
+                                           std::to_string(class_id) + ", field_id=" + std::to_string(field_id));
+                }
+                
+                int64_t field_index = it->second;
+                
+                // Get field value from array
+                if (arr->find(field_index) == arr->end()) {
+                    throw std::runtime_error("GET_FIELD: field_index not found in object");
+                }
+                
+                Reference<Entity> field_ref = (*arr)[field_index];
+                CHECK_REF(field_ref);
+                operand_stack.push_back(field_ref);
                 break;
             }
             default:
@@ -448,10 +579,25 @@ private:
         auto funcs = std::vector(func_table.begin(), func_table.end());
         std::cout << "Functions:\n";
         for (auto [id, f] : funcs) {
-            std::cout << id << " " << f.id << ' ' 
+            std::cout << id << " " << f.id << ' '
             << '[' << f.code_offset << ", " << f.code_offset_end << "] "
             << "\n";
         }
+        
+        std::cout << "\nVirtual Method Table:\n";
+        for (const auto& entry : vmethod_table) {
+            std::cout << "class_id=" << entry.class_id
+                     << ", method_id=" << entry.method_id
+                     << " -> function_id=" << entry.function_id << "\n";
+        }
+        
+        std::cout << "\nVirtual Field Table:\n";
+        for (const auto& entry : vfield_table) {
+            std::cout << "class_id=" << entry.class_id
+                     << ", field_id=" << entry.field_id
+                     << " -> field_index=" << entry.field_index << "\n";
+        }
+        
         std::cout << "\nConsts\n";
         for (int id = 0; id < (int)const_pool.size(); ++id) {
             std::cout << id << " " << parse_constant(const_pool[id]).to_string() << "\n";
@@ -466,6 +612,10 @@ private:
     std::vector<Command> commands;
     std::vector<Constant> const_pool;
     std::unordered_map<size_t, FunctionTableEntry> func_table;
+    std::vector<VMethodTableEntry> vmethod_table;
+    std::vector<VFieldTableEntry> vfield_table;
+    std::map<std::pair<int64_t, int64_t>, int64_t> vmethod_map;
+    std::map<std::pair<int64_t, int64_t>, int64_t> vfield_map;
     std::unique_ptr<Profiler> profiler;
     std::vector<Owner<Entity>> heap = {};
     std::vector<StackFrame> stack_of_functions;

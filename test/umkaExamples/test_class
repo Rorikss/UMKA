@@ -1,0 +1,56 @@
+class Aboba {
+    let a = 10;
+    let s = "Aboba";
+}
+
+class Root {
+    let name = "Root";
+}
+
+class Tree {
+    let root = Root;
+    let name = "Tree";
+}
+
+class Leaf {
+    let root = Root;
+    let tree = Tree;
+    let name = "Leaf";
+}
+
+method Aboba do(self, c) -> unit {
+    print(c);
+}
+
+class Class {
+    let smth = [1, 2, 3, [1, 2, 3]];
+}
+
+method Root hello(self) -> unit {
+    print(self:name);
+    print(self);
+}
+
+method Tree hello(self) -> unit {
+    print(self:name);
+    print(self);
+}
+
+method Leaf hello(self) -> unit {
+    print(self:name);
+    print(self);
+}
+
+fun main() -> unit {
+    let leaf = Leaf;
+    let tree = leaf:tree;
+    let root = tree:root;
+
+    leaf$hello();
+    tree$hello();
+    root$hello();
+
+    let arr = [1, 2, 3, [1, 2, 3]];
+    print(arr);
+    let a = Aboba;
+}

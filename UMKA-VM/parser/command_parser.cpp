@@ -22,10 +22,20 @@ void CommandParser::parse(std::istream& bytecode_stream) {
     if (bytecode_stream.gcount() != sizeof(header.code_size)) {
         throw std::runtime_error("Invalid bytecode - too small for header");
     }
+    bytecode_stream.read(reinterpret_cast<char*>(&header.vmethod_count), sizeof(header.vmethod_count));
+    if (bytecode_stream.gcount() != sizeof(header.vmethod_count)) {
+        throw std::runtime_error("Invalid bytecode - too small for header");
+    }
+    bytecode_stream.read(reinterpret_cast<char*>(&header.vfield_count), sizeof(header.vfield_count));
+    if (bytecode_stream.gcount() != sizeof(header.vfield_count)) {
+        throw std::runtime_error("Invalid bytecode - too small for header");
+    }
     
     commands.clear();
     const_pool.clear();
     func_table.clear();
+    vmethod_table.clear();
+    vfield_table.clear();
 
     for (uint16_t i = 0; i < header.const_count; ++i) {
         Constant constant;
@@ -91,6 +101,42 @@ void CommandParser::parse(std::istream& bytecode_stream) {
         func_table[entry.id] = entry;
     }
 
+    // Read virtual method table
+    for (uint16_t i = 0; i < header.vmethod_count; ++i) {
+        VMethodTableEntry entry;
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.class_id), sizeof(int64_t));
+        if (bytecode_stream.gcount() != sizeof(int64_t)) {
+            throw std::runtime_error("Unexpected end of bytecode in vmethod table");
+        }
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.method_id), sizeof(int64_t));
+        if (bytecode_stream.gcount() != sizeof(int64_t)) {
+            throw std::runtime_error("Unexpected end of bytecode in vmethod table");
+        }
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.function_id), sizeof(int64_t));
+        if (bytecode_stream.gcount() != sizeof(int64_t)) {
+            throw std::runtime_error("Unexpected end of bytecode in vmethod table");
+        }
+        vmethod_table.push_back(entry);
+    }
+
+    // Read virtual field table
+    for (uint16_t i = 0; i < header.vfield_count; ++i) {
+        VFieldTableEntry entry;
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.class_id), sizeof(int64_t));
+        if (bytecode_stream.gcount() != sizeof(int64_t)) {
+            throw std::runtime_error("Unexpected end of bytecode in vfield table");
+        }
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.field_id), sizeof(int64_t));
+        if (bytecode_stream.gcount() != sizeof(int64_t)) {
+            throw std::runtime_error("Unexpected end of bytecode in vfield table");
+        }
+        bytecode_stream.read(reinterpret_cast<char*>(&entry.field_index), sizeof(int64_t));
+        if (bytecode_stream.gcount() != sizeof(int64_t)) {
+            throw std::runtime_error("Unexpected end of bytecode in vfield table");
+        }
+        vfield_table.push_back(entry);
+    }
+
     size_t bytes_read = 0;
     while (bytes_read < header.code_size) {
         if (bytecode_stream.peek() == EOF) {
@@ -123,6 +169,8 @@ void CommandParser::parse(std::istream& bytecode_stream) {
 const std::vector<Command>& CommandParser::get_commands() const { return commands; }
 const std::vector<Constant>& CommandParser::get_const_pool() const { return const_pool; }
 const std::unordered_map<size_t, FunctionTableEntry>& CommandParser::get_func_table() const { return func_table; }
+const std::vector<VMethodTableEntry>& CommandParser::get_vmethod_table() const { return vmethod_table; }
+const std::vector<VFieldTableEntry>& CommandParser::get_vfield_table() const { return vfield_table; }
 
 bool CommandParser::has_operand(uint8_t opcode) const {
     switch(static_cast<OpCode>(opcode)) {
@@ -136,6 +184,8 @@ bool CommandParser::has_operand(uint8_t opcode) const {
         case OpCode::BUILD_ARR:
         case OpCode::OPCOT:
         case OpCode::REM:
+        case OpCode::CALL_METHOD:
+        case OpCode::GET_FIELD:
             return true;
         default:
             return false;

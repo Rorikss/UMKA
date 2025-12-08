@@ -40,6 +40,18 @@ public:
     std::unordered_map<std::string, int64_t> classFieldCount;
     // Map class name to field default values (as expression pointers)
     std::unordered_map<std::string, std::unordered_map<std::string, Expr*>> classFieldDefaults;
+    // Map class name to unique class ID
+    std::unordered_map<std::string, int64_t> classIDs;
+    
+    // Map method name to unique method ID
+    std::unordered_map<std::string, int64_t> methodIDs;
+    // Map field name to unique field ID
+    std::unordered_map<std::string, int64_t> fieldIDs;
+    
+    // Virtual method table: (class_id, method_id) -> function_id
+    std::vector<std::tuple<int64_t, int64_t, int64_t>> vmethodTable;
+    // Virtual field table: (class_id, field_id) -> field_index
+    std::vector<std::tuple<int64_t, int64_t, int64_t>> vfieldTable;
 
     std::vector<FuncBuilder> funcBuilders;
     std::vector<uint8_t> codeSection;

@@ -33,6 +33,8 @@ enum OpCode : uint8_t {
     RETURN = 0x24,
     BUILD_ARR = 0x30,
     OPCOT = 0x40,
+    CALL_METHOD = 0x50,
+    GET_FIELD = 0x51,
     TO_STRING = 0x60,
     TO_INT = 0x61,
     TO_DOUBLE = 0x62,
@@ -45,6 +47,8 @@ public:
         uint16_t const_count;
         uint16_t func_count;
         uint32_t code_size;
+        uint16_t vmethod_count;
+        uint16_t vfield_count;
     } __attribute__((packed));
 
     void parse(std::istream& bytecode_stream);
@@ -52,6 +56,8 @@ public:
     const std::vector<Command>& get_commands() const;
     const std::vector<Constant>& get_const_pool() const;
     const std::unordered_map<size_t, FunctionTableEntry>& get_func_table() const;
+    const std::vector<VMethodTableEntry>& get_vmethod_table() const;
+    const std::vector<VFieldTableEntry>& get_vfield_table() const;
 
 private:
     bool has_operand(uint8_t opcode) const;
@@ -59,5 +65,7 @@ private:
     std::vector<Command> commands;
     std::vector<Constant> const_pool;
     std::unordered_map<size_t, FunctionTableEntry> func_table;
+    std::vector<VMethodTableEntry> vmethod_table;
+    std::vector<VFieldTableEntry> vfield_table;
 };
 }

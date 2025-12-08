@@ -23,7 +23,7 @@ int main(int argc, char* argv[]) {
         CommandParser parser;
         parser.parse(bytecode_file);
         
-        StackMachine<DebugMod> vm(parser);
+        StackMachine<ReleaseMod> vm(parser);
         vm.run([init = false](Command cmd, std::string stack_top) mutable {
             if (!init) {
                 init = true;
