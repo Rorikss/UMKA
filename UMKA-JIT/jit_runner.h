@@ -14,9 +14,9 @@ namespace umka::jit {
 class JitRunner {
   public:
     JitRunner(
-      std::vector<Command> &commands,
-      std::vector<Constant> &const_pool,
-      std::unordered_map<size_t, FunctionTableEntry> &func_table
+      std::vector<vm::Command> &commands,
+      std::vector<vm::Constant> &const_pool,
+      std::unordered_map<size_t, vm::FunctionTableEntry> &func_table
     )
       : commands(commands)
         , const_pool(const_pool)
@@ -27,12 +27,12 @@ class JitRunner {
       optimizations.push_back(std::move(opt));
     }
 
-    std::vector<Command> optimize_range(
-        const std::vector<Command>::iterator begin,
-        const std::vector<Command>::iterator end,
-        FunctionTableEntry& meta
+    std::vector<vm::Command> optimize_range(
+        const std::vector<vm::Command>::iterator begin,
+        const std::vector<vm::Command>::iterator end,
+        vm::FunctionTableEntry& meta
     ) {
-      std::vector<Command> local(begin, end);
+      std::vector<vm::Command> local(begin, end);
       for (auto& p : optimizations)
         p->run(local, const_pool, meta);
       return local;
@@ -45,7 +45,7 @@ class JitRunner {
       const auto begin = commands.begin() + meta.code_offset;
       const auto end = commands.begin() + meta.code_offset_end;
 
-      std::vector<Command> local(begin, end);
+      std::vector<vm::Command> local(begin, end);
 
       for (auto &opt: optimizations)
         opt->run(local, const_pool, meta);
@@ -58,9 +58,9 @@ class JitRunner {
     }
 
   private:
-    std::vector<Command> &commands;
-    std::vector<Constant> &const_pool;
-    std::unordered_map<size_t, FunctionTableEntry> &func_table;
+    std::vector<vm::Command> &commands;
+    std::vector<vm::Constant> &const_pool;
+    std::unordered_map<size_t, vm::FunctionTableEntry> &func_table;
     std::vector<std::unique_ptr<IOptimize>> optimizations;
 };
 } // namespace umka::jit

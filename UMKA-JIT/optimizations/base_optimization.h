@@ -10,9 +10,9 @@ struct IOptimize {
   virtual ~IOptimize() = default;
 
   virtual void run(
-      std::vector<Command>& code,
-      std::vector<Constant>& const_pool,
-      FunctionTableEntry& meta
+      std::vector<vm::Command>& code,
+      std::vector<vm::Constant>& const_pool,
+      vm::FunctionTableEntry& meta
   ) = 0;
 };
 
