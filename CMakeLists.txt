@@ -71,7 +71,7 @@ target_include_directories(umka_compiler PRIVATE
 #JIT
 
 add_library(umka_jit
-        UMKA-JIT/jit_runner.cc
+        UMKA-JIT/jit_runner.h
         UMKA-JIT/optimizations/base_optimization.h
         UMKA-JIT/optimizations/const_folding.h
         UMKA-JIT/optimizations/dce.h
