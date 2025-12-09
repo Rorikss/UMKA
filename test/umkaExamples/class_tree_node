@@ -23,7 +23,7 @@ method TreeNode ItemCheck(self) -> int {
 
 fun BottomUpTree(item, depth) -> TreeNode {
     if (depth > 0) {
-        MakeNode(
+        return MakeNode(
             BottomUpTree(2*item-1, depth-1)
            ,BottomUpTree(2*item, depth-1)
            ,item
@@ -51,20 +51,25 @@ fun main() -> unit {
         let minDepth = 4;
         let maxDepth = max(minDepth + 2, n);
         let stretchDepth = maxDepth + 1;
-        let check = BottomUpTree(0, stretchDepth)$ItemCheck();
+        let x = BottomUpTree(0, stretchDepth);
+        let check = x$ItemCheck();
         let longLivedTree = BottomUpTree(0, maxDepth);
         for (let depth = minDepth; depth <= maxDepth; depth = depth + 2) {
             let iterations = pow(2, maxDepth - depth + minDepth);
-            let check = 0;
+            check = 0;
             for (let i = 1; i <= iterations; i = i + 1) {
-                check = check + longLivedTree$ItemCheck();
-                check = check + longLivedTree$ItemCheck();
+                let a = BottomUpTree(i,depth);
+                let b = BottomUpTree(-i,depth);
+                check = check + a$ItemCheck();
+                check = check + b$ItemCheck();
             }
         }
 
         ret = ret + longLivedTree$ItemCheck();
+        print(ret);
     }
+
     let expected = -4;
     assert(ret == expected);
-    print(ret);
+    print("Hooray! Success!!");
 }
