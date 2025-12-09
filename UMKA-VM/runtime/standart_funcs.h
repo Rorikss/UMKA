@@ -19,4 +19,5 @@ Reference<Entity> get(Entity array, int64_t index);
 void set(Entity array, int64_t index, Reference<Entity> elem);
 void assert(Entity& condition);
 std::string input();
+double random();
 }

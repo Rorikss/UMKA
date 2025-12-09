@@ -82,4 +82,8 @@ std::string input() {
     std::getline(std::cin, line);
     return line;
 }
+
+double random() {
+    return static_cast<double>(std::rand()) / RAND_MAX;
+}
 }

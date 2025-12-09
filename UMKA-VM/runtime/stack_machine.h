@@ -128,6 +128,36 @@ private:
             create_and_push(make_entity(proc(arg)));
         };
 
+        auto call_function = [this](int64_t function_id, const std::string& error_context) {
+            if (func_table.size() <= function_id) {
+                throw std::runtime_error("Function not found: " + std::to_string(function_id));
+            }
+
+            const FunctionTableEntry& entry = func_table[function_id];
+            if (entry.code_offset < 0 || entry.code_offset >= commands.size() ||
+                entry.code_offset_end < 0 || entry.code_offset_end > commands.size() ||
+                entry.code_offset >= entry.code_offset_end) {
+                throw std::runtime_error("Invalid function code range");
+            }
+
+            profiler->increment_function_call(function_id);
+
+            StackFrame new_frame;
+            new_frame.name = entry.id;
+            new_frame.instruction_ptr = commands.begin() + entry.code_offset;
+            
+            for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
+                if (operand_stack.empty()) {
+                    throw std::runtime_error("Not enough arguments for " + error_context);
+                }
+                Reference<Entity> arg_ref = operand_stack.back();
+                operand_stack.pop_back();
+                new_frame.name_resolver[i] = arg_ref;
+            }
+            
+            stack_of_functions.push_back(new_frame);
+        };
+
         auto BinaryOperationDecoratorWithApplier = [machine = this](const std::string& op_name, auto f, auto applier) {
             auto [lhs, rhs] = machine->get_operands_from_stack(op_name);
             Entity result = applier(lhs, rhs, f);
@@ -308,34 +338,12 @@ private:
                         create_and_push(make_entity(input_value));
                         break;
                     }
+                    case RANDOM_FUN: {
+                        create_and_push(make_entity(random()));
+                        break;
+                    }
                     default: {
-                        if (func_table.size() <= cmd.arg) {
-                            throw std::runtime_error("Function not found: " + std::to_string(cmd.arg));
-                        }
-
-                        const FunctionTableEntry& entry = func_table[cmd.arg];
-                        if (entry.code_offset < 0 || entry.code_offset >= commands.size() ||
-                            entry.code_offset_end < 0 || entry.code_offset_end > commands.size() ||
-                            entry.code_offset >= entry.code_offset_end) {
-                            throw std::runtime_error("Invalid function code range");
-                        }
-
-                        profiler->increment_function_call(cmd.arg);
-
-                        StackFrame new_frame;
-                        new_frame.name = entry.id;
-                        new_frame.instruction_ptr = commands.begin() + entry.code_offset;
-                        
-                        for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
-                            if (operand_stack.empty()) {
-                                throw std::runtime_error("Not enough arguments for function call");
-                            }
-                            Reference<Entity> arg_ref = operand_stack.back();
-                            operand_stack.pop_back();
-                            new_frame.name_resolver[i] = arg_ref;
-                        }
-                        
-                        stack_of_functions.push_back(new_frame);
+                        call_function(cmd.arg, "function call");
                         break;
                     }
                 }
@@ -401,25 +409,10 @@ private:
             case CALL_METHOD: {
                 int64_t method_id = cmd.arg;
                 
-                if (operand_stack.empty()) {
-                    throw std::runtime_error("CALL_METHOD: empty stack");
-                }
+                Entity obj = *operand_stack.back().lock();
+                auto arr = std::get<Owner<Array>>(obj.value);
                 
-                Reference<Entity> obj_ref = operand_stack[operand_stack.size() - 1];
-                CHECK_REF(obj_ref);
-                Entity obj = *obj_ref.lock();
-                
-                if (!std::holds_alternative<Owner<Array>>(obj.value)) {
-                    throw std::runtime_error("CALL_METHOD: object is not an array");
-                }
-                Owner<Array>& arr = std::get<Owner<Array>>(obj.value);
-                
-                size_t class_id_index = 0;
-                if (arr->size() <= class_id_index) {
-                    throw std::runtime_error("CALL_METHOD: class_id not found in object");
-                }
-                
-                Reference<Entity> class_id_ref = (*arr)[class_id_index];
+                Reference<Entity> class_id_ref = (*arr)[0];
                 CHECK_REF(class_id_ref);
                 int64_t class_id = umka_cast<int64_t>(*class_id_ref.lock());
                 
@@ -432,51 +425,16 @@ private:
                 
                 int64_t function_id = it->second;
                 
-                if (func_table.size() <= function_id) {
-                    throw std::runtime_error("Function not found: " + std::to_string(function_id));
-                }
-
-                const FunctionTableEntry& entry = func_table[function_id];
-                if (entry.code_offset < 0 || entry.code_offset >= commands.size() ||
-                    entry.code_offset_end < 0 || entry.code_offset_end > commands.size() ||
-                    entry.code_offset >= entry.code_offset_end) {
-                    throw std::runtime_error("Invalid function code range");
-                }
-
-                profiler->increment_function_call(function_id);
-
-                StackFrame new_frame;
-                new_frame.name = entry.id;
-                new_frame.instruction_ptr = commands.begin() + entry.code_offset;
-                
-                for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
-                    if (operand_stack.empty()) {
-                        throw std::runtime_error("Not enough arguments for method call");
-                    }
-                    Reference<Entity> arg_ref = operand_stack.back();
-                    operand_stack.pop_back();
-                    new_frame.name_resolver[i] = arg_ref;
-                }
-                
-                stack_of_functions.push_back(new_frame);
+                call_function(function_id, "method call");
                 break;
             }
             case GET_FIELD: {
                 int64_t field_id = cmd.arg;
                 
                 Entity obj = get_operand_from_stack("GET_FIELD");
-                
-                if (!std::holds_alternative<Owner<Array>>(obj.value)) {
-                    throw std::runtime_error("GET_FIELD: object is not an array");
-                }
                 Owner<Array>& arr = std::get<Owner<Array>>(obj.value);
-                
-                size_t class_id_index = 0;
-                if (arr->size() <= class_id_index) {
-                    throw std::runtime_error("GET_FIELD: class_id not found in object");
-                }
-                
-                Reference<Entity> class_id_ref = (*arr)[class_id_index];
+            
+                Reference<Entity> class_id_ref = (*arr)[0];
                 CHECK_REF(class_id_ref);
                 int64_t class_id = umka_cast<int64_t>(*class_id_ref.lock());
 
@@ -489,12 +447,7 @@ private:
                 
                 int64_t field_index = it->second;
                 
-                if (arr->size() <= field_index) {
-                    throw std::runtime_error("GET_FIELD: field_index not found in object");
-                }
-                
-                Reference<Entity> field_ref = (*arr)[field_index];
-                CHECK_REF(field_ref);
+                Reference<Entity> field_ref = get(obj, field_index);
                 operand_stack.push_back(field_ref);
                 break;
             }

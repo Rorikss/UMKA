@@ -12,7 +12,10 @@ fun sort(arr) -> unit {
 }
 
 fun main() -> unit {
-    let arr = [3, 1, 4, 2, 0.44, true];
+    let arr = [];
+    for (let i = 0; i < 1000; i = i + 1) {
+        add(arr, random());
+    }
     sort(arr);
     print(arr);
     return;

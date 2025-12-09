@@ -6,13 +6,19 @@ class TreeNode {
 
 fun MakeNode(l, r, x) -> TreeNode {
     let n = TreeNode;
-    n:left = l; n:right = r; n:item = x;
+    n:left = l;
+    n:right = r;
+    n:item = x;
     return n;
 }
 
 method TreeNode ItemCheck(self) -> int {
-    if (self:left == unit) { return self:item; }
-    return self:item + self:left$ItemCheck() - self:right$ItemCheck();
+    if (self:left == unit) { 
+        return self:item; 
+    }
+    let left = self:left;
+    let right = self:right;
+    return self:item + left$ItemCheck() - right$ItemCheck();
 }
 
 fun BottomUpTree(item, depth) -> TreeNode {
@@ -21,7 +27,7 @@ fun BottomUpTree(item, depth) -> TreeNode {
             BottomUpTree(2*item-1, depth-1)
            ,BottomUpTree(2*item, depth-1)
            ,item
-        )
+        );
     }
     return MakeNode(unit, unit, item);
 }
@@ -60,5 +66,5 @@ fun main() -> unit {
     }
     let expected = -4;
     assert(ret == expected);
-    print(ret)
+    print(ret);
 }

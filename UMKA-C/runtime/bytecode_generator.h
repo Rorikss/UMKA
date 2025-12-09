@@ -26,7 +26,8 @@ public:
             {"write",      9223372036854775800LL},
             {"read",       9223372036854775799LL},
             {"assert",     9223372036854775798LL},
-            {"input",      9223372036854775797LL}
+            {"input",      9223372036854775797LL},
+            {"random",     9223372036854775796LL}
     };
 
     static inline const std::unordered_map<std::string, uint8_t> BINOP_MAP = {
