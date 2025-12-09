@@ -18,7 +18,7 @@ public:
 
 // Helper function to create a debugger that validates instruction execution
 auto make_instruction_validator(const std::vector<uint8_t>& expected_instructions)
-    -> std::tuple<std::shared_ptr<size_t>, StackMachine::debugger_t>
+    -> std::tuple<std::shared_ptr<size_t>, StackMachine<>::debugger_t>
     {
     auto instruction_index = std::make_shared<size_t>(0);
     auto expected = std::make_shared<std::vector<uint8_t>>(expected_instructions);
@@ -88,7 +88,7 @@ TEST_F(StackMachineTest, PushConstant) {
     auto [calls, validator] = make_instruction_validator({PUSH_CONST, RETURN});
 
     StackMachine machine(parser);
-    machine.run<DebugMod>(validator);
+    machine.run(validator);
     ASSERT_EQ(*calls, 2);
 }
 
@@ -115,7 +115,7 @@ TEST_F(StackMachineTest, ArithmeticOperations) {
     );
 
     StackMachine machine(parser);
-    machine.run<DebugMod>(validator);
+    machine.run(validator);
     ASSERT_EQ(*calls, 4);
 }
 
@@ -139,7 +139,7 @@ TEST_F(StackMachineTest, FunctionCallAndReturn) {
     auto [calls, validator] = make_instruction_validator({CALL, RETURN, RETURN});
 
     StackMachine machine(parser);
-    machine.run<DebugMod>(validator);
+    machine.run(validator);
     ASSERT_EQ(*calls, 3);
 }
 
@@ -182,7 +182,7 @@ TEST_F(StackMachineTest, FunctionCallSum) {
     });
 
     StackMachine machine(parser);
-    machine.run<DebugMod>(validator);
+    machine.run(validator);
     ASSERT_EQ(*calls, 6);
 }
 
@@ -252,7 +252,7 @@ TEST_F(StackMachineTest, LoopExecution) {
     auto [calls, validator] = make_instruction_validator(flow);
 
     StackMachine machine(parser);
-    machine.run<DebugMod>(validator);
+    machine.run(validator);
     ASSERT_EQ(*calls, flow.size());
 }
 
@@ -302,7 +302,7 @@ TEST_F(StackMachineTest, FunctionCallWithArguments) {
     });
 
     StackMachine machine(parser);
-    machine.run<DebugMod>(validator);
+    machine.run(validator);
     ASSERT_EQ(*calls, 8);
 }
 
