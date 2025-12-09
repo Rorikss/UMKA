@@ -518,9 +518,7 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
     
 }
 
-// Add new function to handle member access expressions
 void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuilder& fb) {
-    // Load the object
     auto it = fb.var_index.find(expr->object_name);
     if (it == fb.var_index.end()) {
         std::cerr << "Member access to unknown object '" << expr->object_name << "'\n";
@@ -530,7 +528,6 @@ void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuild
     }
     fb.emit_load(it->second);
     
-    // Get field_id for this field name
     auto fieldIDIt = fieldIDs.find(expr->field);
     if (fieldIDIt == fieldIDs.end()) {
         std::cerr << "Member access to unknown field '" << expr->field << "'\n";
@@ -541,12 +538,10 @@ void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuild
     
     int64_t field_id = fieldIDIt->second;
     
-    // Emit GET_FIELD with field_id
     fb.emit_byte(OP_GET_FIELD);
     fb.emit_int64(field_id);
 }
 
-// Add new function to handle method calls
 void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb) {
     auto it = fb.var_index.find(expr->object_name);
     if (it == fb.var_index.end()) {
@@ -554,13 +549,10 @@ void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& 
         return;
     }
     
-    // Load object (self)
     fb.emit_load(it->second);
     
-    // Evaluate all arguments
     for (auto arg: expr->args) gen_expr_in_func(arg, fb);
     
-    // Get method_id for this method name
     auto methodIDIt = methodIDs.find(expr->method_name);
     if (methodIDIt == methodIDs.end()) {
         std::cerr << "Method call to unknown method '" << expr->method_name << "'\n";
@@ -571,21 +563,11 @@ void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& 
     
     int64_t method_id = methodIDIt->second;
     
-    // Emit CALL_METHOD with method_id
     fb.emit_byte(OP_CALL_METHOD);
     fb.emit_int64(method_id);
 }
 
-// Add new function to handle member assignment statements
 void BytecodeGenerator::gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuilder& fb) {
-    // For member assignment: obj:field = expr
-    // We need to:
-    // 1. Load the object
-    // 2. Evaluate the expression
-    // 3. Add field index as constant
-    // 4. Emit SET operation using existing array operations
-    
-    // Load the object
     auto it = fb.var_index.find(stmt->object_name);
     if (it == fb.var_index.end()) {
         std::cerr << "Member assignment to unknown object '" << stmt->object_name << "'\n";
@@ -593,14 +575,12 @@ void BytecodeGenerator::gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuild
     }
     fb.emit_load(it->second);
     
-    // Get the class name from the variable type
     auto typeIt = fb.var_types.find(stmt->object_name);
     if (typeIt == fb.var_types.end()) {
         std::cerr << "Member assignment on object with unknown type '" << stmt->object_name << "'\n";
         return;
     }
     
-    // Get the field index from the class field indices
     std::string className = typeIt->second;
     auto classIt = classFieldIndices.find(className);
     if (classIt == classFieldIndices.end()) {
@@ -613,15 +593,12 @@ void BytecodeGenerator::gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuild
         std::cerr << "Member assignment to unknown field '" << stmt->field << "' in class '" << className << "'\n";
         return;
     }
-    
-    // Add field index as constant
+
     int64_t fieldIdx = fb.add_const(ConstEntry(fieldIt->second));
     fb.emit_push_const_index(fieldIdx);
-    
-    // Evaluate the expression
+
     gen_expr_in_func(stmt->expr, fb);
-    
-    // Use the existing SET operation for arrays
+
     auto itb = builtinIDs.find("set");
     if (itb != builtinIDs.end()) {
         fb.emit_call(itb->second);
@@ -629,7 +606,6 @@ void BytecodeGenerator::gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuild
     }
 }
 
-// Add new function to handle class instantiation
 void BytecodeGenerator::gen_class_instantiation(const std::string& className, FuncBuilder& fb) {
     auto countIt = classFieldCount.find(className);
     int64_t fieldCount = (countIt != classFieldCount.end()) ? countIt->second : 0;
@@ -662,16 +638,9 @@ void BytecodeGenerator::gen_class_instantiation(const std::string& className, Fu
         if (fieldIt == indicesIt->second.end()) continue;
         
         int64_t fieldIndex = fieldIt->second;
-        // std::cout 
-        // << "fieldName: " << fieldName 
-        // << " -> " << fieldIndex
-        // << " | " << className
-        // << std::endl;
 
         to_push[fieldIndex] = defaultExpr;
     }
-
-    // Push class ID last (will be at the first index)
     int64_t classIDConstIdx = fb.add_const(ConstEntry(classID));
     fb.emit_push_const_index(classIDConstIdx);
 

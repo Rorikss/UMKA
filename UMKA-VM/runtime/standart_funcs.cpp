@@ -70,4 +70,16 @@ void set(Entity array, int64_t index, Reference<Entity> elem) {
     }
     (*map)[index] = elem;
 }
+
+void assert(Entity& condition) {
+    if (!std::get<bool>(condition.value)) {
+        throw std::runtime_error("Assertion failed");
+    }
+}
+
+std::string input() {
+    std::string line;
+    std::getline(std::cin, line);
+    return line;
+}
 }

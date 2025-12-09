@@ -24,7 +24,9 @@ public:
             {"add",        9223372036854775803LL},
             {"remove",     9223372036854775802LL},
             {"write",      9223372036854775800LL},
-            {"read",       9223372036854775799LL}
+            {"read",       9223372036854775799LL},
+            {"assert",     9223372036854775798LL},
+            {"input",      9223372036854775797LL}
     };
 
     static inline const std::unordered_map<std::string, uint8_t> BINOP_MAP = {

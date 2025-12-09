@@ -299,6 +299,15 @@ private:
                         create_and_push(array_entity);
                         break;
                     }
+                    case ASSERT_FUN: {
+                        call_void_proc([this](auto arg) { assert(arg); });
+                        break;
+                    }
+                    case INPUT_FUN: {
+                        auto input_value = input();
+                        create_and_push(make_entity(input_value));
+                        break;
+                    }
                     default: {
                         if (func_table.size() <= cmd.arg) {
                             throw std::runtime_error("Function not found: " + std::to_string(cmd.arg));
@@ -470,8 +479,7 @@ private:
                 Reference<Entity> class_id_ref = (*arr)[class_id_index];
                 CHECK_REF(class_id_ref);
                 int64_t class_id = umka_cast<int64_t>(*class_id_ref.lock());
-                
-                // Lookup field_index in vfield_map
+
                 auto key = std::make_pair(class_id, field_id);
                 auto it = vfield_map.find(key);
                 if (it == vfield_map.end()) {
