@@ -1,6 +1,5 @@
 #pragma once
 #include <model/model.h>
-#include <runtime/stack_machine.h>
 
 #include <vector>
 

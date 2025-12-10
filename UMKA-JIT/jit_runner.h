@@ -5,7 +5,6 @@
 #include <unordered_map>
 
 #include <model/model.h>
-#include <runtime/stack_machine.h>
 
 #include "jitted_function.h"
 #include "optimizations/base_optimization.h"
