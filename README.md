@@ -126,6 +126,10 @@ if (x > 10) {
 } else {
     print("not ok");
 }
+
+let none = unit;
+let res = none ^-^ "empty";  // оператор "Кота": проверяет переменную на unit
+print(res);  // выведет "empty"
 ```
 
 #### 3.7 Циклы
@@ -183,7 +187,6 @@ let int_num = to_int(3.14);      // конвертация в int
 let double_num = random();       // получение рандомного double
 assert(2 > 1);                   // проверка условия в runtime
 ```
-
 
 #### 3.11 Комментарии
 ```

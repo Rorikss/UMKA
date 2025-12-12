@@ -390,8 +390,8 @@ private:
                 break;
             }
             case OPCOT: {
-                auto operand = get_operand_from_stack("OPCOT");
-                create_and_push(make_entity(operand.is_unit()));
+                auto [lhs, rhs] = get_operands_from_stack("OPCOT");
+                create_and_push(lhs.is_unit() ? rhs : lhs);
                 break;
             }
             case TO_STRING: {

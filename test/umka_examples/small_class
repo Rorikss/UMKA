@@ -3,7 +3,7 @@ class Cat {
 }
 
 method Cat say_hello(self) -> unit {
-    print(self:name + " says: Meow!");
+    print("says: Meow!");
     return;
 }
 
