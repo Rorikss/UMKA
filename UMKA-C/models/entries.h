@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 
+namespace umka::compiler {
 struct ConstEntry {
     enum Type : uint8_t { INT = 1, DOUBLE = 2, STRING = 3, UNIT = 4 } type;
     int64_t _int{};
@@ -21,3 +22,4 @@ struct FunctionEntry {
     int64_t arg_count{0};
     int64_t local_count{0};
 };
+}

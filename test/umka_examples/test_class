@@ -50,7 +50,5 @@ fun main() -> unit {
     tree$hello();
     root$hello();
 
-    let arr = [1, 2, 3, [1, 2, 3]];
-    print(arr);
-    let a = Aboba;
+    print(tree:root$hello());
 }

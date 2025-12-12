@@ -84,6 +84,20 @@ struct BinaryExpr : Expr {
     BinaryExpr(const string& o, ExprPtr l, ExprPtr r) : op(o), left(l), right(r) {}
 };
 
+struct FieldAccessExpr : Expr {
+    ExprPtr target;
+    string field;
+    FieldAccessExpr(ExprPtr t, const string& f) : target(t), field(f) {}
+};
+
+struct MethodCallExpr : Expr {
+    ExprPtr target;
+    string method;
+    vector<ExprPtr> args;
+    MethodCallExpr(ExprPtr t, const string& m, const vector<ExprPtr>& a)
+        : target(t), method(m), args(a) {}
+};
+
 /* --- операторы (statements) --- */
 struct LetStmt : Stmt {
     string name;
@@ -162,14 +176,6 @@ struct MemberAccessExpr : Expr {
     string object_name;
     string field;
     MemberAccessExpr(const string& obj, const string& f): object_name(obj), field(f) {}
-};
-
-struct MethodCallExpr : Expr {
-    string object_name;
-    string method_name;
-    vector<ExprPtr> args;
-    MethodCallExpr(const string& obj, const string& m, const vector<ExprPtr>& a)
-      : object_name(obj), method_name(m), args(a) {}
 };
 
 struct MemberAssignStmt : Stmt {
@@ -258,11 +264,6 @@ static void print_expr(Expr* e, int indent) {
     } else if (auto ma = dynamic_cast<MemberAccessExpr*>(e)) {
         print_indent(indent);
         std::cerr << "MemberAccess: object=" << ma->object_name << " field=" << ma->field << "\n";
-    } else if (auto mc = dynamic_cast<MethodCallExpr*>(e)) {
-        print_indent(indent);
-        std::cerr << "MethodCall: object=" << mc->object_name << " method=" << mc->method_name
-                  << " (args: " << mc->args.size() << ")\n";
-        print_expr_list(mc->args, indent + 1);
     } else if (auto ue = dynamic_cast<UnaryExpr*>(e)) {
         print_indent(indent);
         std::cerr << "Unary: '" << ue->op << "'\n";
@@ -276,6 +277,23 @@ static void print_expr(Expr* e, int indent) {
         print_indent(indent);
         std::cerr << " Right:\n";
         print_expr(bex->right, indent + 1);
+    } else if (auto fa = dynamic_cast<FieldAccessExpr*>(e)) {
+        print_indent(indent);
+        std::cerr << "FieldAccess: " << fa->field << "\n";
+        print_indent(indent);
+        std::cerr << " Target:\n";
+        print_expr(fa->target, indent + 1);
+    } else if (auto mc = dynamic_cast<MethodCallExpr*>(e)) {
+        print_indent(indent);
+        std::cerr << "MethodCall: " << mc->method << " (args: " << mc->args.size() << ")\n";
+        print_indent(indent);
+        std::cerr << " Target:\n";
+        print_expr(mc->target, indent + 1);
+        if(!mc->args.empty()){
+            print_indent(indent);
+            std::cerr << " Args:\n";
+            print_expr_list(mc->args, indent + 1);
+        }
     } else {
         print_indent(indent);
         std::cerr << "Unknown Expr node\n";
@@ -427,7 +445,7 @@ void yyerror(const char* s) {
 
 /* --- типы нетерминалов --- */
 %type <stmt> block_statement statement let_statement assignment_statement expression_statement if_statement while_statement for_statement return_statement function_definition method_definition class_definition
-%type <expr> expression cat_expression logical_expression logical_or logical_and logical_comparison comparison arithmetic_expression term factor unary_arithmetic arithmetic_primary function_call method_call member_access array_literal
+%type <expr> expression cat_expression logical_expression logical_or logical_and logical_comparison comparison arithmetic_expression term factor unary_arithmetic arithmetic_primary function_call method_call member_access array_literal primary postfix
 %type <expr_list> expression_list argument_list
 %type <param_list> parameter_list
 %type <stmt_list> statement_list class_body
@@ -713,7 +731,7 @@ unary_arithmetic:
   | '-' unary_arithmetic { $$ = new UnaryExpr('-', $2); }
   ;
 
-arithmetic_primary:
+primary:
     INTEGER         { $$ = new IntExpr($1); }
   | DOUBLE          { $$ = new DoubleExpr($1); }
   | STRING          { $$ = new StringExpr(string($1)); free($1); }
@@ -725,6 +743,31 @@ arithmetic_primary:
   | array_literal   { $$ = $1; }
   | function_call   { $$ = $1; }
   | '(' expression ')' { $$ = $2; }
+  ;
+
+postfix:
+      primary { $$ = $1; }
+    | postfix ':' IDENT {
+            $$ = new FieldAccessExpr($1, string($3));
+            free($3);
+        }
+    | postfix '$' IDENT '(' ')' {
+            $$ = new MethodCallExpr($1, string($3), vector<Expr*>());
+            free($3);
+        }
+    | postfix '$' IDENT '(' argument_list ')' {
+            vector<Expr*> args;
+            if($5){
+                for(auto e : *$5) args.push_back(e);
+                delete $5;
+            }
+            $$ = new MethodCallExpr($1, string($3), args);
+            free($3);
+        }
+   ;
+
+arithmetic_primary:
+    postfix { $$ = $1; }
   ;
 
 /* array literal */
@@ -777,7 +820,8 @@ member_access:
 /* method call */
 method_call:
     IDENT '$' IDENT '(' ')' {
-        $$ = new MethodCallExpr(std::string($1), std::string($3), vector<Expr*>());
+        Expr* tgt = new IdentExpr(std::string($1));
+        $$ = new MethodCallExpr(tgt, std::string($3), vector<Expr*>());
         free($1);
         free($3);
     }
@@ -787,7 +831,8 @@ method_call:
             for (auto e : *$5) args.push_back(e);
             delete $5;
         }
-        $$ = new MethodCallExpr(std::string($1), std::string($3), args);
+        Expr* tgt = new IdentExpr(std::string($1));
+        $$ = new MethodCallExpr(tgt, std::string($3), args);
         free($1);
         free($3);
     }
