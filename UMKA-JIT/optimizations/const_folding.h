@@ -84,7 +84,6 @@ class ConstFolding final: public IOptimize {
             double value = load_double(constant);
             stack.push_back(value);
           } else {
-            // TYPE_STRING, TYPE_UNIT - не трогаем
             flush_stack();
             out.push_back(code[i]);
           }
@@ -93,7 +92,6 @@ class ConstFolding final: public IOptimize {
 
         if (is_foldable_binary(op)) {
           if (stack.size() >= 2) {
-            // можем свернуть прямо сейчас
             ConstValue rhs = stack.back();
             stack.pop_back();
             ConstValue lhs = stack.back();
@@ -136,7 +134,7 @@ class ConstFolding final: public IOptimize {
         const std::variant<int64_t, double>& a,
         const std::variant<int64_t, double>& b,
         vm::OpCode op) {
-      // Если оба int64
+
       if (std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b)) {
         int64_t lhs = std::get<int64_t>(a);
         int64_t rhs = std::get<int64_t>(b);
@@ -158,7 +156,6 @@ class ConstFolding final: public IOptimize {
         }
       }
 
-      // Если оба double
       if (std::holds_alternative<double>(a) && std::holds_alternative<double>(b)) {
         double lhs = std::get<double>(a);
         double rhs = std::get<double>(b);
@@ -179,7 +176,6 @@ class ConstFolding final: public IOptimize {
         }
       }
 
-      // Смешанные типы: приводим к double
       double lhs_d = std::holds_alternative<int64_t>(a) 
           ? static_cast<double>(std::get<int64_t>(a))
           : std::get<double>(a);

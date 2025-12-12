@@ -1,5 +1,7 @@
 #pragma once
 
+#include <complex>
+
 #include "model/model.h"
 #include "../parser/command_parser.h"
 #include "../garbage_collector/garbage_collector.h"
@@ -45,7 +47,7 @@ class StackMachine {
         jit_runner(std::make_unique<jit::JitRunner>(commands, const_pool, func_table)) {
       //TODO: хочу вынести этот блок вне и создать jit также как парсер, однако вм копирует себе const_pool, а мне для одной оптимизации он нужен общий
       jit_runner->add_optimization(std::make_unique<jit::ConstFolding>());
-      jit_runner->add_optimization(std::make_unique<jit::DeadCodeElimination>());
+      //jit_runner->add_optimization(std::make_unique<jit::DeadCodeElimination>());
       // Build lookup maps for fast dispatch
       for (const auto &entry: vmethod_table) {
         vmethod_map[{entry.class_id, entry.method_id}] = entry.function_id;
@@ -56,6 +58,8 @@ class StackMachine {
       stack_of_functions.emplace_back(StackFrame{
         .name = 0,
         .instruction_ptr = commands.begin(),
+        .begin = commands.begin(),
+        .end = commands.end(),
         .name_resolver = {}
       });
     }
@@ -69,13 +73,13 @@ class StackMachine {
 
       while (!stack_of_functions.empty()) {
         StackFrame &current_frame = stack_of_functions.back();
-        if (current_frame.instruction_ptr >= commands.end()) {
+        if (current_frame.instruction_ptr >= current_frame.end) {
           stack_of_functions.pop_back();
           continue;
         }
 
         auto it = current_frame.instruction_ptr;
-        size_t current_offset = std::distance(commands.begin(), it);
+        size_t current_offset = std::distance(current_frame.begin, it);
         ++current_frame.instruction_ptr;
 
         if constexpr (std::is_same_v<Tag, DebugMod>) {
@@ -150,17 +154,27 @@ class StackMachine {
 
         profiler->increment_function_call(function_id);
 
-        if (auto iter = jit_functions.find(function_id); iter != jit_functions.end()) {
-          // TODO: взять оптимизированную функцию
-        }
-        if (profiler -> is_function_hot(function_id)) {
-          auto jitted_function = jit_runner->optimize_function(function_id);
-          jit_functions[function_id] = jitted_function;
-          // TODO: взять оптимизированную функцию
-        }
         StackFrame new_frame;
         new_frame.name = entry.id;
         new_frame.instruction_ptr = commands.begin() + entry.code_offset;
+        new_frame.begin = commands.begin();
+        new_frame.end = commands.end();
+
+        auto iter = jit_functions.find(function_id);
+        if (iter != jit_functions.end()) {
+          auto& jit_function = iter->second;
+          new_frame.instruction_ptr = jit_function.code.begin();
+          new_frame.begin = jit_function.code.begin();
+          new_frame.end = jit_function.code.end();
+
+        }
+        if (iter == jit_functions.end() && profiler->is_function_hot(function_id)) {
+          auto jit_function = jit_runner->optimize_function(function_id);
+          new_frame.instruction_ptr = jit_function.code.begin();
+          new_frame.begin = jit_function.code.begin();
+          new_frame.end = jit_function.code.end();
+          jit_functions[function_id] = std::move(jit_function);
+        }
 
         for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
           if (operand_stack.empty()) {
