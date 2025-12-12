@@ -223,73 +223,91 @@ assert(); [???]
 program = { statement } ;
 
 (======== Операторы ========)
-statement = let_statement
-            | assignment_statement
-            | expression_statement
+statement = let_statement ";"
+            | assignment_statement ";"
+            | expression_statement ";"
             | if_statement
             | while_statement
             | for_statement
-            | return_statement
+            | return_statement ";"
             | block_statement
-            | function_definition ;
+            | function_definition
+            | class_definition
+            | method_definition ;
 
-let_statement = let_declaration, ";" ;
-assignment_statement = assignment_expression, ";" ;
+let_statement = "let", identifier, "=", expression ;
 
-let_declaration = "let", identifier, "=", expression ;
-assignment_expression = identifier, "=", expression ;
+assignment_statement = identifier, "=", expression
+                     | identifier, ":", identifier, "=", expression ;
 
-expression_statement = expression, ";" ;
-return_statement = "return", [expression], ";" ;
+expression_statement = expression ;
+return_statement = "return", [ expression ] ;
 block_statement = "{", { statement }, "}" ;
 
 (========== Управляющие конструкции ==========)
-if_statement = "if", "(", logical_expression, ")", block_statement, [ "else", (if_statement | block_statement) ] ;
-while_statement = "while", "(", logical_expression, ")", block_statement ;
-for_statement = "for", "(", let_declaration, ";", logical_expression, ";", assignment_expression, ")", block_statement ;
+if_statement = "if", "(", expression, ")", block_statement, [ "else", block_statement ] ;
+while_statement = "while", "(", expression, ")", block_statement ;
+for_statement = "for", "(", let_statement, ";", expression, ";", assignment_statement, ")", block_statement ;
 
 (===== Выражения =====)
-expression = logical_expression | arithmetic_expression | string_literal | boolean | array_literal | function_call | identifier | type_value | cat_expression;
-cat_expression = logical_expression, [ "^-^", expression ] ;
+expression = cat_expression ;
+cat_expression = logical_expression, { "^-^", logical_expression } ;
 
 logical_expression = logical_or ;
 logical_or = logical_and, { "||", logical_and } ;
 logical_and = logical_comparison, { "&&", logical_comparison } ;
-logical_comparison = comparison | unary_logical ;
-comparison = arithmetic_expression, { ("==" | "!=" | ">" | "<" | ">=" | "<="), arithmetic_expression } 
-           | string_literal, { ("==" | "!=" | ">" | "<" | ">=" | "<="), string_literal } 
-           | array_literal, { ("==" | "!="), array_literal }
-           | identifier, { ("==" | "!=" | ">" | "<" | ">=" | "<="), (identifier | string_literal | arithmetic_expression) } 
-           | identifier, { ("==" | "!="), array_literal } ;
-unary_logical = "!", (boolean | identifier | function_call | "(", logical_expression, ")") ;
+logical_comparison = comparison | "!", logical_comparison ;
+
+comparison = arithmetic_expression, [ ("==" | "!=" | ">" | "<" | ">=" | "<="), arithmetic_expression ]
+           | string_literal, "==", string_literal ;
 
 arithmetic_expression = term ;
 term = factor, { ("+" | "-"), factor } ;
 factor = unary_arithmetic, { ("*" | "/" | "%"), unary_arithmetic } ;
-unary_arithmetic = [("-" | "+")], arithmetic_primary ;
-arithmetic_primary = number | identifier | function_call | "(", arithmetic_expression, ")" | type_value ;
+unary_arithmetic = [ ("+" | "-") ], arithmetic_primary ;
+arithmetic_primary = postfix ;
+
+postfix = primary, { ( ":", identifier ) | ( "$", identifier, "(", [ argument_list ], ")" ) } ;
+primary = integer
+        | double
+        | string_literal
+        | boolean
+        | "unit"
+        | member_access
+        | method_call
+        | identifier
+        | array_literal
+        | function_call
+        | "(", expression, ")" ;
+
+(===== Доступ к полям и методам =====)
+member_access = identifier, ":", identifier ;
+method_call = identifier, "$", identifier, "(", [ argument_list ], ")" ;
 
 (===== Функции =====)
-function_definition = "fun", identifier, "(", [parameter_list], ")", "->", return_type, block_statement ;
+function_definition = "fun", identifier, "(", [ parameter_list ], ")", "->", return_type, block_statement ;
 parameter_list = identifier, { ",", identifier } ;
-return_type = basic_type | array_type;
-basic_type = "int" | "double" | "string" | "bool" | "unit";
+return_type = basic_type | array_type | identifier ;
+basic_type = "int" | "double" | "string" | "bool" | "unit" ;
 array_type = "[", "]" ;
-function_call = identifier, "(", [argument_list], ")" ;
+function_call = identifier, "(", [ argument_list ], ")" ;
 argument_list = expression, { ",", expression } ;
 
+(===== Классы и методы =====)
+class_definition = "class", identifier, "{", class_body, "}" ;
+class_body = { let_statement, ";" } ;
+method_definition = "method", identifier, identifier, "(", [ parameter_list ], ")", "->", return_type, block_statement ;
+
 (===== Массивы =====)
-array_literal = "[", [expression_list], "]" ;
+array_literal = "[", [ expression_list ], "]" ;
 expression_list = expression, { ",", expression } ;
 
 (======= Базовые типы =========)
-number = integer | double ;
-integer = ["+" | "-"], digit, { digit } ; 
-double = ["+" | "-"], digit, { digit }, ".", digit, { digit } ;
-string_literal = '"', { string_character }, '"' ; 
+integer = digit, { digit } ;
+double = digit, { digit }, ".", digit, { digit } ;
+string_literal = '"', { string_character }, '"' ;
 boolean = "true" | "false" ;
 identifier = (letter | "_"), {letter | digit | "_"} ;
-type_value = "unit" ;
 
 (======= Базовые символы =======)
 letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
