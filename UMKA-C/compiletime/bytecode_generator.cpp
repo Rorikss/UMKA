@@ -5,7 +5,7 @@
 #include <map>
 #include <ranges>
 
-
+namespace umka::compiler {
 static void append_byte(std::vector<uint8_t>& buf, uint8_t b) {
     buf.push_back(b);
 }
@@ -66,7 +66,6 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
             int64_t fidx = it->second;
             FuncBuilder& fb = funcBuilders.at(fidx);
 
-            // Explicit self! No need in +1
             for (size_t i = 0; i < md->params.size(); ++i) {
                 fb.var_index[md->params.at(i)] = i;
             }
@@ -100,13 +99,11 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
     vmethodTable.clear();
     vfieldTable.clear();
 
-    // First pass: collect all unique method and field names across all classes
     int64_t nextMethodID = 0;
     int64_t nextFieldID = 0;
     
     for (auto s: program) {
         if (auto cd = dynamic_cast<ClassDefStmt*>(s)) {
-            // Collect field names
             for (auto fieldStmt: cd->fields) {
                 if (auto ls = dynamic_cast<LetStmt*>(fieldStmt)) {
                     if (fieldIDs.find(ls->name) == fieldIDs.end()) {
@@ -663,4 +660,5 @@ void BytecodeGenerator::gen_class_instantiation(const std::string& className, Fu
     }
 
     fb.emit_build_arr(fieldCount + 1);
+}
 }

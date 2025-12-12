@@ -5,6 +5,7 @@
 #include <algorithm>
 #include "entries.h"
 
+namespace umka::compiler {
 struct FuncBuilder {
     std::vector<uint8_t> code;
     std::vector<size_t> instruction_positions; // Tracks start of each instruction
@@ -109,3 +110,4 @@ struct FuncBuilder {
         pending.clear();
     }
 };
+}

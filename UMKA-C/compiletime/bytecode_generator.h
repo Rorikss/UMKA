@@ -10,6 +10,7 @@
 #include "../models/opcodes.h"
 #include "../models/funk_builder.h"
 
+namespace umka::compiler {
 class BytecodeGenerator {
 public:
     std::vector<ConstEntry> constPool;
@@ -78,3 +79,4 @@ private:
     void gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuilder& fb);
     void gen_class_instantiation(const std::string& className, FuncBuilder& fb);
 };
+}

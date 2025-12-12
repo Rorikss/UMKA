@@ -2,11 +2,13 @@
 #include <string>
 #include <cstdio>
 #include <vector>
-#include "runtime/bytecode_generator.h"
+#include "compiletime/bytecode_generator.h"
 
 extern FILE* yyin;
 extern int yyparse();
 extern void print_program_ast();
+
+using namespace umka::compiler;
 
 int main(int argc, char** argv) {
     if (argc < 2) {
