@@ -24,7 +24,7 @@ enum Opcode : uint8_t {
     OP_LTE = 0x1F,
     OP_JMP = 0x20,
     OP_JMP_IF_FALSE = 0x21,
-    OP_JMP_IF_TRUE  = 0x22, // он нам пока не нужен
+    OP_JMP_IF_TRUE  = 0x22,
     OP_CALL = 0x23,
     OP_RETURN = 0x24,
     OP_BUILD_ARR = 0x30,

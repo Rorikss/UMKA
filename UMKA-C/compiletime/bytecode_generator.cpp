@@ -87,7 +87,6 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
     }
 }
 
-// Collect class information before building functions
 void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
     userFuncIndex.clear();
     classFieldIndices.clear();
@@ -119,7 +118,6 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
         }
     }
 
-    // Second pass: collect class definitions and build vtables
     int64_t nextClassID = 0;
     for (auto s: program) {
         if (auto cd = dynamic_cast<ClassDefStmt*>(s)) {
@@ -127,20 +125,16 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
             std::unordered_map<std::string, Expr*> fieldDefaults;
             int64_t fieldCount = 0;
             
-            // Assign unique class ID
             int64_t classID = nextClassID++;
             classIDs[cd->name] = classID;
 
-            // Assign indices to fields and store default values
-            // Field indices start from 1, class ID will be at index 0
             for (auto fieldStmt: cd->fields) {
                 if (auto ls = dynamic_cast<LetStmt*>(fieldStmt)) {
-                    int64_t fieldIndex = fieldCount + 1;  // +1 because index 0 is for class_id
+                    int64_t fieldIndex = fieldCount + 1;
                     fieldIndices[ls->name] = fieldIndex;
                     fieldDefaults[ls->name] = ls->expr;
                     fieldCount++;
                     
-                    // Add to virtual field table: (class_id, field_id, field_index)
                     int64_t fieldID = fieldIDs[ls->name];
                     vfieldTable.push_back(std::make_tuple(classID, fieldID, fieldIndex));
                 } else {
@@ -155,12 +149,32 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
     }
 
 
-    // Third pass: collect functions and methods, build method vtable
+    std::vector<Stmt*> topLevelStatements;
     FunctionDefStmt* mainFunc = nullptr;
+    
     for (auto s: program) {
-        if (auto fd = dynamic_cast<FunctionDefStmt*>(s); fd && fd->name == "main") {
-            mainFunc = fd;
-            break;
+        if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
+            if (fd->name == "main") {
+                mainFunc = fd;
+            }
+        } else if (dynamic_cast<ClassDefStmt*>(s) || dynamic_cast<MethodDefStmt*>(s)) {
+            continue;
+        } else {
+            topLevelStatements.push_back(s);
+        }
+    }
+    
+    if (!topLevelStatements.empty()) {
+        if (!mainFunc) {
+            auto block = new BlockStmt(topLevelStatements);
+            mainFunc = new FunctionDefStmt("main", {}, "unit", block);
+            program_stmts.push_back(mainFunc);
+        } else {
+            if (auto block = dynamic_cast<BlockStmt*>(mainFunc->body)) {
+                block->stmts.insert(block->stmts.begin(),
+                                   topLevelStatements.begin(),
+                                   topLevelStatements.end());
+            }
         }
     }
 
@@ -179,20 +193,18 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
                 std::cerr << "Warning: duplicate function name '" << fd->name << "'\n";
             }
         } else if (auto md = dynamic_cast<MethodDefStmt*>(s)) {
-            // Method names are prefixed with class name
             std::string methodFullName = md->class_name + "$" + md->method_name;
             if (userFuncIndex.find(methodFullName) == userFuncIndex.end()) {
                 int64_t functionID = ++idx;
                 userFuncIndex[methodFullName] = functionID;
                 
-                // Add to virtual method table: (class_id, method_id, function_id)
                 auto classIDIt = classIDs.find(md->class_name);
                 auto methodIDIt = methodIDs.find(md->method_name);
                 if (classIDIt != classIDs.end() && methodIDIt != methodIDs.end()) {
                     vmethodTable.push_back(std::make_tuple(
-                        classIDIt->second,  // class_id
-                        methodIDIt->second, // method_id
-                        functionID          // function_id
+                        classIDIt->second,
+                        methodIDIt->second,
+                        functionID
                     ));
                 }
             } else {
@@ -200,8 +212,6 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
             }
         } else if (auto cd = dynamic_cast<ClassDefStmt*>(s)) {
             continue;
-        } else {
-            std::cerr << "Warning: unknown statement type\n";
         }
     }
 
@@ -219,7 +229,6 @@ std::vector<uint8_t> BytecodeGenerator::concatenate_function_codes() {
         FuncBuilder& fb = funcBuilders.at(i);
         fb.resolve_pending();
         
-        // Calculate instruction count for this function
         int64_t function_instruction_count = fb.instruction_positions.size();
         
         funcTable.at(i).instruction_offset_beg = instruction_offset;
@@ -239,7 +248,7 @@ void BytecodeGenerator::generate_all(const std::vector<Stmt*>& program) {
 void BytecodeGenerator::write_to_file(const std::string& path) {
     std::vector<uint8_t> buffer;
 
-    append_byte(buffer, 1);  // version
+    append_byte(buffer, 1);
     append_uint16(buffer, (uint16_t)constPool.size());
     append_uint16(buffer, (uint16_t)funcTable.size());
     append_uint32(buffer, (uint32_t)codeSection.size());
@@ -259,7 +268,7 @@ void BytecodeGenerator::write_to_file(const std::string& path) {
             append_int64(buffer, c._str.size());
             buffer.insert(buffer.end(), c._str.begin(), c._str.end());
         }
-        else if (c.type == ConstEntry::UNIT) { /* No action needed */ }
+        else if (c.type == ConstEntry::UNIT) {}
     }
 
     for (auto& fe : funcTable) {
@@ -269,14 +278,12 @@ void BytecodeGenerator::write_to_file(const std::string& path) {
         append_int64(buffer, fe.local_count);
     }
 
-    // Write virtual method table
     for (const auto& [class_id, method_id, function_id] : vmethodTable) {
         append_int64(buffer, class_id);
         append_int64(buffer, method_id);
         append_int64(buffer, function_id);
     }
 
-    // Write virtual field table
     for (const auto& [class_id, field_id, field_index] : vfieldTable) {
         append_int64(buffer, class_id);
         append_int64(buffer, field_id);
@@ -322,14 +329,10 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
         int64_t idx = fb.add_const(ConstEntry());
         fb.emit_push_const_index(idx);
     } else if (auto id = dynamic_cast<IdentExpr*>(expr)) {
-        // Check if this identifier is a class name
         auto classIt = classFieldCount.find(id->name);
         if (classIt != classFieldCount.end()) {
-            // This is a class name, so we need to instantiate the class
-            // We don't have a variable name here, so we pass empty string
             gen_class_instantiation(id->name, fb);
         } else {
-            // This is a regular variable
             auto it = fb.var_index.find(id->name);
             if (it == fb.var_index.end()) {
                 std::cerr << "genExpr: unknown local var '" << id->name << "'\n";
@@ -390,7 +393,7 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
     } else if (auto ue = dynamic_cast<UnaryExpr*>(expr)) {
         gen_expr_in_func(ue->rhs, fb);
         if (ue->op == '!') fb.emit_byte(OP_NOT);
-        else if (ue->op == '+') { /* noop */ }
+        else if (ue->op == '+') {}
         else if (ue->op == '-') {
             int64_t idx0 = fb.add_const(ConstEntry((int64_t) 0));
             fb.emit_push_const_index(idx0);
@@ -416,19 +419,15 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         int64_t idx = ++fb.nextVarIndex;
         fb.var_index[ls->name] = idx;
         
-        // Check if the expression is an identifier that refers to a class
         if (auto idExpr = dynamic_cast<IdentExpr*>(ls->expr)) {
             auto classIt = classFieldCount.find(idExpr->name);
             if (classIt != classFieldCount.end()) {
-                // This is a class instantiation, track the type
                 fb.var_types[ls->name] = idExpr->name;
                 gen_class_instantiation(idExpr->name, fb);
             } else {
-                // Regular variable assignment
                 gen_expr_in_func(ls->expr, fb);
             }
         } else {
-            // Regular expression assignment
             gen_expr_in_func(ls->expr, fb);
         }
         
@@ -439,7 +438,7 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
             std::cerr << "Assign to unknown var '" << as->name << "'\n";
             gen_expr_in_func(as->expr, fb);
             int64_t idx0 = fb.add_const(ConstEntry((int64_t) 0));
-            fb.emit_push_const_index(idx0); // push 0 to maintain stack
+            fb.emit_push_const_index(idx0);
             fb.emit_byte(OP_POP);
             return;
         }
@@ -500,16 +499,9 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         }
         fb.emit_return();
     } else if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
-        
-        // processed in build_functions, ignore here
     } else if (auto cd = dynamic_cast<ClassDefStmt*>(s)) {
-        
-        // Class definitions are handled at the top level, not inside functions
     } else if (auto md = dynamic_cast<MethodDefStmt*>(s)) {
-        
-        // Method definitions are handled at the top level, not inside functions
     } else if (auto mas = dynamic_cast<MemberAssignStmt*>(s)) {
-        
         gen_member_assign_stmt(mas, fb);
     } else {
         std::cerr << "gen_stmt_in_func: unknown stmt node" << std::endl; std::cerr.flush();
@@ -559,7 +551,6 @@ void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuild
 }
 
 void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb) {
-    // Generate code for the target expression (could be a chain)
     gen_expr_in_func(expr->target, fb);
     
     for (auto arg: expr->args) gen_expr_in_func(arg, fb);
@@ -627,7 +618,6 @@ void BytecodeGenerator::gen_class_instantiation(const std::string& className, Fu
         return;
     }
     
-    // Get class ID
     auto classIDIt = classIDs.find(className);
     if (classIDIt == classIDs.end()) {
         std::cerr << "No class ID for class " << className << std::endl;
@@ -641,7 +631,6 @@ void BytecodeGenerator::gen_class_instantiation(const std::string& className, Fu
         const std::string& fieldName = pair.first;
         Expr* defaultExpr = pair.second;
         
-        // Get field index
         auto indicesIt = classFieldIndices.find(className);
         if (indicesIt == classFieldIndices.end()) continue;
 
@@ -662,3 +651,4 @@ void BytecodeGenerator::gen_class_instantiation(const std::string& className, Fu
     fb.emit_build_arr(fieldCount + 1);
 }
 }
+

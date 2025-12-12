@@ -10,7 +10,6 @@ struct Stmt;
 using ExprPtr = Expr *;
 using StmtPtr = Stmt *;
 
-// --- Expr ---
 struct Expr {
     virtual ~Expr() {}
 };
@@ -77,7 +76,6 @@ struct BinaryExpr : Expr {
     BinaryExpr(const std::string& o, ExprPtr l, ExprPtr r) : op(o), left(l), right(r) {}
 };
 
-// --- Stmt ---
 struct Stmt {
     virtual ~Stmt() {}
 };

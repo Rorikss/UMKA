@@ -8,7 +8,7 @@
 namespace umka::compiler {
 struct FuncBuilder {
     std::vector<uint8_t> code;
-    std::vector<size_t> instruction_positions; // Tracks start of each instruction
+    std::vector<size_t> instruction_positions;
     std::unordered_map<std::string, size_t> label_pos;
     struct PendingJump {
         size_t pos;
@@ -17,7 +17,7 @@ struct FuncBuilder {
     };
     std::vector<PendingJump> pending;
     std::unordered_map<std::string, int64_t> var_index;
-    std::unordered_map<std::string, std::string> var_types; // variable name -> type name
+    std::unordered_map<std::string, std::string> var_types;
     int64_t nextVarIndex = 0;
     int labelCounter = 0;
     std::vector<ConstEntry> *constPoolRef = nullptr;
@@ -83,7 +83,7 @@ struct FuncBuilder {
     void emit_jmp_place_holder(uint8_t opcode, const std::string& label) {
         size_t current_pos = instruction_positions.size();
         emit_byte(opcode);
-        emit_int64(0); // Placeholder
+        emit_int64(0);
         pending.push_back({current_pos, label, opcode});
     }
 
@@ -92,7 +92,6 @@ struct FuncBuilder {
             auto it = label_pos.find(pj.label);
             if (it == label_pos.end()) continue;
             
-            // Find target instruction index
             size_t target_idx = std::distance(
                 instruction_positions.begin(),
                 std::lower_bound(instruction_positions.begin(),

@@ -38,23 +38,15 @@ public:
             {"^-^", OP_OPCOT}
     };
 
-    // Map class name to field names and their indices
     std::unordered_map<std::string, std::unordered_map<std::string, int64_t>> classFieldIndices;
-    // Map class name to field count
     std::unordered_map<std::string, int64_t> classFieldCount;
-    // Map class name to field default values (as expression pointers)
     std::unordered_map<std::string, std::unordered_map<std::string, Expr*>> classFieldDefaults;
-    // Map class name to unique class ID
     std::unordered_map<std::string, int64_t> classIDs;
     
-    // Map method name to unique method ID
     std::unordered_map<std::string, int64_t> methodIDs;
-    // Map field name to unique field ID
     std::unordered_map<std::string, int64_t> fieldIDs;
     
-    // Virtual method table: (class_id, method_id) -> function_id
     std::vector<std::tuple<int64_t, int64_t, int64_t>> vmethodTable;
-    // Virtual field table: (class_id, field_id) -> field_index
     std::vector<std::tuple<int64_t, int64_t, int64_t>> vfieldTable;
 
     std::vector<FuncBuilder> funcBuilders;
@@ -72,7 +64,6 @@ private:
     void gen_stmt_in_func(Stmt* s, FuncBuilder& fb);
     void gen_expr_in_func(Expr* e, FuncBuilder& fb);
     
-    // Helper functions for class operations
     void gen_field_access_expr(FieldAccessExpr* expr, FuncBuilder& fb);
     void gen_member_access_expr(MemberAccessExpr* expr, FuncBuilder& fb);
     void gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb);
