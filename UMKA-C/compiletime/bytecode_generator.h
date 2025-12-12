@@ -16,19 +16,21 @@ public:
     std::vector<ConstEntry> constPool;
     std::vector<FunctionEntry> funcTable;
     std::unordered_map<std::string, int64_t> userFuncIndex;
+    constexpr static int64_t kMaxI64 = std::numeric_limits<int64_t>::max();
 
     static inline const std::unordered_map<std::string, int64_t> builtinIDs = {
-            {"print",      9223372036854775807LL},
-            {"len",        9223372036854775806LL},
-            {"get",        9223372036854775805LL},
-            {"set",        9223372036854775804LL},
-            {"add",        9223372036854775803LL},
-            {"remove",     9223372036854775802LL},
-            {"write",      9223372036854775800LL},
-            {"read",       9223372036854775799LL},
-            {"assert",     9223372036854775798LL},
-            {"input",      9223372036854775797LL},
-            {"random",     9223372036854775796LL}
+            {"print",      kMaxI64 - 0},
+            {"len",        kMaxI64 - 1},
+            {"get",        kMaxI64 - 2},
+            {"set",        kMaxI64 - 3},
+            {"add",        kMaxI64 - 4},
+            {"remove",     kMaxI64 - 5},
+
+            {"write",      kMaxI64 - 7},
+            {"read",       kMaxI64 - 8},
+            {"assert",     kMaxI64 - 9},
+            {"input",      kMaxI64 - 10},
+            {"random",     kMaxI64 - 11}
     };
 
     static inline const std::unordered_map<std::string, uint8_t> BINOP_MAP = {

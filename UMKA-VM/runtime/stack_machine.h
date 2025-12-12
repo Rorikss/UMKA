@@ -333,7 +333,7 @@ private:
                         break;
                     }
                     case ASSERT_FUN: {
-                        call_void_proc([this](auto arg) { assert(arg); });
+                        call_void_proc([this](auto arg) { umka_assert(arg); });
                         break;
                     }
                     case INPUT_FUN: {
