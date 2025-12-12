@@ -72,6 +72,7 @@ private:
     void gen_expr_in_func(Expr* e, FuncBuilder& fb);
     
     // Helper functions for class operations
+    void gen_field_access_expr(FieldAccessExpr* expr, FuncBuilder& fb);
     void gen_member_access_expr(MemberAccessExpr* expr, FuncBuilder& fb);
     void gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb);
     void gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuilder& fb);

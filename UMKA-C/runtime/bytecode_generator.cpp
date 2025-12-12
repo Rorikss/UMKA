@@ -401,6 +401,8 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
         } else {
             std::cerr << "genExpr: unknown unary op '" << ue->op << "'\n";
         }
+    } else if (auto fa = dynamic_cast<FieldAccessExpr*>(expr)) {
+        gen_field_access_expr(fa, fb);
     } else if (auto ma = dynamic_cast<MemberAccessExpr*>(expr)) {
         gen_member_access_expr(ma, fb);
     } else if (auto mc = dynamic_cast<MethodCallExpr*>(expr)) {
@@ -518,6 +520,23 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
     
 }
 
+void BytecodeGenerator::gen_field_access_expr(FieldAccessExpr* expr, FuncBuilder& fb) {
+    gen_expr_in_func(expr->target, fb);
+    
+    auto fieldIDIt = fieldIDs.find(expr->field);
+    if (fieldIDIt == fieldIDs.end()) {
+        std::cerr << "Field access to unknown field '" << expr->field << "'\n";
+        int64_t idx = fb.add_const(ConstEntry(0LL));
+        fb.emit_push_const_index(idx);
+        return;
+    }
+    
+    int64_t field_id = fieldIDIt->second;
+    
+    fb.emit_byte(OP_GET_FIELD);
+    fb.emit_int64(field_id);
+}
+
 void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuilder& fb) {
     auto it = fb.var_index.find(expr->object_name);
     if (it == fb.var_index.end()) {
@@ -543,13 +562,8 @@ void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuild
 }
 
 void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb) {
-    auto it = fb.var_index.find(expr->object_name);
-    if (it == fb.var_index.end()) {
-        std::cerr << "Method call on unknown object '" << expr->object_name << "'\n";
-        return;
-    }
-    
-    fb.emit_load(it->second);
+    // Generate code for the target expression (could be a chain)
+    gen_expr_in_func(expr->target, fb);
     
     for (auto arg: expr->args) gen_expr_in_func(arg, fb);
     

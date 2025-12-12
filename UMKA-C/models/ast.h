@@ -162,18 +162,24 @@ struct MethodDefStmt : Stmt {
         : class_name(cn), method_name(mn), params(p), ret_type(rt), body(b) {}
 };
 
+struct FieldAccessExpr : Expr {
+    ExprPtr target;
+    std::string field;
+    FieldAccessExpr(ExprPtr t, const std::string& f): target(t), field(f) {}
+};
+
+struct MethodCallExpr : Expr {
+    ExprPtr target;
+    std::string method_name;
+    std::vector<ExprPtr> args;
+    MethodCallExpr(ExprPtr t, const std::string& m, const std::vector<ExprPtr>& a)
+      : target(t), method_name(m), args(a) {}
+};
+
 struct MemberAccessExpr : Expr {
     std::string object_name;
     std::string field;
     MemberAccessExpr(const std::string& obj, const std::string& f): object_name(obj), field(f) {}
-};
-
-struct MethodCallExpr : Expr {
-    std::string object_name;
-    std::string method_name;
-    std::vector<ExprPtr> args;
-    MethodCallExpr(const std::string& obj, const std::string& m, const std::vector<ExprPtr>& a)
-      : object_name(obj), method_name(m), args(a) {}
 };
 
 struct MemberAssignStmt : Stmt {
