@@ -1,0 +1,14 @@
+class Cat {
+    let name = "Aboba";
+}
+
+method Cat say_hello(self) -> unit {
+    print(self:name + " says: Meow!");
+    return;
+}
+
+fun main() -> unit {
+    let my_cat = Cat;
+    my_cat$say_hello();
+    return;
+}
