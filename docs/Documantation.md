@@ -207,10 +207,11 @@ if (has_operand(opcode) && index + sizeof(int64_t) <= bytecode.size()) {
 
 ### Когда запускаем
 1. У нас есть счетчик общего обьема выделенной памяти (`bytes_allocated`). Он увеличивается с каждой операцией, которая выделяет память
-   - увеличивать на `sizeof(Entity)`
-   - для массива `map.size() * sizeof(pair<int, Reference<Entity>>`)
-2. У нас есть лимит (`GC_THRESHOLD = total_available_ram_bytes * GC_PERCENT;`). Если (`bytes_allocated`) > (`GC_THRESHOLD`), то запускаем наш gc  
-GC_PERCENT = 25%
+   - для обычного объекта: `sizeof(Entity)`
+   - для строк: `sizeof(Entity) + str.capacity()`
+   - для массива `sizeof(Entity) + arr->size() * sizeof(std::pair<size_t, Reference<Entity>>)`
+2. У нас есть лимит (`GC_THRESHOLD = total_available_ram_bytes * GC_PERCENT;`). GC_PERCENT = 1%
+   GC запускается, когда разница между текущим объемом выделенной памяти и объемом после последней очистки превышает порог: `(bytes_allocated - after_last_clean) > GC_THRESHOLD`
 ### Stop the world  
 На время работы GC выполнение кода ВМ останавливается. После того как GC завершит свою работу и он освободил достаточно памяти, то ВМ сможет продолжить работу
 
