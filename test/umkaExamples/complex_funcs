@@ -1,0 +1,17 @@
+fun processAndSave(arr) -> unit {
+    set(arr, 0, 10);
+    add(arr, 4);
+    print(get(arr, 1));
+    remove(arr, 1);
+    let total = get(arr, 0) + get(arr, 1);
+    write_file("out.txt", to_string(total));
+    return;
+}
+
+fun main() -> unit {
+    let arr = [1,2,3];
+    processAndSave(arr);
+    print(17 % 5);
+    print(read_file("out.txt"));
+    return;
+}

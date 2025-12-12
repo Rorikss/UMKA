@@ -217,6 +217,23 @@ assert(2 > 1);                   // проверка условия в runtime
 * `random` - получение случайного числа
 * `assert` - проверка условия 
 
+#### 3.13 Классы
+```
+class Cat {
+    let name = "Aboba";
+}
+
+method Cat say_hello(self) -> unit {
+    print(self:name + " says: Meow!");
+    return;
+}
+
+fun main() -> unit {
+    let my_cat = Cat;
+    my_cat$say_hello();
+    return;
+}
+```
 ## 4. Грамматика EBNF
 [TODO обновить грамматику]
 
@@ -562,11 +579,43 @@ RETURN
 #### Пример №4
 **Код UMKA**
 ```kt
+class Cat {
+    let name = "Aboba";
+}
 
+method Cat say_hello(self) -> unit {
+    print(self:name + " says: Meow!");
+    return;
+}
+
+fun main() -> unit {
+    let my_cat = Cat;
+    my_cat$say_hello();
+    return;
+}
 ```
 **Текстовый байткод (с метками)**
 ```kt
+;main
+PUSH_CONST 0      ; class_id для Cat
+PUSH_CONST 1      ; "Aboba" (дефолтное значение name)
+BUILD_ARR 2       ; создаем объект [class_id, name]
+STORE 0           ; сохраняем в переменную my_cat (индекс 0)
 
+LOAD 0           
+CALL_METHOD 0     ; say_hello (method_id=0)
+
+PUSH_CONST 3     
+RETURN
+
+;say_hello
+LOAD 0            
+GET_FIELD 0       
+PUSH_CONST 2     
+ADD               
+CALL 9223372036854775807  ;  print
+PUSH_CONST 3      
+RETURN           
 ```
 **Бинарный код**
 ```kt
@@ -863,8 +912,6 @@ remove(arr, 1);
 add(arr, 4);
 set(arr, 0, "cringe");
 ```
-
-[TODO добавить shitty примеров]
 
 ## 11. Поведение языка (ошибки)
 ### Классы ошибок
