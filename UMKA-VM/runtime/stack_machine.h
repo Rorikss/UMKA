@@ -1,20 +1,23 @@
 #pragma once
 
-#include "model/model.h"
-#include "../parser/command_parser.h"
 #include "../garbage_collector/garbage_collector.h"
+#include "../parser/command_parser.h"
+#include "model/model.h"
 #include "operations.h"
-#include "standart_funcs.h"
 #include "profiler.h"
+#include "standart_funcs.h"
 
 #include <cstdint>
+#include <cstring>
+#include <functional>
 #include <memory>
+#include <optional>
 #include <ranges>
-#include <string>
-#include <vector>
 #include <stdexcept>
+#include <string>
 #include <type_traits>
 #include <unordered_map>
+#include <vector>
 
 namespace umka::vm {
 #define CHECK_REF(ref) \

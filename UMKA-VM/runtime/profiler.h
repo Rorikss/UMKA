@@ -1,9 +1,11 @@
 #pragma once
 
 #include "../model/model.h"
-#include <vector>
-#include <unordered_map>
+
+#include <algorithm>
 #include <cstdint>
+#include <unordered_map>
+#include <vector>
 
 namespace umka::vm {
 class Profiler {
