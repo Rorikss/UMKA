@@ -1,4 +1,5 @@
 #include "bytecode_generator.h"
+#include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -323,7 +324,7 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
         int64_t idx = fb.add_const(ConstEntry(se->s));
         fb.emit_push_const_index(idx);
     } else if (auto be = dynamic_cast<BoolExpr*>(expr)) {
-        int64_t idx = fb.add_const(ConstEntry(be->b ? 1LL : 0LL));
+        int64_t idx = fb.add_const(ConstEntry((int64_t) be->b));
         fb.emit_push_const_index(idx);
     } else if (auto ue = dynamic_cast<UnitExpr*>(expr)) {
         int64_t idx = fb.add_const(ConstEntry());
@@ -336,7 +337,7 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
             auto it = fb.var_index.find(id->name);
             if (it == fb.var_index.end()) {
                 std::cerr << "genExpr: unknown local var '" << id->name << "'\n";
-                int64_t idx = fb.add_const(ConstEntry(0LL));
+                int64_t idx = fb.add_const(ConstEntry((int64_t) 0));
                 fb.emit_push_const_index(idx);
                 return;
             }
@@ -482,7 +483,7 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         fb.place_label(startL);
         if (fs->cond) gen_expr_in_func(fs->cond, fb);
         else {
-            int64_t idx1 = fb.add_const(ConstEntry(1LL));
+            int64_t idx1 = fb.add_const(ConstEntry((int64_t) 1));
             fb.emit_push_const_index(idx1);
         }
         fb.emit_jmp_place_holder(OP_JMP_IF_FALSE, endL);
@@ -515,7 +516,7 @@ void BytecodeGenerator::gen_field_access_expr(FieldAccessExpr* expr, FuncBuilder
     auto fieldIDIt = fieldIDs.find(expr->field);
     if (fieldIDIt == fieldIDs.end()) {
         std::cerr << "Field access to unknown field '" << expr->field << "'\n";
-        int64_t idx = fb.add_const(ConstEntry(0LL));
+        int64_t idx = fb.add_const(ConstEntry((int64_t) 0));
         fb.emit_push_const_index(idx);
         return;
     }
@@ -530,7 +531,7 @@ void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuild
     auto it = fb.var_index.find(expr->object_name);
     if (it == fb.var_index.end()) {
         std::cerr << "Member access to unknown object '" << expr->object_name << "'\n";
-        int64_t idx = fb.add_const(ConstEntry(0LL));
+        int64_t idx = fb.add_const(ConstEntry((int64_t) 0));
         fb.emit_push_const_index(idx);
         return;
     }
@@ -539,7 +540,7 @@ void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuild
     auto fieldIDIt = fieldIDs.find(expr->field);
     if (fieldIDIt == fieldIDs.end()) {
         std::cerr << "Member access to unknown field '" << expr->field << "'\n";
-        int64_t idx = fb.add_const(ConstEntry(0LL));
+        int64_t idx = fb.add_const(ConstEntry((int64_t) 0));
         fb.emit_push_const_index(idx);
         return;
     }
