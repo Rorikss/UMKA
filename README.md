@@ -1,8 +1,7 @@
 # <img src="logo.png" alt="UMKA Logo" width="60" height="75" style="vertical-align: middle;"> <span style="font-size: 2em; vertical-align: middle; color: ">UMKA</span>
 
 
-Минималистичный императивный язык программирования со статической типизацией, включающий виртуальную
-машину со сборщиком мусора и JIT-компилятором.
+Минималистичный императивный язык программирования.
 
 ## Особенности
 
@@ -10,6 +9,7 @@
 - **Стековая виртуальная машина** - эффективная байткод-интерпретация
 - **Автоматическое управление памятью** - сборщик мусора Mark-and-Sweep
 - **JIT-компиляция** - оптимизация "горячего" кода во время выполнения
+- Поддержка **объектного программирования**
 
 ## 1. Составляющие:
 
@@ -189,8 +189,25 @@ assert(2 > 1);                   // проверка условия в runtime
 ```
 // using double slash
 ```
+#### 3.12 Классы
+```
+class Cat {
+    let name = "Aboba";
+}
 
-#### 3.12 Список зарезервированных слов
+method Cat say_hello(self) -> unit {
+    print("says: Meow!");
+    return;
+}
+
+fun main() -> unit {
+    let my_cat = Cat;
+    my_cat$say_hello();
+    return;
+}
+```
+
+#### 3.13 Список зарезервированных слов
 * `let` - объявление переменной
 * `fun` - объявление функции
 * `class` - объявление класса
@@ -215,23 +232,6 @@ assert(2 > 1);                   // проверка условия в runtime
 * `random` - получение случайного числа
 * `assert` - проверка условия 
 
-#### 3.13 Классы
-```
-class Cat {
-    let name = "Aboba";
-}
-
-method Cat say_hello(self) -> unit {
-    print(self:name + " says: Meow!");
-    return;
-}
-
-fun main() -> unit {
-    let my_cat = Cat;
-    my_cat$say_hello();
-    return;
-}
-```
 ## 4. Грамматика EBNF
 
 ```ebnf
@@ -339,7 +339,6 @@ string_character = ? все символы кроме '"' ? ;
 ```
 
 ## 5. Байткод
-[TODO исправить существующие примеры байт кода]
 * Виртуальная машина использует **стековую** архитектуру.  
 * Каждая инструкция имеет вид: `[opcode - 1B][operands...]`. Типы данных для операндов: `int64`
 * Все числа записываются в **Little Endian**
@@ -664,7 +663,7 @@ RETURN
 
 ## 9. Встроенные функции
 
-### Основные функции ввода-вывода
+### 9.1 Основные функции ввода-вывода
 
 #### `print(значение)`
 Выводит значение в консоль.
@@ -717,7 +716,7 @@ let name = input()
 print("Hello, " + name)
 ```
 
-### Операции с массивами
+### 9.2 Операции с массивами
 
 #### `len(массив)`
 Возвращает длину массива.
@@ -790,7 +789,7 @@ let arr = [1, 2, 3]
 remove(arr, 1)  // Удаляет второй элемент -> arr = [1, 3]
 ```
 
-### Операции с массивами
+### 9.3 Управление потоком
 #### `assert(условие)`
 Проверяет условие и выбрасывает исключение, если оно ложно.
 
@@ -804,6 +803,7 @@ assert(x > 0)  // Ничего не происходит
 assert(x < 0)  // Выбрасывается исключение: Assertion failed
 ```
 
+### 9.4 Математика
 #### `random()`
 Возращает случайное число в диапазоне [0; 1).
 
@@ -886,33 +886,34 @@ fun primes(limit) -> [] {
 #### Массивы
 
 ```kt
-let arr =[1, 2, 3, "string", ["aboba", 1]]     // гетерогенный массив
+let arr = [1, 2, 3, "string", ["aboba", 1]]     // гетерогенный массив
 remove(arr, 1);
 add(arr, 4);
 set(arr, 0, "cringe");
 ```
 
 #### Классы
-```
+```kt
 class User {
-let name = "Ivan";
-let age = 0;
-let score = 0;
+    let name = "Ivan";
+    let age = 0;
+    let score = 0;
 }
 
 method User greet(self) -> unit {
-print("Hello, " + self:name + "!");
-return;
+    print("Hello!");
+    print(self:name);
+    return;
 }
 
 method User change_name(self, new_name) -> unit {
-self:name = new_name;
-return;
+    self:name = new_name;
+    return;
 }
 
 method User add_score(self, points) -> unit {
-self:score = self:score + points;
-return;
+    self:score = self:score + points;
+    return;
 }
 
 fun main() -> unit {
@@ -934,7 +935,7 @@ let user = User;
         i = i + 1;
     }
 
-    print("Score " + user:name + ": " + str(user:score));
+    print(user:score);
     return;
 }
 ```
@@ -959,6 +960,10 @@ let user = User;
 - `UnknownOpcode` - неизвестный код операции (поврежденный байт-код)
 - `OutOfMemory` - недостаточно памяти даже после сборки мусора
 - `ConditionExpired` - ссылка на условие для прыжка истекла
+## 12. Запуск
+
+* опишу.
+
 ----
 Команда ЮМКА \
 Юлия Кулакова, Мария Герилович, Катерина Берендюгина, Аврора Степанюк 
