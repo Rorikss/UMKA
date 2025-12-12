@@ -69,5 +69,10 @@ private:
     void gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb);
     void gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuilder& fb);
     void gen_class_instantiation(const std::string& className, FuncBuilder& fb);
+    
+    void build_function_common(FuncBuilder& fb, const std::vector<std::string>& params, Stmt* body);
+    void emit_push_zero_const(FuncBuilder& fb);
+    int64_t get_field_id_or_error(const std::string& fieldName, FuncBuilder& fb);
+    int64_t get_method_id_or_error(const std::string& methodName);
 };
 }

@@ -35,6 +35,20 @@ static void append_double(std::vector<uint8_t>& buf, double dv) {
 }
 
 
+void BytecodeGenerator::build_function_common(FuncBuilder& fb, const std::vector<std::string>& params, Stmt* body) {
+    for (size_t i = 0; i < params.size(); ++i) {
+        fb.var_index[params.at(i)] = i;
+    }
+    fb.nextVarIndex = params.size();
+    gen_stmt_in_func(body, fb);
+
+    if (fb.code.empty() || fb.code.back() != OP_RETURN) {
+        int64_t idx = fb.add_const(ConstEntry());
+        fb.emit_push_const_index(idx);
+        fb.emit_return();
+    }
+}
+
 void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
     for (auto s: program) {
         if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
@@ -43,42 +57,20 @@ void BytecodeGenerator::build_functions(const std::vector<Stmt*>& program) {
             int64_t fidx = it->second;
             FuncBuilder& fb = funcBuilders.at(fidx);
 
-            for (size_t i = 0; i < fd->params.size(); ++i) {
-                fb.var_index[fd->params.at(i)] = i;
-            }
-            fb.nextVarIndex = fd->params.size();
-            gen_stmt_in_func(fd->body, fb);
-
-            if (fb.code.empty() || fb.code.back() != OP_RETURN) {
-                int64_t idx = fb.add_const(ConstEntry());
-                fb.emit_push_const_index(idx);
-                fb.emit_return();
-            }
+            build_function_common(fb, fd->params, fd->body);
 
             FunctionEntry fe;
             fe.arg_count = fd->params.size();
             fe.local_count = fb.nextVarIndex;
             funcTable.at(fidx) = fe;
         } else if (auto md = dynamic_cast<MethodDefStmt*>(s)) {
-            // Method names are prefixed with class name
             std::string methodFullName = md->class_name + "$" + md->method_name;
             auto it = userFuncIndex.find(methodFullName);
             if (it == userFuncIndex.end()) continue;
             int64_t fidx = it->second;
             FuncBuilder& fb = funcBuilders.at(fidx);
 
-            for (size_t i = 0; i < md->params.size(); ++i) {
-                fb.var_index[md->params.at(i)] = i;
-            }
-            fb.nextVarIndex = md->params.size();
-
-            gen_stmt_in_func(md->body, fb);
-
-            if (fb.code.empty() || fb.code.back() != OP_RETURN) {
-                int64_t idx = fb.add_const(ConstEntry());
-                fb.emit_push_const_index(idx);
-                fb.emit_return();
-            }
+            build_function_common(fb, md->params, md->body);
 
             FunctionEntry fe;
             fe.arg_count = md->params.size();
@@ -259,17 +251,20 @@ void BytecodeGenerator::write_to_file(const std::string& path) {
     for (auto& c : constPool) {
         append_byte(buffer, (uint8_t)c.type);
 
-        if (c.type == ConstEntry::INT) {
-            append_int64(buffer, c._int);
+        switch (c.type) {
+            case ConstEntry::INT:
+                append_int64(buffer, c._int);
+                break;
+            case ConstEntry::DOUBLE:
+                append_double(buffer, c._double);
+                break;
+            case ConstEntry::STRING:
+                append_int64(buffer, c._str.size());
+                buffer.insert(buffer.end(), c._str.begin(), c._str.end());
+                break;
+            case ConstEntry::UNIT:
+                break;
         }
-        else if (c.type == ConstEntry::DOUBLE) {
-            append_double(buffer, c._double);
-        }
-        else if (c.type == ConstEntry::STRING) {
-            append_int64(buffer, c._str.size());
-            buffer.insert(buffer.end(), c._str.begin(), c._str.end());
-        }
-        else if (c.type == ConstEntry::UNIT) {}
     }
 
     for (auto& fe : funcTable) {
@@ -311,6 +306,11 @@ void BytecodeGenerator::write_to_file(const std::string& path) {
               << ", code=" << codeSection.size() << " bytes)\n";
 }
 
+void BytecodeGenerator::emit_push_zero_const(FuncBuilder& fb) {
+    int64_t idx = fb.add_const(ConstEntry((int64_t) 0));
+    fb.emit_push_const_index(idx);
+}
+
 void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
     if (!expr) return;
 
@@ -337,8 +337,7 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
             auto it = fb.var_index.find(id->name);
             if (it == fb.var_index.end()) {
                 std::cerr << "genExpr: unknown local var '" << id->name << "'\n";
-                int64_t idx = fb.add_const(ConstEntry((int64_t) 0));
-                fb.emit_push_const_index(idx);
+                emit_push_zero_const(fb);
                 return;
             }
             fb.emit_load(it->second);
@@ -347,24 +346,21 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
         for (auto el: arr->elems) gen_expr_in_func(el, fb);
         fb.emit_build_arr(arr->elems.size());
     } else if (auto call = dynamic_cast<CallExpr*>(expr)) {
-        if (call->name == "to_int" ||
-            call->name == "to_double" ||
-            call->name == "to_string") {
+        static const std::unordered_map<std::string, uint8_t> castOps = {
+            {"to_int", OP_TO_INT},
+            {"to_double", OP_TO_DOUBLE},
+            {"to_string", OP_TO_STRING}
+        };
+        
+        auto castIt = castOps.find(call->name);
+        if (castIt != castOps.end()) {
             if (call->args.size() != 1) {
                 std::cerr << "Cast '" << call->name << "' requires exactly 1 argument\n";
             }
-
-            if (!call->args.empty()){
+            if (!call->args.empty()) {
                 gen_expr_in_func(call->args.at(0), fb);
             }
-
-            if (call->name == "to_int") {
-                fb.emit_byte(OP_TO_INT);
-            } else if (call->name == "to_double") {
-                fb.emit_byte(OP_TO_DOUBLE);
-            } else {
-                fb.emit_byte(OP_TO_STRING);
-            }
+            fb.emit_byte(castIt->second);
             return;
         }
 
@@ -393,14 +389,19 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
         }
     } else if (auto ue = dynamic_cast<UnaryExpr*>(expr)) {
         gen_expr_in_func(ue->rhs, fb);
-        if (ue->op == '!') fb.emit_byte(OP_NOT);
-        else if (ue->op == '+') {}
-        else if (ue->op == '-') {
-            int64_t idx0 = fb.add_const(ConstEntry((int64_t) 0));
-            fb.emit_push_const_index(idx0);
-            fb.emit_byte(OP_SUB);
-        } else {
-            std::cerr << "genExpr: unknown unary op '" << ue->op << "'\n";
+        switch (ue->op) {
+            case '!':
+                fb.emit_byte(OP_NOT);
+                break;
+            case '+':
+                break;
+            case '-':
+                emit_push_zero_const(fb);
+                fb.emit_byte(OP_SUB);
+                break;
+            default:
+                std::cerr << "genExpr: unknown unary op '" << ue->op << "'\n";
+                break;
         }
     } else if (auto fa = dynamic_cast<FieldAccessExpr*>(expr)) {
         gen_field_access_expr(fa, fb);
@@ -438,8 +439,7 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         if (it == fb.var_index.end()) {
             std::cerr << "Assign to unknown var '" << as->name << "'\n";
             gen_expr_in_func(as->expr, fb);
-            int64_t idx0 = fb.add_const(ConstEntry((int64_t) 0));
-            fb.emit_push_const_index(idx0);
+            emit_push_zero_const(fb);
             fb.emit_byte(OP_POP);
             return;
         }
@@ -455,7 +455,6 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
             gen_stmt_in_func(st, fb); 
         }
     } else if (auto is = dynamic_cast<IfStmt*>(s)) {
-        
         std::string elseL = fb.new_label();
         std::string endL = fb.new_label();
         gen_expr_in_func(is->cond, fb);
@@ -466,7 +465,6 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         if (is->elseb) gen_stmt_in_func(is->elseb, fb);
         fb.place_label(endL);
     } else if (auto ws = dynamic_cast<WhileStmt*>(s)) {
-        
         std::string startL = fb.new_label();
         std::string endL = fb.new_label();
         fb.place_label(startL);
@@ -476,25 +474,28 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
         fb.emit_jmp_place_holder(OP_JMP, startL);
         fb.place_label(endL);
     } else if (auto fs = dynamic_cast<ForStmt*>(s)) {
-        
         if (fs->init) gen_stmt_in_func(fs->init, fb);
+        
         std::string startL = fb.new_label();
         std::string endL = fb.new_label();
         fb.place_label(startL);
-        if (fs->cond) gen_expr_in_func(fs->cond, fb);
-        else {
+        
+        if (fs->cond) {
+            gen_expr_in_func(fs->cond, fb);
+        } else {
             int64_t idx1 = fb.add_const(ConstEntry((int64_t) 1));
             fb.emit_push_const_index(idx1);
         }
+        
         fb.emit_jmp_place_holder(OP_JMP_IF_FALSE, endL);
         gen_stmt_in_func(fs->body, fb);
         if (fs->post) gen_stmt_in_func(fs->post, fb);
         fb.emit_jmp_place_holder(OP_JMP, startL);
         fb.place_label(endL);
     } else if (auto rs = dynamic_cast<ReturnStmt*>(s)) {
-        
-        if (rs->expr) gen_expr_in_func(rs->expr, fb);
-        else {
+        if (rs->expr) {
+            gen_expr_in_func(rs->expr, fb);
+        } else {
             int64_t idx = fb.add_const(ConstEntry());
             fb.emit_push_const_index(idx);
         }
@@ -505,23 +506,34 @@ void BytecodeGenerator::gen_stmt_in_func(Stmt* s, FuncBuilder& fb) {
     } else if (auto mas = dynamic_cast<MemberAssignStmt*>(s)) {
         gen_member_assign_stmt(mas, fb);
     } else {
-        std::cerr << "gen_stmt_in_func: unknown stmt node" << std::endl; std::cerr.flush();
+        std::cerr << "gen_stmt_in_func: unknown stmt node\n";
     }
-    
+}
+
+int64_t BytecodeGenerator::get_field_id_or_error(const std::string& fieldName, FuncBuilder& fb) {
+    auto fieldIDIt = fieldIDs.find(fieldName);
+    if (fieldIDIt == fieldIDs.end()) {
+        std::cerr << "Field access to unknown field '" << fieldName << "'\n";
+        emit_push_zero_const(fb);
+        return -1;
+    }
+    return fieldIDIt->second;
+}
+
+int64_t BytecodeGenerator::get_method_id_or_error(const std::string& methodName) {
+    auto methodIDIt = methodIDs.find(methodName);
+    if (methodIDIt == methodIDs.end()) {
+        std::cerr << "Method call to unknown method '" << methodName << "'\n";
+        return -1;
+    }
+    return methodIDIt->second;
 }
 
 void BytecodeGenerator::gen_field_access_expr(FieldAccessExpr* expr, FuncBuilder& fb) {
     gen_expr_in_func(expr->target, fb);
     
-    auto fieldIDIt = fieldIDs.find(expr->field);
-    if (fieldIDIt == fieldIDs.end()) {
-        std::cerr << "Field access to unknown field '" << expr->field << "'\n";
-        int64_t idx = fb.add_const(ConstEntry((int64_t) 0));
-        fb.emit_push_const_index(idx);
-        return;
-    }
-    
-    int64_t field_id = fieldIDIt->second;
+    int64_t field_id = get_field_id_or_error(expr->field, fb);
+    if (field_id == -1) return;
     
     fb.emit_byte(OP_GET_FIELD);
     fb.emit_int64(field_id);
@@ -531,21 +543,13 @@ void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuild
     auto it = fb.var_index.find(expr->object_name);
     if (it == fb.var_index.end()) {
         std::cerr << "Member access to unknown object '" << expr->object_name << "'\n";
-        int64_t idx = fb.add_const(ConstEntry((int64_t) 0));
-        fb.emit_push_const_index(idx);
+        emit_push_zero_const(fb);
         return;
     }
     fb.emit_load(it->second);
     
-    auto fieldIDIt = fieldIDs.find(expr->field);
-    if (fieldIDIt == fieldIDs.end()) {
-        std::cerr << "Member access to unknown field '" << expr->field << "'\n";
-        int64_t idx = fb.add_const(ConstEntry((int64_t) 0));
-        fb.emit_push_const_index(idx);
-        return;
-    }
-    
-    int64_t field_id = fieldIDIt->second;
+    int64_t field_id = get_field_id_or_error(expr->field, fb);
+    if (field_id == -1) return;
     
     fb.emit_byte(OP_GET_FIELD);
     fb.emit_int64(field_id);
@@ -556,15 +560,7 @@ void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& 
     
     for (auto arg: expr->args) gen_expr_in_func(arg, fb);
     
-    auto methodIDIt = methodIDs.find(expr->method_name);
-    if (methodIDIt == methodIDs.end()) {
-        std::cerr << "Method call to unknown method '" << expr->method_name << "'\n";
-        fb.emit_byte(OP_CALL_METHOD);
-        fb.emit_int64(-1);
-        return;
-    }
-    
-    int64_t method_id = methodIDIt->second;
+    int64_t method_id = get_method_id_or_error(expr->method_name);
     
     fb.emit_byte(OP_CALL_METHOD);
     fb.emit_int64(method_id);
