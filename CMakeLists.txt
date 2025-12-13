@@ -71,10 +71,12 @@ target_include_directories(umka_compiler PRIVATE
 #JIT
 
 add_library(umka_jit
-        UMKA-JIT/jit_runner.cc
+        UMKA-JIT/jit_runner.h
         UMKA-JIT/optimizations/base_optimization.h
         UMKA-JIT/optimizations/const_folding.h
         UMKA-JIT/optimizations/dce.h
+        UMKA-JIT/jit_manager.cpp
+        UMKA-JIT/jit_manager.h
 )
 
 target_include_directories(umka_jit PUBLIC
@@ -129,6 +131,8 @@ add_executable(jit_tests
 
         UMKA-JIT/jit_runner.cc
         UMKA-VM/model/model.cpp
+        UMKA-JIT/jit_manager.cpp
+        UMKA-JIT/jit_manager.h
 )
 
 target_include_directories(jit_tests PRIVATE

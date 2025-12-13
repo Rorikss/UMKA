@@ -3,6 +3,8 @@
 #include "base_optimization.h"
 #include <unordered_set>
 #include <functional>
+#include <limits>
+#include <cstring>
 
 namespace umka::jit {
 
@@ -11,6 +13,7 @@ public:
     void run(
         std::vector<vm::Command>& code,
         std::vector<vm::Constant>& const_pool,
+        std::unordered_map<size_t, vm::FunctionTableEntry>& func_table,
         vm::FunctionTableEntry&
     ) override
     {
@@ -86,8 +89,8 @@ public:
             }
 
             auto op = static_cast<vm::OpCode>(code[i].code);
-            const int consumes = stack_consumed(op, code[i].arg);
-            const int produces = stack_produced(op);
+            const int64_t consumes = stack_consumed(op, code[i].arg, func_table);
+            const int64_t produces = stack_produced(op);
             const bool has_side_effects = is_side_effect(op);
 
             const bool is_needed =
@@ -141,7 +144,11 @@ public:
 
 private:
 
-    static int stack_consumed(vm::OpCode op, int arg) {
+    static int stack_consumed(
+        vm::OpCode op,
+        int64_t arg,
+        const std::unordered_map<size_t, vm::FunctionTableEntry>& func_table
+    ) {
         switch (op) {
             case vm::OpCode::PUSH_CONST:
                 return 0;
@@ -178,7 +185,7 @@ private:
                 return 1;
 
             case vm::OpCode::CALL:
-                return arg;   // arg = число аргументов функции
+                return call_arity(arg, func_table);
 
             case vm::OpCode::BUILD_ARR:
                 return arg;   // N элементов массива
@@ -282,6 +289,36 @@ private:
         int64_t v;
         memcpy(&v, c.data.data(), 8);
         return v;
+    }
+
+    static int call_arity(
+        const int64_t id,
+        const std::unordered_map<size_t, vm::FunctionTableEntry>& func_table
+    ) {
+        switch (id) {
+            case vm::PRINT_FUN: return 1;
+            case vm::LEN_FUN: return 1;
+            case vm::GET_FUN: return 2;
+            case vm::SET_FUN: return 3;
+            case vm::ADD_FUN: return 2;
+            case vm::REMOVE_FUN: return 2;
+            case vm::WRITE_FUN: return 2;
+            case vm::READ_FUN: return 1;
+            case vm::ASSERT_FUN: return 1;
+            case vm::INPUT_FUN: return 0;
+            case vm::RANDOM_FUN: return 0;
+            default:
+                break;
+        }
+
+        if (const auto it = func_table.find(id); it != func_table.end()) {
+            if (it->second.arg_count >= 0 &&
+                it->second.arg_count <= std::numeric_limits<int>::max()) {
+                return static_cast<int>(it->second.arg_count);
+            }
+        }
+        // Unknown arity: treat as side-effect; keep it and avoid UB.
+        return 0;
     }
 };
 

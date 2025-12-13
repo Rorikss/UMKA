@@ -185,6 +185,8 @@ struct Constant {
 struct StackFrame {
     uint64_t name;
     std::vector<Command>::iterator instruction_ptr;
+    std::vector<Command>::iterator begin;
+    std::vector<Command>::iterator end;
     std::unordered_map<int64_t, Reference<Entity>> name_resolver = {};
 };
 

@@ -1,6 +1,5 @@
 #pragma once
 #include <model/model.h>
-#include <runtime/stack_machine.h>
 
 #include <vector>
 
@@ -12,6 +11,7 @@ struct IOptimize {
   virtual void run(
       std::vector<vm::Command>& code,
       std::vector<vm::Constant>& const_pool,
+      std::unordered_map<size_t, vm::FunctionTableEntry>& func_table,
       vm::FunctionTableEntry& meta
   ) = 0;
 };

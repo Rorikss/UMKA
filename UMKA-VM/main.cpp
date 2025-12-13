@@ -5,6 +5,7 @@
 #include <fstream>
 #include <iostream>
 
+
 using namespace umka::vm;
 
 constexpr const char* DEFAULT_BYTECODE_PATH = "program.umka";
@@ -21,8 +22,9 @@ int main(int argc, char* argv[]) {
         }
         
         CommandParser parser;
+
         parser.parse(bytecode_file);
-        
+
         StackMachine<ReleaseMod> vm(parser);
         vm.run([init = false](Command cmd, std::string stack_top) mutable {
             if (!init) {
