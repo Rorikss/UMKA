@@ -406,10 +406,10 @@ class StackMachine
 
     std::pair<Entity, Entity> get_operands_from_stack(const std::string& op_name) {
         CHECK_STACK_EMPTY(op_name);
-        Reference<Entity> lhs = operand_stack.back();
+        Reference<Entity> rhs = operand_stack.back();
         operand_stack.pop_back();
         CHECK_STACK_EMPTY(op_name);
-        Reference<Entity> rhs = operand_stack.back();
+        Reference<Entity> lhs = operand_stack.back();
         operand_stack.pop_back();
         CHECK_REF(lhs);
         CHECK_REF(rhs);
@@ -538,6 +538,23 @@ class StackMachine
         }
         case RANDOM_FUN: {
             create_and_push(make_entity(random()));
+            return true;
+        }
+        case POW_FUN: {
+            auto [base_entity, exp_entity] = get_operands_from_stack("CALL POW");
+            auto base = umka_cast<double>(base_entity);
+            auto exp = umka_cast<double>(exp_entity);
+            create_and_push(make_entity(pow(base, exp)));
+            return true;
+        }
+        case SQRT_FUN: {
+            auto arg = umka_cast<double>(get_operand_from_stack("CALL SQRT"));
+            create_and_push(make_entity(sqrt(arg)));
+            return true;
+        }
+        case CONCAT_FUN: {
+            auto [first, second] = get_operands_from_stack("CALL CONCAT");
+            create_and_push(make_entity(first.to_string() + second.to_string()));
             return true;
         }
         default: 

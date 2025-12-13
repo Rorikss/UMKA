@@ -1,0 +1,21 @@
+fun main() -> unit {
+    let a = input();
+    print(a);
+
+    assert(1 < 2);
+    print("ok!");
+
+    let a = 5;
+    print(sqrt(a));
+    print(pow(a, 2));
+
+    let s1 = "Hello, ";
+    let s2 = "world!";
+    print(concat(s1, s2));
+
+    let a = 10;
+    let b = 20;
+    print(a - b);
+
+    return;
+}

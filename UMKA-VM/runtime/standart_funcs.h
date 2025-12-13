@@ -20,4 +20,6 @@ void set(Entity array, int64_t index, Reference<Entity> elem);
 void umka_assert(Entity& condition);
 std::string input();
 double random();
+double pow(double base, double exp);
+double sqrt(double number);
 }

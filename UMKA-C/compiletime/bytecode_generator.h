@@ -25,12 +25,14 @@ public:
             {"set",        kMaxI64 - 3},
             {"add",        kMaxI64 - 4},
             {"remove",     kMaxI64 - 5},
-
+            {"concat",     kMaxI64 - 6},
             {"write",      kMaxI64 - 7},
             {"read",       kMaxI64 - 8},
             {"assert",     kMaxI64 - 9},
             {"input",      kMaxI64 - 10},
-            {"random",     kMaxI64 - 11}
+            {"random",     kMaxI64 - 11},
+            {"pow",        kMaxI64 - 12},
+            {"sqrt",       kMaxI64 - 13}
     };
 
     static inline const std::unordered_map<std::string, uint8_t> BINOP_MAP = {

@@ -157,18 +157,22 @@ struct FunctionTableEntry {
     FunctionTableEntry() : id(0), code_offset(0), code_offset_end(0), arg_count(0), local_count(0) {}
 };
 
+constexpr static int64_t kMaxI64 = std::numeric_limits<int64_t>::max();
 enum BuiltinFunctionIDs : int64_t {
-    PRINT_FUN = 9223372036854775807LL,
-    LEN_FUN = 9223372036854775806LL,
-    GET_FUN = 9223372036854775805LL,
-    SET_FUN = 9223372036854775804LL,
-    ADD_FUN = 9223372036854775803LL,
-    REMOVE_FUN = 9223372036854775802LL,
-    WRITE_FUN = 9223372036854775800LL,
-    READ_FUN = 9223372036854775799LL,
-    ASSERT_FUN = 9223372036854775798LL,
-    INPUT_FUN = 9223372036854775797LL,
-    RANDOM_FUN = 9223372036854775796LL,
+    PRINT_FUN = kMaxI64,
+    LEN_FUN = kMaxI64 - 1,
+    GET_FUN = kMaxI64 - 2,
+    SET_FUN = kMaxI64 - 3,
+    ADD_FUN = kMaxI64 - 4,
+    REMOVE_FUN = kMaxI64 - 5,
+    CONCAT_FUN = kMaxI64 - 6,
+    WRITE_FUN = kMaxI64 - 7,
+    READ_FUN = kMaxI64 - 8,
+    ASSERT_FUN = kMaxI64 - 9,
+    INPUT_FUN = kMaxI64 - 10,
+    RANDOM_FUN = kMaxI64 - 11,
+    POW_FUN = kMaxI64 - 12,
+    SQRT_FUN = kMaxI64 - 13,
 };
 
 enum ConstantType : uint8_t {

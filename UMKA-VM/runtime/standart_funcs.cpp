@@ -86,4 +86,12 @@ std::string input() {
 double random() {
     return static_cast<double>(std::rand()) / RAND_MAX;
 }
+
+double pow(double base, double exp) {
+    return std::pow(base, exp);
+}   
+
+double sqrt(double number) {
+    return std::sqrt(number);
+}
 }
