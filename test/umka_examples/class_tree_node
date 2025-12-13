@@ -16,9 +16,7 @@ method TreeNode ItemCheck(self) -> int {
     if (self:left == unit) { 
         return self:item; 
     }
-    let left = self:left;
-    let right = self:right;
-    return self:item + left$ItemCheck() - right$ItemCheck();
+    return self:item + self:left$ItemCheck() - self:right$ItemCheck();
 }
 
 fun BottomUpTree(item, depth) -> TreeNode {

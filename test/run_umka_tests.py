@@ -4,9 +4,9 @@ import os
 import subprocess
 import sys
 
-UMKA_COMPILER_PATH = "../cmake-build-debug/bin/umka_compiler"
-UMKA_VM_PATH = "../cmake-build-debug/bin/umka_vm"
-EXAMPLES_DIR = "./umkaExamples"
+UMKA_COMPILER_PATH = "../cmake-build/bin/umka_compiler"
+UMKA_VM_PATH = "../cmake-build/bin/umka_vm"
+EXAMPLES_DIR = "./umka_examples"
 
 def compile_example(example_path):
     try:

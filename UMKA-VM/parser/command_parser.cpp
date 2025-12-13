@@ -182,7 +182,6 @@ bool CommandParser::has_operand(uint8_t opcode) const {
         case OpCode::JMP_IF_TRUE:
         case OpCode::CALL:
         case OpCode::BUILD_ARR:
-        case OpCode::OPCOT:
         case OpCode::REM:
         case OpCode::CALL_METHOD:
         case OpCode::GET_FIELD:
