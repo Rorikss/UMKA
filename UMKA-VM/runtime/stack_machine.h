@@ -48,11 +48,9 @@ class StackMachine
       , garbage_collector()
       , jit_runner(std::make_unique<jit::JitRunner>(commands, const_pool, func_table))
     {
-        // TODO: хочу вынести этот блок вне и создать jit также как парсер, однако вм копирует себе const_pool, а мне
-        // для одной оптимизации он нужен общий
         jit_runner->add_optimization(std::make_unique<jit::ConstFolding>());
         // jit_runner->add_optimization(std::make_unique<jit::DeadCodeElimination>());
-        //  Build lookup maps for fast dispatch
+        
         for (const auto& entry : vmethod_table) {
             vmethod_map[{ entry.class_id, entry.method_id }] = entry.function_id;
         }
@@ -71,7 +69,7 @@ class StackMachine
     using debugger_t = std::function<void(Command, std::string)>;
     void run(debugger_t debugger = [](auto, auto) {}) {
         if constexpr (std::is_same_v<Tag, DebugMod>) {
-            printDebugParsedInfo();
+            print_debug_parsed_info();
         }
 
         while (!stack_of_functions.empty()) {
@@ -128,17 +126,6 @@ class StackMachine
     }
 
     void execute_command(const Command& cmd, StackFrame& current_frame, size_t current_offset) {
-        auto call_void_proc = [this](auto proc) {
-            auto arg = get_operand_from_stack("CALL PROC");
-            proc(arg);
-            create_and_push(make_entity(unit{}));
-        };
-
-        auto call_value_proc = [this](auto proc) {
-            auto arg = get_operand_from_stack("CALL PROC");
-            create_and_push(make_entity(proc(arg)));
-        };
-
         auto call_function = [this](int64_t function_id, const std::string& error_context) {
             if (func_table.size() <= function_id) {
                 throw std::runtime_error("Function not found: " + std::to_string(function_id));
@@ -306,75 +293,11 @@ class StackMachine
                     current_frame.instruction_ptr += cmd.arg;
                 }
                 break;
-            case CALL: {
-                switch (cmd.arg) {
-                    case PRINT_FUN:
-                        call_void_proc([this](auto arg) { print(arg); });
-                        break;
-                    case LEN_FUN:
-                        call_value_proc([this](auto arg) { return len(arg); });
-                        break;
-                    case GET_FUN: {
-                        auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL GET"));
-                        auto arr = get_operand_from_stack("CALL GET");
-                        create_and_push(*get(arr, idx).lock());
-                        break;
-                    }
-                    case SET_FUN: {
-                        auto val = stack_pop();
-                        auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL SET"));
-                        call_void_proc([&](auto arr) { set(arr, idx, val); });
-                        break;
-                    }
-                    case ADD_FUN: {
-                        auto val = stack_pop();
-                        call_void_proc([&](auto arr) { add_elem(arr, val); });
-                        break;
-                    }
-                    case REMOVE_FUN: {
-                        auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL REMOVE"));
-                        call_void_proc([&](auto arr) { remove(arr, idx); });
-                        break;
-                    }
-                    case WRITE_FUN: {
-                        auto content = get_operand_from_stack("CALL WRITE");
-                        call_void_proc([&](auto filename) { write(filename.to_string(), content); });
-                        break;
-                    }
-                    case READ_FUN: {
-                        auto filename = get_operand_from_stack("CALL READ");
-                        std::vector<std::string> lines = read(filename.to_string());
-
-                        Entity array_entity = make_array();
-                        Array& array = *std::get<Owner<Array>>(array_entity.value);
-                        for (size_t i = 0; i < lines.size(); ++i) {
-                            Owner<Entity> line_entity = create(make_entity(lines[i]));
-                            array[i] = line_entity;
-                        }
-
-                        create_and_push(array_entity);
-                        break;
-                    }
-                    case ASSERT_FUN: {
-                        call_void_proc([this](auto arg) { assert(arg); });
-                        break;
-                    }
-                    case INPUT_FUN: {
-                        auto input_value = input();
-                        create_and_push(make_entity(input_value));
-                        break;
-                    }
-                    case RANDOM_FUN: {
-                        create_and_push(make_entity(random()));
-                        break;
-                    }
-                    default: {
-                        call_function(cmd.arg, "function call");
-                        break;
-                    }
+            case CALL: 
+                if (!call_standart_func(cmd.arg)) {
+                    call_function(cmd.arg, "function call");
                 }
                 break;
-            }
             case RETURN: {
                 Reference<Entity> return_value;
                 if (!operand_stack.empty()) {
@@ -546,7 +469,85 @@ class StackMachine
         return umka_cast<bool>(condition);
     }
 
-    void printDebugParsedInfo() {
+    bool call_standart_func(int64_t func_id) {
+        auto call_void_proc = [this](auto proc) {
+            auto arg = get_operand_from_stack("CALL PROC");
+            proc(arg);
+            create_and_push(make_entity(unit{}));
+        };
+
+        auto call_value_proc = [this](auto proc) {
+            auto arg = get_operand_from_stack("CALL PROC");
+            create_and_push(make_entity(proc(arg)));
+        };
+
+        switch (func_id) {
+        case PRINT_FUN:
+            call_void_proc([this](auto arg) { print(arg); });
+            return true;
+        case LEN_FUN:
+            call_value_proc([this](auto arg) { return len(arg); });
+            return true;
+        case GET_FUN: {
+            auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL GET"));
+            auto arr = get_operand_from_stack("CALL GET");
+            create_and_push(*get(arr, idx).lock());
+            return true;
+        }
+        case SET_FUN: {
+            auto val = stack_pop();
+            auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL SET"));
+            call_void_proc([&](auto arr) { set(arr, idx, val); });
+            return true;
+        }
+        case ADD_FUN: {
+            auto val = stack_pop();
+            call_void_proc([&](auto arr) { add_elem(arr, val); });
+            return true;
+        }
+        case REMOVE_FUN: {
+            auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL REMOVE"));
+            call_void_proc([&](auto arr) { remove(arr, idx); });
+            return true;
+        }
+        case WRITE_FUN: {
+            auto content = get_operand_from_stack("CALL WRITE");
+            call_void_proc([&](auto filename) { write(filename.to_string(), content); });
+            return true;
+        }
+        case READ_FUN: {
+            auto filename = get_operand_from_stack("CALL READ");
+            std::vector<std::string> lines = read(filename.to_string());
+
+            Entity array_entity = make_array();
+            Array& array = *std::get<Owner<Array>>(array_entity.value);
+            for (size_t i = 0; i < lines.size(); ++i) {
+                Owner<Entity> line_entity = create(make_entity(lines[i]));
+                array[i] = line_entity;
+            }
+
+            create_and_push(array_entity);
+            return true;
+        }
+        case ASSERT_FUN: {
+            call_void_proc([this](auto arg) { umka_assert(arg); });
+            return true;
+        }
+        case INPUT_FUN: {
+            auto input_value = input();
+            create_and_push(make_entity(input_value));
+            return true;
+        }
+        case RANDOM_FUN: {
+            create_and_push(make_entity(random()));
+            return true;
+        }
+        default: 
+            return false;
+        }
+    }
+
+    void print_debug_parsed_info() {
         auto funcs = std::vector(func_table.begin(), func_table.end());
         std::cout << "Functions:\n";
         for (auto [id, f] : funcs) {
