@@ -91,7 +91,7 @@ class Profiler
     }
 
   private:
-    const size_t threshold = 0;
+    const size_t threshold = 30;
     const std::unordered_map<size_t, FunctionTableEntry>& func_table;
     const std::vector<Command>& commands;
     std::unordered_map<uint64_t, int64_t> function_call_counts;

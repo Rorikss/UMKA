@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <optional>
 #include <ranges>
 #include <string>
 #include <sstream>
@@ -188,6 +189,8 @@ struct StackFrame {
     std::vector<Command>::iterator begin;
     std::vector<Command>::iterator end;
     std::unordered_map<int64_t, Reference<Entity>> name_resolver = {};
+    
+    std::optional<std::vector<Command>> jit_code = std::nullopt;
 };
 
 // Virtual method table entry: (class_id, method_id) -> function_id

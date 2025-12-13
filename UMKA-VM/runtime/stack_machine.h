@@ -6,9 +6,7 @@
 #include "operations.h"
 #include "profiler.h"
 #include "standart_funcs.h"
-#include <jit_runner.h>
-#include <optimizations/const_folding.h>
-#include <optimizations/dce.h>
+#include <jit_manager.h>
 
 #include <cstdint>
 #include <cstring>
@@ -46,10 +44,8 @@ class StackMachine
       , vfield_table(parser.get_vfield_table())
       , profiler(std::make_unique<Profiler>(func_table, commands))
       , garbage_collector()
-      , jit_runner(std::make_unique<jit::JitRunner>(commands, const_pool, func_table))
+      , jit_manager(std::make_unique<jit::JitManager>(commands, const_pool, func_table))
     {
-        jit_runner->add_optimization(std::make_unique<jit::ConstFolding>());
-        // jit_runner->add_optimization(std::make_unique<jit::DeadCodeElimination>());
         
         for (const auto& entry : vmethod_table) {
             vmethod_map[{ entry.class_id, entry.method_id }] = entry.function_id;
@@ -57,12 +53,13 @@ class StackMachine
         for (const auto& entry : vfield_table) {
             vfield_map[{ entry.class_id, entry.field_id }] = entry.field_index;
         }
-        stack_of_functions.emplace_back(StackFrame{ 
+        stack_of_functions.emplace_back(StackFrame{
             .name = 0,
             .instruction_ptr = commands.begin(),
             .begin = commands.begin(),
             .end = commands.end(),
-            .name_resolver = {}
+            .name_resolver = {},
+            .jit_code = std::nullopt
         });
     }
 
@@ -145,19 +142,21 @@ class StackMachine
             new_frame.begin = commands.begin();
             new_frame.end = commands.end();
 
-            auto iter = jit_functions.find(function_id);
-            if (iter != jit_functions.end()) {
-                auto& jit_function = iter->second;
-                new_frame.instruction_ptr = jit_function.code.begin();
-                new_frame.begin = jit_function.code.begin();
-                new_frame.end = jit_function.code.end();
+            // Проверить, есть ли уже скомпилированная версия
+            if (jit_manager->has_jitted(function_id)) {
+                auto jitted_func = jit_manager->try_get_jitted(function_id);
+                if (jitted_func.has_value()) {
+                    const auto& jit_function = jitted_func.value().get();
+                    new_frame.jit_code = jit_function.code;
+                    new_frame.instruction_ptr = new_frame.jit_code->begin();
+                    new_frame.begin = new_frame.jit_code->begin();
+                    new_frame.end = new_frame.jit_code->end();
+                }
             }
-            if (iter == jit_functions.end() && profiler->is_function_hot(function_id)) {
-                auto jit_function = jit_runner->optimize_function(function_id);
-                new_frame.instruction_ptr = jit_function.code.begin();
-                new_frame.begin = jit_function.code.begin();
-                new_frame.end = jit_function.code.end();
-                jit_functions[function_id] = std::move(jit_function);
+            // Запросить JIT-компиляцию для горячих функций
+            else if (profiler->is_function_hot(function_id)) {
+                jit_manager->request_jit(function_id);
+                // Пока компилируется, выполняем оригинальный код
             }
 
             for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
@@ -589,8 +588,7 @@ class StackMachine
     std::vector<StackFrame> stack_of_functions;
     std::vector<Reference<Entity>> operand_stack;
     GarbageCollector<Tag> garbage_collector;
-    std::unique_ptr<jit::JitRunner> jit_runner;
-    std::unordered_map<size_t, jit::JittedFunction> jit_functions;
+    std::unique_ptr<jit::JitManager> jit_manager;
 };
 
 #undef CHECK_STACK_EMPTY
