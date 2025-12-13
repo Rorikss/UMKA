@@ -36,12 +36,12 @@ template<typename Tag = ReleaseMod>
 class StackMachine
 {
   public:
-    StackMachine(const auto& parser)
-      : commands(parser.get_commands())
-      , const_pool(parser.get_const_pool())
-      , func_table(parser.get_func_table())
-      , vmethod_table(parser.get_vmethod_table())
-      , vfield_table(parser.get_vfield_table())
+    StackMachine(auto&& parser)
+      : commands(std::move(parser.extract_commands()))
+      , const_pool(std::move(parser.extract_const_pool()))
+      , func_table(std::move(parser.extract_func_table()))
+      , vmethod_table(std::move(parser.extract_vmethod_table()))
+      , vfield_table(std::move(parser.extract_vfield_table()))
       , profiler(std::make_unique<Profiler>(func_table, commands))
       , garbage_collector()
       , jit_manager(std::make_unique<jit::JitManager>(commands, const_pool, func_table))
@@ -142,7 +142,6 @@ class StackMachine
                 .end = commands.end(),
             };
 
-            // Проверить, есть ли уже скомпилированная версия
             if (jit_manager->has_jitted(function_id)) {
                 auto jitted_func = jit_manager->try_get_jitted(function_id);
                 if (jitted_func.has_value()) {
@@ -155,10 +154,8 @@ class StackMachine
                     };
                 }
             }
-            // Запросить JIT-компиляцию для горячих функций
             else if (profiler->is_function_hot(function_id)) {
                 jit_manager->request_jit(function_id);
-                // Пока компилируется, выполняем оригинальный код
             }
 
             for (int64_t i = entry.arg_count - 1; i >= 0; --i) {

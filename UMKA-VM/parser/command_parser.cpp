@@ -172,6 +172,14 @@ const std::unordered_map<size_t, FunctionTableEntry>& CommandParser::get_func_ta
 const std::vector<VMethodTableEntry>& CommandParser::get_vmethod_table() const { return vmethod_table; }
 const std::vector<VFieldTableEntry>& CommandParser::get_vfield_table() const { return vfield_table; }
 
+std::vector<Command>&& CommandParser::extract_commands() { return std::move(commands); }
+std::vector<Constant>&& CommandParser::extract_const_pool() { return std::move(const_pool); }
+std::unordered_map<size_t, FunctionTableEntry>&& CommandParser::extract_func_table() { 
+    return std::move(func_table); 
+}
+std::vector<VMethodTableEntry>&& CommandParser::extract_vmethod_table() { return std::move(vmethod_table); }
+std::vector<VFieldTableEntry>&& CommandParser::extract_vfield_table() { return std::move(vfield_table); }
+
 bool CommandParser::has_operand(uint8_t opcode) const {
     switch(static_cast<OpCode>(opcode)) {
         case OpCode::PUSH_CONST:

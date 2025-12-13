@@ -52,7 +52,13 @@ public:
     } __attribute__((packed));
 
     void parse(std::istream& bytecode_stream);
-    
+
+    std::vector<Command>&& extract_commands();
+    std::vector<Constant>&& extract_const_pool();
+    std::unordered_map<size_t, FunctionTableEntry>&& extract_func_table();
+    std::vector<VMethodTableEntry>&& extract_vmethod_table();
+    std::vector<VFieldTableEntry>&& extract_vfield_table();
+
     const std::vector<Command>& get_commands() const;
     const std::vector<Constant>& get_const_pool() const;
     const std::unordered_map<size_t, FunctionTableEntry>& get_func_table() const;
