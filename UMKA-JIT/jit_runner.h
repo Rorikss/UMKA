@@ -46,8 +46,9 @@ class JitRunner {
 
       std::vector<vm::Command> local(begin, end);
 
-      for (auto &opt: optimizations)
+      for (auto &opt: optimizations) {
         opt->run(local, const_pool, func_table, meta);
+      }
 
       return JittedFunction{
         std::move(local),

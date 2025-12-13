@@ -181,14 +181,14 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
         if (auto fd = dynamic_cast<FunctionDefStmt*>(s)) {
             if (fd->name == "main") continue;
             if (userFuncIndex.find(fd->name) == userFuncIndex.end()) {
-                userFuncIndex[fd->name] = ++idx;
+                userFuncIndex[fd->name] = idx++;
             } else {
                 std::cerr << "Warning: duplicate function name '" << fd->name << "'\n";
             }
         } else if (auto md = dynamic_cast<MethodDefStmt*>(s)) {
             std::string methodFullName = md->class_name + "$" + md->method_name;
             if (userFuncIndex.find(methodFullName) == userFuncIndex.end()) {
-                int64_t functionID = ++idx;
+                int64_t functionID = idx++;
                 userFuncIndex[methodFullName] = functionID;
                 
                 auto classIDIt = classIDs.find(md->class_name);
@@ -209,9 +209,9 @@ void BytecodeGenerator::collect_functions(const std::vector<Stmt*>& program) {
     }
 
     funcBuilders.clear();
-    funcBuilders.resize(idx + 1, FuncBuilder(&constPool));
+    funcBuilders.resize(idx, FuncBuilder(&constPool));
     funcTable.clear();
-    funcTable.resize(idx + 1);
+    funcTable.resize(idx);
 }
 
 

@@ -59,7 +59,6 @@ class StackMachine
             .begin = commands.begin(),
             .end = commands.end(),
             .name_resolver = {},
-            .jit_code = std::nullopt
         });
     }
 
@@ -136,21 +135,24 @@ class StackMachine
 
             profiler->increment_function_call(function_id);
 
-            StackFrame new_frame;
-            new_frame.name = entry.id;
-            new_frame.instruction_ptr = commands.begin() + entry.code_offset;
-            new_frame.begin = commands.begin();
-            new_frame.end = commands.end();
+            auto new_frame = StackFrame {
+                .name = entry.id,
+                .instruction_ptr = commands.begin() + entry.code_offset,
+                .begin = commands.begin(),
+                .end = commands.end(),
+            };
 
             // Проверить, есть ли уже скомпилированная версия
             if (jit_manager->has_jitted(function_id)) {
                 auto jitted_func = jit_manager->try_get_jitted(function_id);
                 if (jitted_func.has_value()) {
                     const auto& jit_function = jitted_func.value().get();
-                    new_frame.jit_code = jit_function.code;
-                    new_frame.instruction_ptr = new_frame.jit_code->begin();
-                    new_frame.begin = new_frame.jit_code->begin();
-                    new_frame.end = new_frame.jit_code->end();
+                    new_frame = StackFrame{
+                        .name = entry.id,
+                        .instruction_ptr = jit_function.code.begin(),
+                        .begin = jit_function.code.begin(),
+                        .end = jit_function.code.end(),
+                    };
                 }
             }
             // Запросить JIT-компиляцию для горячих функций
@@ -571,7 +573,11 @@ class StackMachine
         }
         std::cout << "\nCommands:\n";
         for (int i = 0; i < commands.size(); ++i) {
-            std::cout << i << " " << (long long)(commands[i].code) << " " << (long long)(commands[i].arg) << "\n";
+            std::cout 
+            << i << " " << std::hex << "0x" 
+            << (int)commands[i].code << std::dec << " " 
+            << (long long)(commands[i].arg) 
+            << "\n";
         }
         std::cout << "\n";
     }

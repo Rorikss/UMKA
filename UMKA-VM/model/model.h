@@ -185,12 +185,10 @@ struct Constant {
 
 struct StackFrame {
     uint64_t name;
-    std::vector<Command>::iterator instruction_ptr;
-    std::vector<Command>::iterator begin;
-    std::vector<Command>::iterator end;
+    std::vector<Command>::const_iterator instruction_ptr;
+    std::vector<Command>::const_iterator begin;
+    std::vector<Command>::const_iterator end;
     std::unordered_map<int64_t, Reference<Entity>> name_resolver = {};
-    
-    std::optional<std::vector<Command>> jit_code = std::nullopt;
 };
 
 // Virtual method table entry: (class_id, method_id) -> function_id
