@@ -1,0 +1,37 @@
+class Granny {
+    let name = "Granny";
+}
+
+class Mother {
+    let name = "Mother";
+    let parent = Granny;
+}
+
+class Child {
+    let name = "Child";
+    let parent = Mother;
+    let grandparent = Granny;
+}
+
+method Granny say(self) -> unit {
+    print(concat(self:name, " says: I'm a granny"));
+}
+
+method Mother say(self) -> unit {
+    print(concat(self:name, " says: I'm a mother"));
+    print(concat("My parent is ", self:parent:name));
+}
+
+method Child say(self) -> unit {
+    print(concat(self:name, " says: I'm a child"));
+    print(concat("My parent is ", self:parent:name));
+    print(concat("My grandparent is ", self:grandparent:name));
+}
+
+let granny = Granny;
+let mother = Mother;
+let child = Child;
+
+granny$say();
+mother$say();
+child$say();
