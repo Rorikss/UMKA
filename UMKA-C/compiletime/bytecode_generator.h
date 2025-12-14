@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <cstdint>
+#include <limits>
 
 #include "parser.hpp"
 #include "../models/ast.h"

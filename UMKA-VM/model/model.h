@@ -3,6 +3,7 @@
 #include <compare>
 #include <concepts>
 #include <cstdint>
+#include <limits>
 #include <map>
 #include <memory>
 #include <optional>

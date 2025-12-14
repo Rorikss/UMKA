@@ -1,6 +1,9 @@
 #pragma once
 
 #include "../model/model.h"
+#include <string>
+#include <variant>
+#include <algorithm>
 #include <exception>
 #include <type_traits>
 #include <charconv>
@@ -62,18 +65,30 @@ T umka_cast(Entity a) {
         } else if constexpr (std::is_same_v<T, std::string>) {
             return a.to_string();
         } else if constexpr (std::is_same_v<std::decay_t<decltype(value)>, std::string> ) {
-            if constexpr (std::is_same_v<T, int64_t>) {
-                return std::stoll(value);
-            } else if constexpr (std::is_same_v<T, double>) {
-                return std::stod(value);
-            } else if constexpr (std::is_same_v<T, bool>) {
+            if constexpr (std::is_same_v<T, bool>) {
+                std::transform(value.begin(), value.end(), value.begin(),
+                    [](unsigned char c){ return std::tolower(c); });
                 if (value == "true") {
                     return true;
                 } else if (value == "false") {
                     return false;
                 }
                 throw std::runtime_error("Bad cast in umka_cast");
-            }
+            } else if constexpr (std::is_same_v<T, int64_t> || std::is_same_v<T, double>) {
+                T x;
+                auto [ptr, ec] = std::from_chars(value.data(), value.data() + value.size(), x);
+                std::string message = "Bad cast in umka_cast";
+                if (ec == std::errc::invalid_argument)
+                    message += " This is not a number";
+                else if (ec == std::errc::result_out_of_range)
+                    message += " Result out of range";
+
+                if (ec != std::errc()) {
+                    throw std::runtime_error(message);
+                }
+
+                return x;
+            } 
             throw std::runtime_error("Bad cast in umka_cast");
         } else {
             throw std::runtime_error("Bad cast in umka_cast");

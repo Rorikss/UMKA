@@ -1,5 +1,6 @@
 #include "standart_funcs.h"
 #include "../model/model.h"
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <ostream>
