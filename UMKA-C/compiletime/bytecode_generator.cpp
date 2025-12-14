@@ -388,15 +388,17 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
             fb.emit_byte(it->second);
         }
     } else if (auto ue = dynamic_cast<UnaryExpr*>(expr)) {
-        gen_expr_in_func(ue->rhs, fb);
         switch (ue->op) {
             case '!':
+                gen_expr_in_func(ue->rhs, fb);
                 fb.emit_byte(OP_NOT);
                 break;
             case '+':
+                gen_expr_in_func(ue->rhs, fb);
                 break;
             case '-':
                 emit_push_zero_const(fb);
+                gen_expr_in_func(ue->rhs, fb);
                 fb.emit_byte(OP_SUB);
                 break;
             default:
