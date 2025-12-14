@@ -38,7 +38,12 @@ std::vector<std::string> read(const std::string& filename) {
 }
 
 int64_t len(Entity entity) {
-    return std::get<Owner<Array>>(entity.value)->size();
+    if (std::holds_alternative<Owner<Array>>(entity.value)) {
+        return std::get<Owner<Array>>(entity.value)->size();
+    } else if (std::holds_alternative<std::string>(entity.value)) {
+        return std::get<std::string>(entity.value).size();
+    }
+    throw std::runtime_error("Invalid type for len()");
 }
 
 void add_elem(Entity array, Reference<Entity> elem) {

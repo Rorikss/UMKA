@@ -344,7 +344,7 @@ class StackMachine
                 break;
             }
             case TO_INT: {
-                auto casted_value = umka_cast<int64_t>(get_operand_from_stack("CAST_TO_INT"));
+                int64_t casted_value = umka_cast<int64_t>(get_operand_from_stack("CAST_TO_INT"));
                 create_and_push(make_entity(casted_value));
                 break;
             }

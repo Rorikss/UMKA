@@ -3,6 +3,7 @@
 #include "../model/model.h"
 #include <exception>
 #include <type_traits>
+#include <charconv>
 
 namespace umka::vm {
 #define if_get_then_apply_op(T, S) \
@@ -55,9 +56,25 @@ Entity unary_applier(Entity a, F op) {
 
 template <typename T>
 T umka_cast(Entity a) {
-    T new_value = std::visit([](auto value) -> T {
-        if constexpr(std::is_convertible_v<std::decay_t<decltype(value)>, T>) {
+    T new_value = std::visit([a](auto value) -> T {
+        if constexpr (std::is_convertible_v<std::decay_t<decltype(value)>, T>) {
             return static_cast<T>(value);
+        } else if constexpr (std::is_same_v<T, std::string>) {
+            return a.to_string();
+        } else if constexpr (std::is_same_v<std::decay_t<decltype(value)>, std::string> ) {
+            if constexpr (std::is_same_v<T, int64_t>) {
+                return std::stoll(value);
+            } else if constexpr (std::is_same_v<T, double>) {
+                return std::stod(value);
+            } else if constexpr (std::is_same_v<T, bool>) {
+                if (value == "true") {
+                    return true;
+                } else if (value == "false") {
+                    return false;
+                }
+                throw std::runtime_error("Bad cast in umka_cast");
+            }
+            throw std::runtime_error("Bad cast in umka_cast");
         } else {
             throw std::runtime_error("Bad cast in umka_cast");
         }

@@ -17,5 +17,17 @@ fun main() -> unit {
     let b = 20;
     print(a - b);
 
+
+    let one = "140";
+    let two = "230";
+    assert(to_int(one) + to_int(two) == 370.000000);
+    let three = "3.14";
+    assert(to_double(three) == 3.14);
+    let line_num = 140;
+    assert(to_string(line_num) == "140");
+    print("ok!");
+
+    let line = "Hello, world!";
+    print(len(line));
     return;
 }

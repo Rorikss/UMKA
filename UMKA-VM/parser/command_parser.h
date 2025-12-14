@@ -36,8 +36,8 @@ enum OpCode : uint8_t {
     CALL_METHOD = 0x50,
     GET_FIELD = 0x51,
     TO_STRING = 0x60,
-    TO_INT = 0x61,
-    TO_DOUBLE = 0x62,
+    TO_DOUBLE = 0x61,
+    TO_INT = 0x62,
 };
 
 class CommandParser {
