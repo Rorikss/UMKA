@@ -22,4 +22,5 @@ std::string input();
 double random();
 double pow(double base, double exp);
 double sqrt(double number);
+void umka_sort(Entity array);
 }

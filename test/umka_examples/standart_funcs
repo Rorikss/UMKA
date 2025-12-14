@@ -1,6 +1,6 @@
 fun main() -> unit {
-    let a = input();
-    print(a);
+    let input_num = to_int(input());
+    print(input_num + 5);
 
     assert(1 < 2);
     print("ok!");
@@ -29,5 +29,13 @@ fun main() -> unit {
 
     let line = "Hello, world!";
     print(len(line));
+
+    let arr = ["octopus", "zebra", "cat", "dog"];
+    sort(arr);
+    print(arr);
+
+    print(max(2, 10));
+    print(min("aboba", "cat"));
+    print(max("aboba", 5));
     return;
 }

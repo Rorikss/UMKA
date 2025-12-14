@@ -100,4 +100,11 @@ double pow(double base, double exp) {
 double sqrt(double number) {
     return std::sqrt(number);
 }
+
+void umka_sort(Entity array) {
+    auto arr = std::get<Owner<Array>>(array.value);
+    std::sort(arr->begin(), arr->end(), [](const auto a, const auto b) {
+        return *a.lock() < *b.lock();
+    });
+}
 }

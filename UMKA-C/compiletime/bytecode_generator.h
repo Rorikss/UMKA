@@ -33,7 +33,10 @@ public:
             {"input",      kMaxI64 - 10},
             {"random",     kMaxI64 - 11},
             {"pow",        kMaxI64 - 12},
-            {"sqrt",       kMaxI64 - 13}
+            {"sqrt",       kMaxI64 - 13},
+            {"min",        kMaxI64 - 14},
+            {"max",        kMaxI64 - 15},
+            {"sort",       kMaxI64 - 16},
     };
 
     static inline const std::unordered_map<std::string, uint8_t> BINOP_MAP = {

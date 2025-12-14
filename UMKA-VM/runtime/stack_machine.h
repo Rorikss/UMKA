@@ -532,8 +532,7 @@ class StackMachine
             return true;
         }
         case INPUT_FUN: {
-            auto input_value = input();
-            create_and_push(make_entity(input_value));
+            create_and_push(make_entity(input()));
             return true;
         }
         case RANDOM_FUN: {
@@ -548,13 +547,26 @@ class StackMachine
             return true;
         }
         case SQRT_FUN: {
-            auto arg = umka_cast<double>(get_operand_from_stack("CALL SQRT"));
-            create_and_push(make_entity(sqrt(arg)));
+            call_value_proc([this](auto arg) { return sqrt(umka_cast<double>(arg)); });
             return true;
         }
         case CONCAT_FUN: {
             auto [first, second] = get_operands_from_stack("CALL CONCAT");
             create_and_push(make_entity(first.to_string() + second.to_string()));
+            return true;
+        }
+        case MIN_FUN: {
+            auto [first, second] = get_operands_from_stack("CALL MIN");
+            create_and_push(std::min(first, second));
+            return true;
+        }
+        case MAX_FUN: {
+            auto [first, second] = get_operands_from_stack("CALL MAX");
+            create_and_push(std::max(first, second));
+            return true;
+        }
+        case SORT_FUN: {
+            call_void_proc([&](auto arr) { umka_sort(arr); });
             return true;
         }
         default: 
