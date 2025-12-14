@@ -121,7 +121,15 @@ add_executable(stack_machine_tests
         UMKA-VM/tests/stack_machine_test.cpp
         UMKA-VM/runtime/standart_funcs.cpp
         UMKA-VM/model/model.cpp
+        UMKA-JIT/jit_runner.cc
+        UMKA-VM/model/model.cpp
+        UMKA-JIT/jit_manager.cpp
+        UMKA-VM/parser/command_parser.cpp
 )
+
+target_include_directories(stack_machine_tests PRIVATE UMKA-VM UMKA-JIT)
+
+target_link_libraries(stack_machine_tests PRIVATE umka_jit)
 
 # ==========================
 # JIT TESTS

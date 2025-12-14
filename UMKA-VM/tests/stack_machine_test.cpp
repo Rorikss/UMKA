@@ -7,18 +7,24 @@ using namespace umka::vm;
 
 class MockCommandParser : public CommandParser {
 public:
-    const std::vector<Command>& get_commands() const { return commands; }
-    const std::vector<Constant>& get_const_pool() const { return const_pool; }
-    const std::unordered_map<size_t, FunctionTableEntry>& get_func_table() const { return func_table; }
+std::vector<Command>&& extract_commands() { return std::move(commands); }
+std::vector<Constant>&& extract_const_pool() { return std::move(const_pool); }
+std::unordered_map<size_t, FunctionTableEntry>&& extract_func_table() { 
+    return std::move(func_table); 
+}
+std::vector<VMethodTableEntry>&& extract_vmethod_table() { return std::move(vmethod_table); }
+std::vector<VFieldTableEntry>&& extract_vfield_table() { return std::move(vfield_table); }
 
     std::vector<Command> commands;
     std::vector<Constant> const_pool;
     std::unordered_map<size_t, FunctionTableEntry> func_table;
+    std::vector<VMethodTableEntry> vmethod_table;
+    std::vector<VFieldTableEntry> vfield_table;
 };
 
 // Helper function to create a debugger that validates instruction execution
 auto make_instruction_validator(const std::vector<uint8_t>& expected_instructions)
-    -> std::tuple<std::shared_ptr<size_t>, StackMachine<>::debugger_t>
+    -> std::tuple<std::shared_ptr<size_t>, StackMachine<DebugMod>::debugger_t>
     {
     auto instruction_index = std::make_shared<size_t>(0);
     auto expected = std::make_shared<std::vector<uint8_t>>(expected_instructions);
@@ -26,12 +32,16 @@ auto make_instruction_validator(const std::vector<uint8_t>& expected_instruction
     return { instruction_index, [instruction_index, expected](Command cmd, std::string stack_top) {
         ASSERT_LT(*instruction_index, expected->size())
             << "Executed more instructions than expected. Current instruction: "
-            << static_cast<int>(cmd.code) << ", stack top: " << stack_top;
-        
-        EXPECT_EQ(cmd.code, (*expected)[*instruction_index])
+            << std::hex
+            << static_cast<int>(cmd.code) << std::dec
+            << ", stack top: " << stack_top;
+
+        EXPECT_EQ((int)cmd.code, (int)(*expected)[*instruction_index])
             << "Instruction mismatch at position " << *instruction_index
-            << ". Expected: " << static_cast<int>((*expected)[*instruction_index])
+            << ". Expected: " << std::hex
+            << static_cast<int>((*expected)[*instruction_index])
             << ", Got: " << static_cast<int>(cmd.code)
+            << std::dec
             << ", Stack top: " << stack_top;
         
         std::cerr << "Stack top: " << stack_top << std::endl;
@@ -72,7 +82,7 @@ protected:
 };
 
 TEST_F(StackMachineTest, Initialization) {
-    StackMachine machine(parser);
+    StackMachine<DebugMod> machine(parser);
     // Basic initialization test
     SUCCEED();
 }
@@ -87,7 +97,7 @@ TEST_F(StackMachineTest, PushConstant) {
 
     auto [calls, validator] = make_instruction_validator({PUSH_CONST, RETURN});
 
-    StackMachine machine(parser);
+    StackMachine<DebugMod> machine(parser);
     machine.run(validator);
     ASSERT_EQ(*calls, 2);
 }
@@ -114,7 +124,7 @@ TEST_F(StackMachineTest, ArithmeticOperations) {
         {PUSH_CONST, PUSH_CONST, ADD, RETURN}
     );
 
-    StackMachine machine(parser);
+    StackMachine<DebugMod> machine(parser);
     machine.run(validator);
     ASSERT_EQ(*calls, 4);
 }
@@ -138,7 +148,7 @@ TEST_F(StackMachineTest, FunctionCallAndReturn) {
     // Create validator for expected instruction sequence
     auto [calls, validator] = make_instruction_validator({CALL, RETURN, RETURN});
 
-    StackMachine machine(parser);
+    StackMachine<DebugMod> machine(parser);
     machine.run(validator);
     ASSERT_EQ(*calls, 3);
 }
@@ -181,7 +191,7 @@ TEST_F(StackMachineTest, FunctionCallSum) {
         CALL, PUSH_CONST, PUSH_CONST, ADD, RETURN, RETURN
     });
 
-    StackMachine machine(parser);
+    StackMachine<DebugMod> machine(parser);
     machine.run(validator);
     ASSERT_EQ(*calls, 6);
 }
@@ -219,10 +229,10 @@ TEST_F(StackMachineTest, LoopExecution) {
     load0.code = LOAD; load0.arg = 0;
     push2.code = PUSH_CONST; push2.arg = 2;
     lt.code = LT;
-    jmp_if_false.code = JMP_IF_FALSE; jmp_if_false.arg = 11;  // Points at RETURN instruction
+    jmp_if_false.code = JMP_IF_FALSE; jmp_if_false.arg = 5;  // Points at RETURN instruction
     push1.code = PUSH_CONST; push1.arg = 1;
     add.code = ADD;
-    jmp.code = JMP; jmp.arg = 2;  // Points to LOAD 0
+    jmp.code = JMP; jmp.arg = -9;  // Points to LOAD 0
     ret.code = RETURN;
     
     parser.commands = {
@@ -251,7 +261,7 @@ TEST_F(StackMachineTest, LoopExecution) {
     // Create validator for expected instruction sequence
     auto [calls, validator] = make_instruction_validator(flow);
 
-    StackMachine machine(parser);
+    StackMachine<DebugMod> machine(parser);
     machine.run(validator);
     ASSERT_EQ(*calls, flow.size());
 }
@@ -301,7 +311,7 @@ TEST_F(StackMachineTest, FunctionCallWithArguments) {
         PUSH_CONST, PUSH_CONST, CALL, LOAD, LOAD, ADD, RETURN, RETURN
     });
 
-    StackMachine machine(parser);
+    StackMachine<DebugMod> machine(parser);
     machine.run(validator);
     ASSERT_EQ(*calls, 8);
 }
