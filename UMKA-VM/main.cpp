@@ -1,10 +1,15 @@
 #include "model/model.h"
 #include "runtime/stack_machine.h"
-#include "runtime/command_parser.h"
+#include "parser/command_parser.h"
+#include "runtime/profiler.h"
 #include <fstream>
 #include <iostream>
 
-constexpr const char* DEFAULT_BYTECODE_PATH = "program.umk";
+
+using namespace umka::vm;
+
+constexpr const char* DEFAULT_BYTECODE_PATH = "program.umka";
+size_t HOT_REGIONS_COUNT = 10;
 
 int main(int argc, char* argv[]) {
     try {
@@ -17,10 +22,26 @@ int main(int argc, char* argv[]) {
         }
         
         CommandParser parser;
+
         parser.parse(bytecode_file);
+
+        StackMachine<ReleaseMod> vm(parser);
+        vm.run([init = false](Command cmd, std::string stack_top) mutable {
+            if (!init) {
+                init = true;
+                std::cout << "Executing command" << std::endl;
+            }
+            std::cout 
+                << std::hex << "0x"
+                << (int)cmd.code 
+                << std::dec
+                << ' ' << cmd.arg 
+                << ' ' << stack_top 
+                << std::endl;
+        });
         
-        StackMachine vm(parser);
-        vm.run();
+        auto profiler = vm.get_profiler();
+        auto hot_regions = profiler->get_hot_regions(HOT_REGIONS_COUNT);
         
         std::cout << "Execution completed successfully" << std::endl;
         return 0;

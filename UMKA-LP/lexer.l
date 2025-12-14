@@ -30,6 +30,9 @@ ESC     \\["\\nrt\\]
 "true"                                  { yylval.boolval = true; return BOOLEAN; }
 "false"                                 { yylval.boolval = false; return BOOLEAN; }
 
+"class"                                 { return CLASS; }
+"method"                                { return METHOD; }
+
 "int"                                   { return TYPE_INT; }
 "double"                                { return TYPE_DOUBLE; }
 "string"                                { return TYPE_STRING; }
@@ -44,7 +47,7 @@ ESC     \\["\\nrt\\]
                                             raw[len] = 0;
                                             // удаляем начальную и конечную кавычку
                                             raw[len-1] = 0;
-                                            char* content = _strdup(raw+1);
+                                            char* content = strdup(raw+1);
                                             free(raw);
                                             yylval.sval = content;
                                             return STRING;
@@ -55,7 +58,7 @@ ESC     \\["\\nrt\\]
 {DIGITS}                                 { yylval.ival = atoll(yytext); return INTEGER; }
 
 
-{ID}                                     { yylval.sval = _strdup(yytext); return IDENT; }
+{ID}                                     { yylval.sval = strdup(yytext); return IDENT; }
 
 [ \t\r\n]+                              { /* skip */ }
 

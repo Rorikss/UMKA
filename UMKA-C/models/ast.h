@@ -3,13 +3,13 @@
 #include <string>
 #include <vector>
 
+
 struct Expr;
 struct Stmt;
 
 using ExprPtr = Expr *;
 using StmtPtr = Stmt *;
 
-// --- Expr ---
 struct Expr {
     virtual ~Expr() {}
 };
@@ -36,6 +36,10 @@ struct BoolExpr : Expr {
     bool b;
 
     BoolExpr(bool bb) : b(bb) {}
+};
+
+struct UnitExpr : Expr {
+    UnitExpr() {}
 };
 
 struct IdentExpr : Expr {
@@ -72,7 +76,6 @@ struct BinaryExpr : Expr {
     BinaryExpr(const std::string& o, ExprPtr l, ExprPtr r) : op(o), left(l), right(r) {}
 };
 
-// --- Stmt ---
 struct Stmt {
     virtual ~Stmt() {}
 };
@@ -136,9 +139,54 @@ struct ReturnStmt : Stmt {
 struct FunctionDefStmt : Stmt {
     std::string name;
     std::vector<std::string> params;
+    std::string ret_type;
     StmtPtr body;
 
-    FunctionDefStmt(const std::string& n, const std::vector<std::string>& p, StmtPtr b) : name(n), params(p), body(b) {}
+    FunctionDefStmt(const std::string& n, const std::vector<std::string>& p, const std::string& rt, StmtPtr b) : name(n), params(p), ret_type(rt), body(b) {}
+};
+
+struct ClassDefStmt : Stmt {
+    std::string name;
+    std::vector<StmtPtr> fields;
+    ClassDefStmt(const std::string& n, const std::vector<StmtPtr>& f):name(n), fields(f){}
+};
+
+struct MethodDefStmt : Stmt {
+    std::string class_name;
+    std::string method_name;
+    std::vector<std::string> params;
+    std::string ret_type;
+    StmtPtr body;
+    MethodDefStmt(const std::string& cn, const std::string& mn, const std::vector<std::string>& p, const std::string& rt, StmtPtr b)
+        : class_name(cn), method_name(mn), params(p), ret_type(rt), body(b) {}
+};
+
+struct FieldAccessExpr : Expr {
+    ExprPtr target;
+    std::string field;
+    FieldAccessExpr(ExprPtr t, const std::string& f): target(t), field(f) {}
+};
+
+struct MethodCallExpr : Expr {
+    ExprPtr target;
+    std::string method_name;
+    std::vector<ExprPtr> args;
+    MethodCallExpr(ExprPtr t, const std::string& m, const std::vector<ExprPtr>& a)
+      : target(t), method_name(m), args(a) {}
+};
+
+struct MemberAccessExpr : Expr {
+    std::string object_name;
+    std::string field;
+    MemberAccessExpr(const std::string& obj, const std::string& f): object_name(obj), field(f) {}
+};
+
+struct MemberAssignStmt : Stmt {
+    std::string object_name;
+    std::string field;
+    ExprPtr expr;
+    MemberAssignStmt(const std::string& obj, const std::string& f, ExprPtr e)
+      : object_name(obj), field(f), expr(e) {}
 };
 
 extern std::vector<StmtPtr> program_stmts;

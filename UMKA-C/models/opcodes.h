@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+namespace umka::compiler {
 enum Opcode : uint8_t {
     OP_PUSH_CONST = 0x01,
     OP_POP = 0x02,
@@ -23,12 +24,15 @@ enum Opcode : uint8_t {
     OP_LTE = 0x1F,
     OP_JMP = 0x20,
     OP_JMP_IF_FALSE = 0x21,
-    OP_JMP_IF_TRUE  = 0x22, // он нам пока не нужен
+    OP_JMP_IF_TRUE  = 0x22,
     OP_CALL = 0x23,
     OP_RETURN = 0x24,
     OP_BUILD_ARR = 0x30,
     OP_OPCOT = 0x40,
+    OP_CALL_METHOD = 0x50,
+    OP_GET_FIELD = 0x51,
     OP_TO_STRING = 0x60,
     OP_TO_DOUBLE = 0x61,
     OP_TO_INT = 0x62
 };
+}

@@ -51,6 +51,10 @@ struct BoolExpr : Expr {
     BoolExpr(bool bb) : b(bb) {}
 };
 
+struct UnitExpr : Expr {
+    UnitExpr() {}
+};
+
 struct IdentExpr : Expr {
     string name;
     IdentExpr(const string& n) : name(n) {}
@@ -78,6 +82,20 @@ struct BinaryExpr : Expr {
     ExprPtr left;
     ExprPtr right;
     BinaryExpr(const string& o, ExprPtr l, ExprPtr r) : op(o), left(l), right(r) {}
+};
+
+struct FieldAccessExpr : Expr {
+    ExprPtr target;
+    string field;
+    FieldAccessExpr(ExprPtr t, const string& f) : target(t), field(f) {}
+};
+
+struct MethodCallExpr : Expr {
+    ExprPtr target;
+    string method;
+    vector<ExprPtr> args;
+    MethodCallExpr(ExprPtr t, const string& m, const vector<ExprPtr>& a)
+        : target(t), method(m), args(a) {}
 };
 
 /* --- операторы (statements) --- */
@@ -132,9 +150,40 @@ struct ReturnStmt : Stmt {
 struct FunctionDefStmt : Stmt {
     string name;
     vector<string> params;
+    string ret_type;
     StmtPtr body;
-    FunctionDefStmt(const string& n, const vector<string>& p, StmtPtr b)
-        : name(n), params(p), body(b) {}
+    FunctionDefStmt(const string& n, const vector<string>& p, const string& rt, StmtPtr b)
+        : name(n), params(p), ret_type(rt), body(b) {}
+};
+
+struct ClassDefStmt : Stmt {
+    string name;
+    vector<StmtPtr> fields;
+    ClassDefStmt(const string& n, const vector<StmtPtr>& f):name(n), fields(f){}
+};
+
+struct MethodDefStmt : Stmt {
+    string class_name;
+    string method_name;
+    vector<string> params;
+    string ret_type;
+    StmtPtr body;
+    MethodDefStmt(const string& cn, const string& mn, const vector<string>& p, const string& rt, StmtPtr b)
+        : class_name(cn), method_name(mn), params(p), ret_type(rt), body(b) {}
+};
+
+struct MemberAccessExpr : Expr {
+    string object_name;
+    string field;
+    MemberAccessExpr(const string& obj, const string& f): object_name(obj), field(f) {}
+};
+
+struct MemberAssignStmt : Stmt {
+    string object_name;
+    string field;
+    ExprPtr expr;
+    MemberAssignStmt(const string& obj, const string& f, ExprPtr e)
+      : object_name(obj), field(f), expr(e) {}
 };
 
 /* --- вспом. контейнеры для списков --- */
@@ -198,6 +247,9 @@ static void print_expr(Expr* e, int indent) {
     } else if (auto be = dynamic_cast<BoolExpr*>(e)) {
         print_indent(indent);
         std::cerr << "Bool: " << (be->b ? "true" : "false") << "\n";
+    } else if (auto ue = dynamic_cast<UnitExpr*>(e)) {
+        print_indent(indent);
+        std::cerr << "Unit\n";
     } else if (auto id = dynamic_cast<IdentExpr*>(e)) {
         print_indent(indent);
         std::cerr << "Ident: " << id->name << "\n";
@@ -209,6 +261,9 @@ static void print_expr(Expr* e, int indent) {
         print_indent(indent);
         std::cerr << "Call: " << ce->name << " (args: " << ce->args.size() << ")\n";
         print_expr_list(ce->args, indent + 1);
+    } else if (auto ma = dynamic_cast<MemberAccessExpr*>(e)) {
+        print_indent(indent);
+        std::cerr << "MemberAccess: object=" << ma->object_name << " field=" << ma->field << "\n";
     } else if (auto ue = dynamic_cast<UnaryExpr*>(e)) {
         print_indent(indent);
         std::cerr << "Unary: '" << ue->op << "'\n";
@@ -222,6 +277,23 @@ static void print_expr(Expr* e, int indent) {
         print_indent(indent);
         std::cerr << " Right:\n";
         print_expr(bex->right, indent + 1);
+    } else if (auto fa = dynamic_cast<FieldAccessExpr*>(e)) {
+        print_indent(indent);
+        std::cerr << "FieldAccess: " << fa->field << "\n";
+        print_indent(indent);
+        std::cerr << " Target:\n";
+        print_expr(fa->target, indent + 1);
+    } else if (auto mc = dynamic_cast<MethodCallExpr*>(e)) {
+        print_indent(indent);
+        std::cerr << "MethodCall: " << mc->method << " (args: " << mc->args.size() << ")\n";
+        print_indent(indent);
+        std::cerr << " Target:\n";
+        print_expr(mc->target, indent + 1);
+        if(!mc->args.empty()){
+            print_indent(indent);
+            std::cerr << " Args:\n";
+            print_expr_list(mc->args, indent + 1);
+        }
     } else {
         print_indent(indent);
         std::cerr << "Unknown Expr node\n";
@@ -243,6 +315,10 @@ static void print_stmt(Stmt* s, int indent) {
         print_indent(indent);
         std::cerr << "Assign: " << as->name << " =\n";
         print_expr(as->expr, indent + 1);
+    } else if (auto mas = dynamic_cast<MemberAssignStmt*>(s)) {
+        print_indent(indent);
+        std::cerr << "MemberAssign: object=" << mas->object_name << " field=" << mas->field << " =\n";
+        print_expr(mas->expr, indent + 1);
     } else if (auto es = dynamic_cast<ExprStmt*>(s)) {
         print_indent(indent);
         std::cerr << "ExprStmt:\n";
@@ -299,10 +375,26 @@ static void print_stmt(Stmt* s, int indent) {
         for (size_t i = 0; i < fd->params.size(); ++i) {
             std::cerr << (i ? ", " : " ") << fd->params[i];
         }
-        std::cerr << " )\n";
+         std::cerr << " ) -> " << fd->ret_type << "\n";
         print_indent(indent);
         std::cerr << " Body:\n";
         print_stmt(fd->body, indent + 1);
+    } else if (auto cd = dynamic_cast<ClassDefStmt*>(s)) {
+        print_indent(indent);
+        std::cerr << "ClassDef: " << cd->name << "\n";
+        print_indent(indent);
+        std::cerr << " Fields:\n";
+        print_stmt_list(cd->fields, indent + 1);
+    } else if (auto md = dynamic_cast<MethodDefStmt*>(s)) {
+        print_indent(indent);
+        std::cerr << "MethodDef: class=" << md->class_name << " name=" << md->method_name << " (params:";
+        for (size_t i = 0; i < md->params.size(); ++i) {
+            std::cerr << (i ? ", " : " ") << md->params[i];
+        }
+        std::cerr << " ) -> " << md->ret_type << "\n";
+        print_indent(indent);
+        std::cerr << " Body:\n";
+        print_stmt(md->body, indent + 1);
     } else {
         print_indent(indent);
         std::cerr << "Unknown Stmt node\n";
@@ -352,11 +444,12 @@ void yyerror(const char* s) {
 }
 
 /* --- типы нетерминалов --- */
-%type <stmt> block_statement statement let_statement assignment_statement expression_statement if_statement while_statement for_statement return_statement function_definition
-%type <expr> expression cat_expression logical_expression logical_or logical_and logical_comparison comparison arithmetic_expression term factor unary_arithmetic arithmetic_primary function_call array_literal
+%type <stmt> block_statement statement let_statement assignment_statement expression_statement if_statement while_statement for_statement return_statement function_definition method_definition class_definition
+%type <expr> expression cat_expression logical_expression logical_or logical_and logical_comparison comparison arithmetic_expression term factor unary_arithmetic arithmetic_primary function_call method_call member_access array_literal primary postfix
 %type <expr_list> expression_list argument_list
 %type <param_list> parameter_list
-%type <stmt_list> statement_list
+%type <stmt_list> statement_list class_body
+%type <sval> return_type
 
 
 /* токены */
@@ -370,6 +463,8 @@ void yyerror(const char* s) {
 %token LET FUN IF ELSE WHILE FOR RETURN PRINT READ WRITE LEN ADD REMOVE GET SET STR INT_TO_DOUBLE DOUBLE_TO_INT
 %token CAT
 %token ARROW
+%token CLASS
+%token METHOD
 %token TYPE_INT
 %token TYPE_DOUBLE
 %token TYPE_STRING
@@ -399,6 +494,8 @@ statement:
     | return_statement ';'                 { $$ = $1; }
     | block_statement                      { $$ = $1; }
     | function_definition                  { $$ = $1; }
+    | class_definition                     { $$ = $1; }
+    | method_definition                    { $$ = $1; }
     ;
 
 /* let and assignment */
@@ -414,6 +511,11 @@ assignment_statement:
         $$ = new AssignStmt(std::string($1), $3);
         free($1);
     }
+  | IDENT ':' IDENT '=' expression {
+          $$ = new MemberAssignStmt(std::string($1), std::string($3), $5);
+          free($1);
+          free($3);
+      }
     ;
 
 /* expression statement */
@@ -475,12 +577,13 @@ for_statement:
 
 /* return type */
 return_type:
-      TYPE_UNIT
-    | TYPE_INT
-    | TYPE_DOUBLE
-    | TYPE_STRING
-    | TYPE_BOOL
-    | '[' ']'   /* array type */
+      TYPE_UNIT         { $$ = strdup("unit"); }
+    | TYPE_INT          { $$ = strdup("int"); }
+    | TYPE_DOUBLE       { $$ = strdup("double"); }
+    | TYPE_STRING       { $$ = strdup("string"); }
+    | TYPE_BOOL         { $$ = strdup("bool"); }
+    | '[' ']'           { $$ = strdup("[]"); } /* array type */
+    | IDENT             { $$ = $1; }
     ;
 
 /* function definition */
@@ -494,8 +597,50 @@ function_definition:
             }
             delete $4;
         }
-        $$ = new FunctionDefStmt(std::string($2), params, $8);
+        std::string rt = $7 ? std::string($7) : std::string("");
+        if($7) free($7);
+        $$ = new FunctionDefStmt(std::string($2), params, rt, $8);
         free($2);
+    }
+  ;
+
+/* class body: только let statements внутри */
+class_body:
+      /* empty */ { $$ = new std::vector<Stmt*>(); }
+    | class_body let_statement ';' {
+          if (!$1) $1 = new std::vector<Stmt*>();
+          $1->push_back($2);
+          $$ = $1;
+      }
+    ;
+
+/* class definition */
+class_definition:
+    CLASS IDENT '{' class_body '}' {
+        // $2 = IDENT (char*); $4 = class_body (vector<Stmt*>*)
+        vector<Stmt*> fields;
+        if ($4) {
+            for (auto s : *$4) fields.push_back(s);
+            delete $4;
+        }
+        $$ = new ClassDefStmt(std::string($2), fields);
+        free($2);
+    }
+  ;
+
+/* method definition */
+method_definition:
+    METHOD IDENT IDENT '(' parameter_list ')' ARROW return_type block_statement {
+        vector<string> params;
+        if ($5) {
+            for (auto p : *$5) { params.push_back(std::string(p)); free(p); }
+            delete $5;
+        }
+        std::string rt = $8 ? std::string($8) : std::string("");
+        if($8) free($8);
+        $$ = new MethodDefStmt(std::string($2), std::string($3), params, rt, $9);
+        free($2);
+        free($3);
     }
   ;
 
@@ -586,15 +731,43 @@ unary_arithmetic:
   | '-' unary_arithmetic { $$ = new UnaryExpr('-', $2); }
   ;
 
-arithmetic_primary:
+primary:
     INTEGER         { $$ = new IntExpr($1); }
   | DOUBLE          { $$ = new DoubleExpr($1); }
   | STRING          { $$ = new StringExpr(string($1)); free($1); }
   | BOOLEAN         { $$ = new BoolExpr($1); }
+  | TYPE_UNIT       { $$ = new UnitExpr(); }
+  | member_access   { $$ = $1; }
+  | method_call     { $$ = $1; }
   | IDENT           { $$ = new IdentExpr(string($1)); free($1); }
   | array_literal   { $$ = $1; }
   | function_call   { $$ = $1; }
   | '(' expression ')' { $$ = $2; }
+  ;
+
+postfix:
+      primary { $$ = $1; }
+    | postfix ':' IDENT {
+            $$ = new FieldAccessExpr($1, string($3));
+            free($3);
+        }
+    | postfix '$' IDENT '(' ')' {
+            $$ = new MethodCallExpr($1, string($3), vector<Expr*>());
+            free($3);
+        }
+    | postfix '$' IDENT '(' argument_list ')' {
+            vector<Expr*> args;
+            if($5){
+                for(auto e : *$5) args.push_back(e);
+                delete $5;
+            }
+            $$ = new MethodCallExpr($1, string($3), args);
+            free($3);
+        }
+   ;
+
+arithmetic_primary:
+    postfix { $$ = $1; }
   ;
 
 /* array literal */
@@ -632,6 +805,36 @@ function_call:
         }
         $$ = new CallExpr(string($1), args);
         free($1);
+    }
+  ;
+
+/* member access */
+member_access:
+    IDENT ':' IDENT {
+        $$ = new MemberAccessExpr(std::string($1), std::string($3));
+        free($1);
+        free($3);
+    }
+  ;
+
+/* method call */
+method_call:
+    IDENT '$' IDENT '(' ')' {
+        Expr* tgt = new IdentExpr(std::string($1));
+        $$ = new MethodCallExpr(tgt, std::string($3), vector<Expr*>());
+        free($1);
+        free($3);
+    }
+  | IDENT '$' IDENT '(' argument_list ')' {
+        vector<Expr*> args;
+        if ($5) {
+            for (auto e : *$5) args.push_back(e);
+            delete $5;
+        }
+        Expr* tgt = new IdentExpr(std::string($1));
+        $$ = new MethodCallExpr(tgt, std::string($3), args);
+        free($1);
+        free($3);
     }
   ;
 

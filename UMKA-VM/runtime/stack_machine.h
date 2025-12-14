@@ -1,14 +1,26 @@
 #pragma once
-#include "model/model.h"
-#include "command_parser.h"
-#include "operations.h"
-#include <cstdint>
-#include <memory>
-#include <string>
-#include <vector>
-#include <stdexcept>
-#include <type_traits>
 
+#include "../garbage_collector/garbage_collector.h"
+#include "../parser/command_parser.h"
+#include "model/model.h"
+#include "operations.h"
+#include "profiler.h"
+#include "standart_funcs.h"
+#include <jit_manager.h>
+
+#include <cstdint>
+#include <cstring>
+#include <functional>
+#include <memory>
+#include <optional>
+#include <ranges>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <unordered_map>
+#include <vector>
+
+namespace umka::vm {
 #define CHECK_REF(ref) \
     if ((ref).expired()) { \
         throw std::runtime_error("Reference expired at " + std::string(__FILE__) + ":" + std::to_string(__LINE__)); \
@@ -19,69 +31,145 @@
         throw std::runtime_error("Stack underflow at operation: " + op_name); \
     }
 
-struct ReleaseMod {};
-struct DebugMod {};
 
-class StackMachine {
-public:
-    StackMachine(const auto& parser)
-        : commands(parser.get_commands()),
-          const_pool(parser.get_const_pool()),
-          func_table(parser.get_func_table())
+template<typename Tag = ReleaseMod>
+class StackMachine
+{
+  public:
+    StackMachine(auto&& parser)
+      : commands(std::move(parser.extract_commands()))
+      , const_pool(std::move(parser.extract_const_pool()))
+      , func_table(std::move(parser.extract_func_table()))
+      , vmethod_table(std::move(parser.extract_vmethod_table()))
+      , vfield_table(std::move(parser.extract_vfield_table()))
+      , profiler(std::make_unique<Profiler>(func_table, commands))
+      , garbage_collector()
+      , jit_manager(std::make_unique<jit::JitManager>(commands, const_pool, func_table))
     {
+        
+        for (const auto& entry : vmethod_table) {
+            vmethod_map[{ entry.class_id, entry.method_id }] = entry.function_id;
+        }
+        for (const auto& entry : vfield_table) {
+            vfield_map[{ entry.class_id, entry.field_id }] = entry.field_index;
+        }
         stack_of_functions.emplace_back(StackFrame{
             .name = 0,
             .instruction_ptr = commands.begin(),
-            .name_resolver = {}
+            .begin = commands.begin(),
+            .end = commands.end(),
+            .name_resolver = {},
         });
     }
 
     using debugger_t = std::function<void(Command, std::string)>;
-    template<typename Tag = ReleaseMod>
-    void run(debugger_t debugger = [](auto, auto){}) {
+    void run(debugger_t debugger = [](auto, auto) {}) {
+        if constexpr (std::is_same_v<Tag, DebugMod>) {
+            print_debug_parsed_info();
+        }
+
         while (!stack_of_functions.empty()) {
             StackFrame& current_frame = stack_of_functions.back();
-            if (current_frame.instruction_ptr >= commands.end()) {
+            if (current_frame.instruction_ptr >= current_frame.end) {
                 stack_of_functions.pop_back();
                 continue;
             }
-            
+
             auto it = current_frame.instruction_ptr;
+            size_t current_offset = std::distance(current_frame.begin, it);
             ++current_frame.instruction_ptr;
+
             if constexpr (std::is_same_v<Tag, DebugMod>) {
                 auto entity = stack_lookup();
-                debugger(*it, entity.has_value()
-                    ? entity.value().to_string() 
-                    : "EMPTY STACK"
-                );
+                debugger(*it, entity.has_value() ? entity.value().to_string() : "EMPTY STACK");
             }
-            execute_command(*it, current_frame);
+            execute_command(*it, current_frame, current_offset);
         }
     }
 
-private:
+    Profiler* get_profiler() { return profiler.get(); }
+
+  private:
+    size_t get_current_function() const {
+        if (!stack_of_functions.empty()) {
+            const StackFrame& frame = stack_of_functions.back();
+            return frame.name;
+        }
+        return 0;
+    }
+
     Entity parse_constant(const Constant& constant) {
         switch (constant.type) {
-            case 0x01: { // int64
+            case TYPE_INT64: {
                 int64_t value;
                 std::memcpy(&value, constant.data.data(), sizeof(int64_t));
                 return make_entity(value);
             }
-            case 0x02: { // double
+            case TYPE_DOUBLE: {
                 double value;
                 std::memcpy(&value, constant.data.data(), sizeof(double));
                 return make_entity(value);
             }
-            case 0x03: { // string
+            case TYPE_STRING: {
                 std::string value(constant.data.begin(), constant.data.end());
                 return make_entity(value);
             }
+            case TYPE_UNIT:
+                return make_entity(unit{});
             default:
                 throw std::runtime_error("Unknown constant type");
         }
     }
 
-    void execute_command(const Command& cmd, StackFrame& current_frame) {
+    void execute_command(const Command& cmd, StackFrame& current_frame, size_t current_offset) {
+        auto call_function = [this](int64_t function_id, const std::string& error_context) {
+            if (func_table.size() <= function_id) {
+                throw std::runtime_error("Function not found: " + std::to_string(function_id));
+            }
+
+            const FunctionTableEntry& entry = func_table[function_id];
+            if (entry.code_offset < 0 || entry.code_offset >= commands.size() || entry.code_offset_end < 0 ||
+                entry.code_offset_end > commands.size() || entry.code_offset >= entry.code_offset_end) {
+                throw std::runtime_error("Invalid function code range");
+            }
+
+            profiler->increment_function_call(function_id);
+
+            auto new_frame = StackFrame {
+                .name = entry.id,
+                .instruction_ptr = commands.begin() + entry.code_offset,
+                .begin = commands.begin(),
+                .end = commands.end(),
+            };
+
+            if (jit_manager->has_jitted(function_id)) {
+                auto jitted_func = jit_manager->try_get_jitted(function_id);
+                if (jitted_func.has_value()) {
+                    const auto& jit_function = jitted_func.value().get();
+                    new_frame = StackFrame{
+                        .name = entry.id,
+                        .instruction_ptr = jit_function.code.begin(),
+                        .begin = jit_function.code.begin(),
+                        .end = jit_function.code.end(),
+                    };
+                }
+            }
+            else if (profiler->is_function_hot(function_id)) {
+                jit_manager->request_jit(function_id);
+            }
+
+            for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
+                if (operand_stack.empty()) {
+                    throw std::runtime_error("Not enough arguments for " + error_context);
+                }
+                Reference<Entity> arg_ref = operand_stack.back();
+                operand_stack.pop_back();
+                new_frame.name_resolver[i] = arg_ref;
+            }
+
+            stack_of_functions.push_back(new_frame);
+        };
+
         auto BinaryOperationDecoratorWithApplier = [machine = this](const std::string& op_name, auto f, auto applier) {
             auto [lhs, rhs] = machine->get_operands_from_stack(op_name);
             Entity result = applier(lhs, rhs, f);
@@ -100,12 +188,7 @@ private:
 
         auto CompareOperationDecorator = [BinaryOperationDecoratorWithApplier](auto f) {
             BinaryOperationDecoratorWithApplier(
-                "Ordering",
-                f,
-                [](const Entity& a, const Entity& b, auto f) {
-                    return Entity(f(a, b));
-                }
-            );
+              "Ordering", f, [](const Entity& a, const Entity& b, auto f) { return Entity(f(a, b)); });
         };
 
         switch (cmd.code) {
@@ -114,7 +197,7 @@ private:
                 if (const_index < 0 || const_index >= const_pool.size()) {
                     throw std::runtime_error("Constant index out of bounds");
                 }
-                
+
                 Entity constant_entity = parse_constant(const_pool[const_index]);
                 create_and_push(constant_entity);
                 break;
@@ -128,7 +211,7 @@ private:
                 CHECK_STACK_EMPTY(std::string("STORE"));
                 Reference<Entity> ref = operand_stack.back();
                 operand_stack.pop_back();
-                
+
                 if (stack_of_functions.empty()) {
                     throw std::runtime_error("No active stack frame");
                 }
@@ -160,7 +243,7 @@ private:
             case DIV:
                 BinaryOperationDecorator("DIV", [](auto a, auto b) { return a / b; });
                 break;
-            case MOD: {
+            case REM: {
                 auto f = [](auto a, auto b) { return a % b; };
                 BinaryOperationDecoratorWithApplier("REM", f, mod_applier<decltype(f)>);
                 break;
@@ -193,40 +276,26 @@ private:
                 CompareOperationDecorator([](auto a, auto b) { return a <= b; });
                 break;
             case JMP:
-                current_frame.instruction_ptr = commands.begin() + cmd.arg;
+                profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
+                current_frame.instruction_ptr += cmd.arg;
                 break;
             case JMP_IF_FALSE:
                 if (!jump_condition()) {
-                    current_frame.instruction_ptr = commands.begin() + cmd.arg;
+                    profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
+                    current_frame.instruction_ptr += cmd.arg;
                 }
                 break;
             case JMP_IF_TRUE:
                 if (jump_condition()) {
-                    current_frame.instruction_ptr = commands.begin() + cmd.arg;
+                    profiler->record_backward_jump(current_offset, cmd.arg, get_current_function());
+                    current_frame.instruction_ptr += cmd.arg;
                 }
                 break;
-            case CALL: {
-                if (func_table.size() <= cmd.arg) {
-                    throw std::runtime_error("Function not found: " + std::to_string(cmd.arg));
+            case CALL: 
+                if (!call_standart_func(cmd.arg)) {
+                    call_function(cmd.arg, "function call");
                 }
-
-                const FunctionTableEntry& entry = func_table[cmd.arg];
-                StackFrame new_frame;
-                new_frame.name = entry.id;
-                new_frame.instruction_ptr = commands.begin() + entry.code_offset;
-                
-                for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
-                    if (operand_stack.empty()) {
-                        throw std::runtime_error("Not enough arguments for function call");
-                    }
-                    Reference<Entity> arg_ref = operand_stack.back();
-                    operand_stack.pop_back();
-                    new_frame.name_resolver[i] = arg_ref;
-                }
-                
-                stack_of_functions.push_back(new_frame);
                 break;
-            }
             case RETURN: {
                 Reference<Entity> return_value;
                 if (!operand_stack.empty()) {
@@ -234,12 +303,12 @@ private:
                     operand_stack.pop_back();
                     CHECK_REF(return_value);
                 }
-                
+
                 if (stack_of_functions.empty()) {
                     throw std::runtime_error("No frame to return from");
                 }
                 stack_of_functions.pop_back();
-                
+
                 if (!return_value.expired() && !stack_of_functions.empty()) {
                     operand_stack.push_back(return_value);
                 }
@@ -251,21 +320,22 @@ private:
                     throw std::runtime_error("Not enough operands for BUILD_ARR");
                 }
 
-                std::map<int, Reference<Entity>> array;
-                for (size_t i = 0; i < count; ++i) {
+                Entity array_entity = make_array();
+                Array& array = *std::get<Owner<Array>>(array_entity.value);
+                array.resize(count);
+                for (int64_t i = count - 1; i >= 0; --i) {
                     Reference<Entity> ref = operand_stack.back();
                     operand_stack.pop_back();
                     CHECK_REF(ref);
                     array[i] = ref;
                 }
 
-                Entity array_entity = make_entity(array);
-                create_and_push(array_entity);
+                create_and_push(std::move(array_entity));
                 break;
             }
             case OPCOT: {
-                auto operand = get_operand_from_stack("OPCOT");
-                create_and_push(make_entity(operand.is_unit()));
+                auto [lhs, rhs] = get_operands_from_stack("OPCOT");
+                create_and_push(lhs.is_unit() ? rhs : lhs);
                 break;
             }
             case TO_STRING: {
@@ -274,7 +344,7 @@ private:
                 break;
             }
             case TO_INT: {
-                auto casted_value = umka_cast<int64_t>(get_operand_from_stack("CAST_TO_INT"));
+                int64_t casted_value = umka_cast<int64_t>(get_operand_from_stack("CAST_TO_INT"));
                 create_and_push(make_entity(casted_value));
                 break;
             }
@@ -283,8 +353,54 @@ private:
                 create_and_push(make_entity(casted_value));
                 break;
             }
+            case CALL_METHOD: {
+                int64_t method_id = cmd.arg;
+
+                Entity obj = *operand_stack.back().lock();
+                auto arr = std::get<Owner<Array>>(obj.value);
+
+                Reference<Entity> class_id_ref = (*arr)[0];
+                CHECK_REF(class_id_ref);
+                int64_t class_id = umka_cast<int64_t>(*class_id_ref.lock());
+
+                auto key = std::make_pair(class_id, method_id);
+                auto it = vmethod_map.find(key);
+                if (it == vmethod_map.end()) {
+                    throw std::runtime_error("CALL_METHOD: method not found for class_id=" + std::to_string(class_id) +
+                                             ", method_id=" + std::to_string(method_id));
+                }
+
+                int64_t function_id = it->second;
+
+                call_function(function_id, "method call");
+                break;
+            }
+            case GET_FIELD: {
+                int64_t field_id = cmd.arg;
+
+                Entity obj = get_operand_from_stack("GET_FIELD");
+                Owner<Array>& arr = std::get<Owner<Array>>(obj.value);
+
+                Reference<Entity> class_id_ref = (*arr)[0];
+                CHECK_REF(class_id_ref);
+                int64_t class_id = umka_cast<int64_t>(*class_id_ref.lock());
+
+                auto key = std::make_pair(class_id, field_id);
+                auto it = vfield_map.find(key);
+                if (it == vfield_map.end()) {
+                    throw std::runtime_error("GET_FIELD: field not found for class_id=" + std::to_string(class_id) +
+                                             ", field_id=" + std::to_string(field_id));
+                }
+
+                int64_t field_index = it->second;
+
+                Reference<Entity> field_ref = get(obj, field_index);
+                operand_stack.push_back(field_ref);
+                break;
+            }
             default:
-                throw std::runtime_error("Unknown opcode: " + std::to_string(cmd.code));
+                throw std::runtime_error("Unknown opcode: " + std::to_string(cmd.code) + " at " +
+                                         std::to_string(current_offset));
         }
     }
 
@@ -297,7 +413,7 @@ private:
         operand_stack.pop_back();
         CHECK_REF(lhs);
         CHECK_REF(rhs);
-        return {*lhs.lock(), *rhs.lock()};
+        return { *lhs.lock(), *rhs.lock() };
     }
 
     Entity get_operand_from_stack(const std::string& op_name) {
@@ -308,6 +424,13 @@ private:
         return *operand.lock();
     }
 
+    Reference<Entity> stack_pop() {
+        CHECK_STACK_EMPTY(std::string("STACK_POP"));
+        Reference<Entity> operand = operand_stack.back();
+        operand_stack.pop_back();
+        return operand;
+    }
+
     std::optional<Entity> stack_lookup() {
         if (operand_stack.empty()) {
             return std::nullopt;
@@ -315,27 +438,179 @@ private:
         return *operand_stack.back().lock();
     }
 
-    void create_and_push(Entity result) {
-        heap.push_back(std::make_shared<Entity>(std::move(result)));
-        operand_stack.push_back(heap.back());
+    Owner<Entity> create(Entity result) {
+        size_t entity_size = GarbageCollector<Tag>::calculate_entity_size(result);
+
+        if (garbage_collector.should_collect()) {
+            garbage_collector.collect(heap, operand_stack, stack_of_functions);
+            if (garbage_collector.should_collect()) {
+                throw std::runtime_error("OutOfMemory: Garbage collection did not free enough memory");
+            }
+        }
+
+        heap.emplace_back(std::make_shared<Entity>(std::move(result)));
+        garbage_collector.add_allocated_bytes(entity_size);
+        return heap.back();
+    }
+
+    void create_and_push(Entity result) { 
+        operand_stack.push_back(create(std::move(result))); 
     }
 
     bool jump_condition() {
         CHECK_STACK_EMPTY(std::string("JUMP_CONDITION"));
         Reference<Entity> condition_ref = operand_stack.back();
         operand_stack.pop_back();
-        if (condition_ref.expired()) throw std::runtime_error("Condition expired");
+        if (condition_ref.expired())
+            throw std::runtime_error("Condition expired");
         Entity condition = *condition_ref.lock();
         return umka_cast<bool>(condition);
     }
 
+    bool call_standart_func(int64_t func_id) {
+        auto call_void_proc = [this](auto proc) {
+            auto arg = get_operand_from_stack("CALL PROC");
+            proc(arg);
+            create_and_push(make_entity(unit{}));
+        };
+
+        auto call_value_proc = [this](auto proc) {
+            auto arg = get_operand_from_stack("CALL PROC");
+            create_and_push(make_entity(proc(arg)));
+        };
+
+        switch (func_id) {
+        case PRINT_FUN:
+            call_void_proc([this](auto arg) { print(arg); });
+            return true;
+        case LEN_FUN:
+            call_value_proc([this](auto arg) { return len(arg); });
+            return true;
+        case GET_FUN: {
+            auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL GET"));
+            auto arr = get_operand_from_stack("CALL GET");
+            create_and_push(*get(arr, idx).lock());
+            return true;
+        }
+        case SET_FUN: {
+            auto val = stack_pop();
+            auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL SET"));
+            call_void_proc([&](auto arr) { set(arr, idx, val); });
+            return true;
+        }
+        case ADD_FUN: {
+            auto val = stack_pop();
+            call_void_proc([&](auto arr) { add_elem(arr, val); });
+            return true;
+        }
+        case REMOVE_FUN: {
+            auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL REMOVE"));
+            call_void_proc([&](auto arr) { remove(arr, idx); });
+            return true;
+        }
+        case WRITE_FUN: {
+            auto content = get_operand_from_stack("CALL WRITE");
+            call_void_proc([&](auto filename) { write(filename.to_string(), content); });
+            return true;
+        }
+        case READ_FUN: {
+            auto filename = get_operand_from_stack("CALL READ");
+            std::vector<std::string> lines = read(filename.to_string());
+
+            Entity array_entity = make_array();
+            Array& array = *std::get<Owner<Array>>(array_entity.value);
+            for (size_t i = 0; i < lines.size(); ++i) {
+                Owner<Entity> line_entity = create(make_entity(lines[i]));
+                array[i] = line_entity;
+            }
+
+            create_and_push(array_entity);
+            return true;
+        }
+        case ASSERT_FUN: {
+            call_void_proc([this](auto arg) { umka_assert(arg); });
+            return true;
+        }
+        case INPUT_FUN: {
+            auto input_value = input();
+            create_and_push(make_entity(input_value));
+            return true;
+        }
+        case RANDOM_FUN: {
+            create_and_push(make_entity(random()));
+            return true;
+        }
+        case POW_FUN: {
+            auto [base_entity, exp_entity] = get_operands_from_stack("CALL POW");
+            auto base = umka_cast<double>(base_entity);
+            auto exp = umka_cast<double>(exp_entity);
+            create_and_push(make_entity(pow(base, exp)));
+            return true;
+        }
+        case SQRT_FUN: {
+            auto arg = umka_cast<double>(get_operand_from_stack("CALL SQRT"));
+            create_and_push(make_entity(sqrt(arg)));
+            return true;
+        }
+        case CONCAT_FUN: {
+            auto [first, second] = get_operands_from_stack("CALL CONCAT");
+            create_and_push(make_entity(first.to_string() + second.to_string()));
+            return true;
+        }
+        default: 
+            return false;
+        }
+    }
+
+    void print_debug_parsed_info() {
+        auto funcs = std::vector(func_table.begin(), func_table.end());
+        std::cout << "Functions:\n";
+        for (auto [id, f] : funcs) {
+            std::cout << id << " " << f.id << ' ' << '[' << f.code_offset << ", " << f.code_offset_end << "] " << "\n";
+        }
+
+        std::cout << "\nVirtual Method Table:\n";
+        for (const auto& entry : vmethod_table) {
+            std::cout << "class_id=" << entry.class_id << ", method_id=" << entry.method_id
+                      << " -> function_id=" << entry.function_id << "\n";
+        }
+
+        std::cout << "\nVirtual Field Table:\n";
+        for (const auto& entry : vfield_table) {
+            std::cout << "class_id=" << entry.class_id << ", field_id=" << entry.field_id
+                      << " -> field_index=" << entry.field_index << "\n";
+        }
+
+        std::cout << "\nConsts\n";
+        for (int id = 0; id < (int)const_pool.size(); ++id) {
+            std::cout << id << " " << parse_constant(const_pool[id]).to_string() << "\n";
+        }
+        std::cout << "\nCommands:\n";
+        for (int i = 0; i < commands.size(); ++i) {
+            std::cout 
+            << i << " " << std::hex << "0x" 
+            << (int)commands[i].code << std::dec << " " 
+            << (long long)(commands[i].arg) 
+            << "\n";
+        }
+        std::cout << "\n";
+    }
+
     std::vector<Command> commands;
     std::vector<Constant> const_pool;
-    std::vector<FunctionTableEntry> func_table;
+    std::unordered_map<size_t, FunctionTableEntry> func_table;
+    std::vector<VMethodTableEntry> vmethod_table;
+    std::vector<VFieldTableEntry> vfield_table;
+    std::map<std::pair<int64_t, int64_t>, int64_t> vmethod_map;
+    std::map<std::pair<int64_t, int64_t>, int64_t> vfield_map;
+    std::unique_ptr<Profiler> profiler;
     std::vector<Owner<Entity>> heap = {};
     std::vector<StackFrame> stack_of_functions;
     std::vector<Reference<Entity>> operand_stack;
+    GarbageCollector<Tag> garbage_collector;
+    std::unique_ptr<jit::JitManager> jit_manager;
 };
 
 #undef CHECK_STACK_EMPTY
 #undef CHECK_REF
+}

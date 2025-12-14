@@ -3,8 +3,9 @@
 #include <cstdint>
 #include <string>
 
+namespace umka::compiler {
 struct ConstEntry {
-    enum Type : uint8_t { INT = 1, DOUBLE = 2, STRING = 3 } type;
+    enum Type : uint8_t { INT = 1, DOUBLE = 2, STRING = 3, UNIT = 4 } type;
     int64_t _int{};
     double _double{};
     std::string _str;
@@ -12,12 +13,13 @@ struct ConstEntry {
     ConstEntry(int64_t v)  : type(INT), _int(v) {}
     ConstEntry(double v)   : type(DOUBLE), _double(v) {}
     ConstEntry(const std::string& ss) : type(STRING), _str(ss) {}
-    ConstEntry() = default;
+    ConstEntry() : type(UNIT) {}
 };
 
 struct FunctionEntry {
-    int64_t code_offset_beg{0};
-    int64_t code_offset_end{0};
+    int64_t instruction_offset_beg{0};
+    int64_t instruction_offset_end{0};
     int64_t arg_count{0};
     int64_t local_count{0};
 };
+}

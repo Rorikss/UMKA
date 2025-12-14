@@ -1,7 +1,6 @@
-# UMKA
+# <img src="logo.png" alt="UMKA Logo" width="60" height="75" style="vertical-align: middle;"> <span style="font-size: 2em; vertical-align: middle; color: ">UMKA</span>
 
-Минималистичный императивный язык программирования со статической типизацией, включающий виртуальную
-машину со сборщиком мусора и JIT-компилятором.
+Минималистичный императивный язык программирования.
 
 ## Особенности
 
@@ -9,6 +8,55 @@
 - **Стековая виртуальная машина** - эффективная байткод-интерпретация
 - **Автоматическое управление памятью** - сборщик мусора Mark-and-Sweep
 - **JIT-компиляция** - оптимизация "горячего" кода во время выполнения
+- Поддержка **объектного программирования**
+
+## Оглавление
+- [1. Составляющие](#1-составляющие)
+  - [UMKA-P - Парсер](#umka-p---парсер)
+  - [UMKA-C - Компилятор](#umka-c---компилятор)
+  - [UMKA-VM - Виртуальная машина](#umka-vm---виртуальная-машина)
+  - [UMKA-JIT - JIT-компилятор](#umka-jit---jit-компилятор)
+- [2. Типы данных](#2-типы-данных)
+  - [2.1 Встроенные типы](#21-встроенные-типы)
+  - [2.2 Пользовательские типы](#22-пользовательские-типы)
+- [3. Синтаксис](#3-синтаксис)
+  - [3.1 Переменные](#31-переменные)
+  - [3.2 Присваивание](#32-присваивание)
+  - [3.3 Арифметика](#33-арифметика)
+  - [3.4 Сравнения](#34-сравнения)
+  - [3.5 Логические операции](#35-логические-операции)
+  - [3.6 Условные операторы](#36-условные-операторы)
+  - [3.7 Циклы](#37-циклы)
+  - [3.8 Массивы](#38-массивы)
+  - [3.9 Функции](#39-функции)
+  - [3.10 Встроенные функции](#310-встроенные-функции)
+  - [3.11 Комментарии](#311-комментарии)
+  - [3.12 Классы](#312-классы)
+  - [3.13 Список зарезервированных слов](#313-список-зарезервированных-слов)
+- [4. Встроенные функции](#4-встроенные-функции)
+  - [4.1 Основные функции ввода-вывода](#41-основные-функции-ввода-вывода)
+  - [4.2 Операции с массивами](#42-операции-с-массивами)
+  - [4.3 Управление потоком](#43-управление-потоком)
+  - [4.4 Математика](#44-математика)
+  - [4.5 Строки](#45-строки)
+- [5. Примеры программ](#5-примеры-программ)
+- [6. Грамматика EBNF](#6-грамматика-ebnf)
+- [7. Байткод](#7-байткод)
+  - [Описание](#описание)
+  - [Примеры](#примеры)
+- [8. Стековая машина и память](#8-стековая-машина-и-память)
+  - [Стековая машина](#стековая-машина)
+  - [Переменные и типы](#переменные-и-типы)
+  - [Функции и аргументы](#функции-и-аргументы)
+- [9. Сборка мусора](#9-сборка-мусора)
+- [10. JIT-компиляция](#10-jit-компиляция)
+  - [Оптимизации](#оптимизации)
+  - [Возможные оптимизации](#возможные-оптимизации)
+- [11. Поведение языка (ошибки)](#11-поведение-языка-ошибки)
+  - [Обработка ошибок в UMKA](#обработка-ошибок-в-umka)
+  - [Типы ошибок в UMKA](#типы-ошибок-в-umka)
+  - [Рекомендации по обработке ошибок](#рекомендации-по-обработке-ошибок)
+- [12. Запуск](#12-запуск)
 
 ## 1. Составляющие:
 
@@ -33,8 +81,6 @@
 
 - Получает на вход абстрактное синтаксическое дерево от парсера
 - Преобразует дерево в последовательность низкоуровневых инструкций байткода
-- Выполняет статические оптимизации: удаление неиспользуемого кода [??]ля отладки и работы системы
-  управления памятью
 - Формирует готовый байткод для выполнения в виртуальной машине
 
 #### **UMKA-VM** - Виртуальная машина
@@ -46,7 +92,7 @@
 - Получает на вход байткод от компилятора
 - Интерпретирует инструкции байткода последовательно, эмулируя работу процессора
 - Управляет памятью программы: выделение и освобождение объектов в куче
-- Реализация автоматического управления памятью посредством сборщика мусора (Garbage Collector)
+- Реализует автоматическое управление памятью посредством сборщика мусора (Garbage Collector)
 - Собирает статистику выполнения для идентификации часто используемых участков кода
 - Обеспечивает выполнение встроенных функций
 
@@ -64,6 +110,7 @@
 - Обеспечивает переход на выполнение сгенерированного машинного кода
 
 ## 2. Типы данных
+### 2.1 Встроенные типы
 | Тип      | Описание                  | Пример                            |
 |----------|---------------------------|-----------------------------------|
 | `int`    | Целое число (64-битное)   | `42`, `-10`, `0`                  |
@@ -71,7 +118,11 @@
 | `string` | Строка UTF-8              | `"hello"`, `"test"`               |
 | `bool`   | Логический тип            | `true`, `false`                   |
 | `[]`     | Массив элементов          | `[1, 2, "a"]`, `["a", [1, 2, 3]]` |
-| `unit`   | Отсутствие значения       | `return;`                         |
+| `unit`   | Отсутствие значимой информации       | `unit;`                         |
+### 2.2 Пользовательские типы
+UMKA поддерживает объектное программирование. Пользователь может описывать свои структуры данных - классы. Кроме того, язык обеспечивает полиморфизм по методам и полям классов.
+
+С примерами использования классов можно ознакомиться ниже.
 
 ## 3. Синтаксис
 
@@ -83,6 +134,7 @@ let f = 0.1; // f = 1. и f = .1 запрещено
 let text = "hello";
 let flag = true;
 let arr = [1, 2, 3];
+let none = unit;
 ```
 
 #### 3.2 Присваивание
@@ -95,7 +147,6 @@ set(arr, 0, 14);
 ```
 
 #### 3.3 Арифметика
-
 ```
 let add = 5 + 3;   // сложение
 let diff = 8 - 2;  // вычитание
@@ -127,6 +178,10 @@ if (x > 10) {
 } else {
     print("not ok");
 }
+
+let none = unit;
+let res = none ^-^ "empty";  // оператор "Кота": проверяет переменную на unit
+print(res);  // выведет "empty"
 ```
 
 #### 3.7 Циклы
@@ -169,33 +224,62 @@ fun printHello() -> unit {
 
 #### 3.10 Встроенные функции
 ```
+let word = input();              // ввод с консоли
 print("aboba")                   // вывод в консоль
 let arr_length = len(arr);       // взятие длины
 add(arr, elem);                  // добавление в массив
 remove(arr, index);              // удаление из массива
 let elem = get(arr, index);      // получение из массива
 set(arr, index, elem);           // установка в массив по индексу
-let s = str(123);                // конвертация в строку
+let s = to_string(123);          // конвертация в строку
 write("filename", s);            // запись в файл
 let lines = read("filename");    // чтение из файла
 let double_num = to_double(42);  // конвертация в double
 let int_num = to_int(3.14);      // конвертация в int
+let random_num = random();       // получение рандомного double
+assert(2 > 1);                   // проверка условия в runtime
+let sqrt_value = sqrt(4);        // получение квадратного корня
+let pow_value = pow(2, 3);       // возведение в степень
+let line = concat(s1, s2);       // конкатенация строк
 ```
-
 
 #### 3.11 Комментарии
 ```
 // using double slash
 ```
+#### 3.12 Классы
+Классы объявляются с помощью ключевого слова `class`. Объект класса создается вызовом конструктора. Для каждого из полей необходимо объявить значения по умолчанию. Обращение к полям осуществляется через двоеточие `:`
 
-#### 3.12 Список зарезервированных слов
+Методы класса определяются вне класса с синтаксисом `method <ClassName> <MethodName>(self, ...) -> <ReturnType>`. Вызов метода класса осуществляется через `$`: `<class_entity>$<method_name>(...)`.
+```rust
+class Cat {
+    let name = "Aboba";
+}
+
+method Cat say_hello(self) -> unit {
+    print("says: Meow!");
+    return;
+}
+
+fun main() -> unit {
+    let my_cat = Cat; // вызов конструктора
+    my_cat$say_hello(); // вызов метода
+    return;
+}
+```
+
+
+#### 3.13 Список зарезервированных слов
 * `let` - объявление переменной
 * `fun` - объявление функции
+* `class` - объявление класса
+* `method` - объявление метода
 * `if` - условный оператор
 * `else` - альтернатива условным оператору
 * `while` - цикл while
 * `for` - цикл for
 * `return` - возврат из функции
+* `input` - ввод с консоли
 * `print` - вывод в консоль
 * `read` - чтение из файла
 * `write` - запись в файл
@@ -204,84 +288,584 @@ let int_num = to_int(3.14);      // конвертация в int
 * `set` - смена значения в массиве по индексу
 * `add` - добавление в массив
 * `remove` - удаление из массива по индексу
-* `str` - конвертация в строку
-* `int_to_double` - конвертация int в double
-* `double_to_int` - конвертация double в int
+* `to_string` - конвертация в строку
+* `to_double` - конвертация в double
+* `to_int` - конвертация в int
+* `random` - получение случайного числа
+* `assert` - проверка условия 
+* `sqrt` - получение квадратного корня
+* `pow` - возведение в степень
+* `concat` - конкатенация строк
 
-## 4. Грамматика EBNF
+## 4. Встроенные функции
+
+### 4.1 Основные функции ввода-вывода
+
+#### `print(значение)`
+Выводит значение в консоль.
+
+**Параметры:**
+- `значение` - Любое значение (число, строка, массив и т.д.)
+
+**Пример:**
+```rust
+print("Hello, UMKA fans!");  // Выведет: Hello, UMKA fans!
+print(42);            // Выведет: 42
+```
+
+#### `write(файл, содержимое)`
+Записывает содержимое в файл.
+
+**Параметры:**
+- `файл` - Путь к файлу (строка)
+- `содержимое` - Строка для записи
+
+**Пример:**
+```rust
+write("log.txt", "Произошла ошибка");
+```
+
+#### `read(файл)`
+Читает файл и возвращает его строки как массив.
+
+**Параметры:**
+- `файл` - Путь к файлу (строка)
+
+**Возвращает:**
+Массив строк (каждая строка - элемент массива)
+
+**Пример:**
+```rust
+let lines = read("data.txt");
+print(lines);  // Выведет массив введенных строк
+```
+
+#### `input()`
+Читает строку из стандартного потока ввода.
+
+**Возвращает:**
+Строку, введенную пользователем
+
+**Пример:**
+```rust
+let value = input();
+print(value);   // выводит введенню строку
+```
+
+### 4.2 Операции с массивами
+
+#### `len(array)`
+Возвращает длину массива.
+
+**Параметры:**
+- `array` - Любой массив (также работает со строкой)
+
+**Возвращает:**
+Целое число (длина массива)
+
+* Кидает исключение "Invalid type for len()", если вызвать не на строке или массиве*
+
+**Пример:**
+```rust
+let arr = [1, 2, 3];
+print(len(arr));  // Выведет: 3
+```
+
+#### `add_elem(array, element)`
+Добавляет элемент в конец массива.
+
+**Параметры:**
+- `array` - Целевой массив
+- `element` - Добавляемое значение
+
+**Пример:**
+```rust
+let arr = [];
+add_elem(arr, "new element"); // arr = ["new element"]
+```
+
+#### `get(array, index)`
+Получает элемент массива по индексу.
+
+**Параметры:**
+- `array` - Исходный массив
+- `index` - Позиция (начинается с 0)
+
+**Возвращает:**
+Элемент на указанной позиции
+
+**Пример:**
+```rust
+let arr = [1, 2, 3];
+let elem = get(arr, 0); // elem = 1
+```
+
+#### `set(array, index, value)`
+Устанавливает значение элемента массива.
+
+**Параметры:**
+- `array` - Целевой массив
+- `index` - Позиция (начинается с 0)
+- `value` - Новое значение
+
+**Пример:**
+```rust
+let arr = [1, 2, 3];
+set(arr, 0, "5"); // arr = [5, 2, 3]
+```
+
+#### `remove(array, index)`
+Удаляет элемент по индексу и сдвигает остальные.
+
+**Параметры:**
+- `array` - Целевой массив
+- `index` - Позиция для удаления (начинается с 0)
+
+**Пример:**
+```rust
+let arr = [1, 2, 3];
+remove(arr, 1);  // Удаляет второй элемент -> arr = [1, 3]
+```
+
+### 4.3 Управление потоком
+#### `assert(condition)`
+Проверяет условие и выбрасывает исключение, если оно ложно.
+
+**Параметры**
+- `condition` - Логическое условие
+
+**Пример**
+```rust
+let x = 100;
+assert(x > 0);  // Программа продолжает работу
+assert(x < 0);  // Выбрасывается исключение: Assertion failed
+```
+
+### 4.4 Математика
+#### `random()`
+Возращает случайное число в диапазоне [0; 1).
+
+**Возвращает**
+Случайное число с плавающей точкой
+
+**Пример**
+```rust
+let r = random();
+print(r);  // Выведет случайное дробное число, например: 0.548813
+```
+
+#### `pow(x, y)`
+Возводит число `x` в степень `y`.
+
+**Параметры**
+- `x` - Основание, численный тип
+- `y` - Показатель, численный тип
+Если тип не конвертируем к double, то выбрасывается исключение `BadCast`.
+
+**Возвращает**
+Результат возведения в степень, число с плавающей точкой
+
+**Пример**
+```rust
+let x = 2;
+let y = 3;
+let z = pow(x, y);  // z = 8
+```
+
+#### `sqrt(x)`
+Возвращает квадратный корень числа `x`.
+
+**Параметры**
+- `x` - Число
+Если тип не конвертируем к double, то выбрасывается исключение `BadCast`.
+
+**Возвращает**
+Квадратный корень, число с плавающей точкой
+
+**Пример**
+```rust
+let x = 4;
+let y = sqrt(x);  // y = 2
+```
+
+### 4.5 Строки
+#### `concat(line1, line2)`
+Конкатенация двух строк.
+
+**Параметры**
+Принимает два объекта, соединяет их как строки.
+
+**Возвращает**
+Строка, состоящая из двух строк
+
+**Пример**
+```rust
+let s1 = "Hello";
+let s2 = "World";
+let s3 = concat(s1, s2);  // s3 = "HelloWorld"
+
+let a = 5;
+let b = 2;
+let c = concat(a, b);  // c = "52"
+```
+
+#### `len(line)`
+Возвращает длину строки.
+
+**Параметры:**
+- `line` - Строка
+
+**Возвращает:**
+Целое число (длина строки)
+
+* Кидает исключение "Invalid type for len()", если вызвать не на строке или массиве*
+
+**Пример:**
+```rust
+let line = "Hello";
+let length = len(line);  // length = 5
+```
+
+### 4.6 Касты
+#### `to_string(value)`
+Преобразует объект в строку.
+**Параметры**
+- `value` - Объект. Работает с `int`, `double`, `bool`, массивом, `unit`
+
+**Возвращает**
+Строка
+
+*Кидает исключение `Bad cast in umka cast` при невалидном поведении*
+
+**Пример**
+```rust
+let a = 5;
+let b = to_string(a);  // b = "5"
+```
+
+#### `to_int(value)`
+Преобразует объект в число.
+
+**Параметры**
+- `value` - Объект. Работает с `int`, `double`, строкой
+
+**Возвращает**
+Целое число
+
+*Кидает исключение `Bad cast in umka cast` при невалидном поведении*
+
+**Пример**
+```rust
+let a = "5";
+let b = to_int(a);  // b = 5
+```
+
+#### `to_double(value)`
+Преобразует объект в число с плавающей точкой.
+
+**Параметры**
+- `value` - Объект. Работает с `int`, `double`, строкой
+
+**Возвращает**
+Число с плавающей точкой
+
+*Кидает исключение `Bad cast in umka cast` при невалидном поведении*
+
+**Пример**
+```rust
+let a = "5.5";
+let b = to_double(a);  // b = 5.5
+```
+
+
+### Примечания
+- Индексы массивов начинаются с 0
+- Пути к файлам указываются относительно программы
+- Ошибки прерывают выполнение программы
+- Функции стандартной библиотеки могут кидать исключения при некорректном поведении, например, при выходе за границы массива или некорректном касте типов.
+
+## 5. Примеры программ
+
+#### Факториал
+
+```rust
+fun factorial_tail(n, acc) -> int {
+  if (n < 2) {
+    return acc;
+  }
+  return factorial_tail(n - 1, acc * n);
+}
+
+let result = factorial (10);
+print(result); // 3628800
+```
+
+#### Сортировка массивов
+
+* *Пузырьком*
+
+```rust
+fun sort(arr) -> [] {
+    let n = len(arr);
+    for (let i = 0; i < n; i = i + 1) {
+        for (let j = 0; j < n - i - 1; j = j + 1) {
+            if (get(arr, j) > get(arr, j + 1)) {
+                let temp = get (arr, j);
+                set(arr, j, get(arr, j + 1));
+                set(arr, j + 1, temp);
+            }
+        }
+    }
+    return arr;
+}
+```
+
+* *Merge Sort*
+```rust
+fun merge_sort(arr) -> [] {
+    if (len(arr) <= 1) {
+        return arr;
+    }
+    let mid = len(arr) / 2;
+    let left = [];
+    let right = [];
+    for (let i = 0; i < mid; i = i + 1) {
+        add(left, get(arr, i));
+    }
+    for (let i = mid; i < len(arr); i = i + 1) {
+        add(right, get(arr, i));
+    }
+    return merge(merge_sort(left), merge_sort(right));
+}
+
+
+fun merge(left, right) -> [] {
+    let result = [];
+    let i = 0;
+    let j = 0;
+    while (i < len(left) && j < len(right)) {
+        if (get(left, i) < get(right, j)) {
+            add(result, get(left, i));
+            i = i + 1;
+        } else {
+            add(result, get(right, j));
+            j = j + 1;
+        }
+    }
+    while (i < len(left)) {
+        add(result, get(left, i));
+        i = i + 1;
+    }
+    while (j < len(right)) {
+        add(result, get(right, j));
+        j = j + 1;
+    }
+    return result;
+}
+```
+
+#### Решето Эратосфена
+
+```rust
+fun primes(limit) -> [] {
+    let sieve = [];
+    let result = [];
+    
+    for (let i = 0; i <= limit; i = i + 1) {
+        add(sieve, true);
+    }
+
+    for (let i = 2; i <= limit; i = i + 1) {
+        if (get(sieve, i)) {
+            add(result, i);
+            let j = i * i;
+            while (j <= limit) {
+                set(sieve, j, false);
+                j = j + i;
+            }
+        }
+    }
+
+    return result;
+}
+```
+
+#### Массивы
+
+```rust
+let arr = [1, 2, 3, "string", ["aboba", 1]];     // гетерогенный массив
+remove(arr, 1);
+add(arr, 4);
+set(arr, 0, "cringe");
+print(len(arr)); // 6
+print(arr); // [0: "cringe", 1: 2, 2: 3, 3: "string", 4: [0: "aboba", 1: 1], 5:  4]
+```
+
+#### Математика и встроенные функции
+```rust
+let a = 5;
+let b = 2;
+
+print(a + b); // 7
+print(a - b); // 3
+print(a * b); // 10
+print(a / b); // 2
+print(a % b); // 1
+print(pow(a, b)); // 25
+print(sqrt(a)); // 2.23606797749979
+print(random()); // случайное число
+
+let c = "Hello";
+let d = "World";
+
+print(concat(c, d)); // HelloWorld
+
+```
+
+#### Классы
+```rust
+class Granny {
+    let name = "Granny";
+}
+
+class Mother {
+    let name = "Mother";
+    let parent = Granny;
+}
+
+class Child {
+    let name = "Child";
+    let parent = Mother;
+    let grandparent = Granny;
+}
+
+method Granny say(self) -> unit {
+    print(concat(self:name, " says: I'm a granny"));
+}
+
+method Mother say(self) -> unit {
+    print(concat(self:name, " says: I'm a mother"));
+    print(concat("My parent is ", self:parent:name));
+}
+
+method Child say(self) -> unit {
+    print(concat(self:name, " says: I'm a child"));
+    print(concat("My parent is ", self:parent:name));
+    print(concat("My grandparent is ", self:grandparent:name));
+}
+
+let granny = Granny;
+let mother = Mother;
+let child = Child;
+
+granny$say();
+mother$say();
+child$say();
+```
+Данный пример выведет:
+```text
+Granny says: I'm a granny
+Mother says: I'm a mother
+My parent is Granny
+Child says: I'm a child
+My parent is Mother
+My grandparent is Granny
+```
+
+С большим колчеством примеров на языке UMKA можно ознакомиться в папке `test/umka_examples`. К данным примерам также доступно текстовое представление байткода в папке `test/text_bytecode_examples`.
+
+## 6. Грамматика EBNF
 
 ```ebnf
 (======= Программа =========)
 program = { statement } ;
 
 (======== Операторы ========)
-statement = let_statement
-            | assignment_statement
-            | expression_statement
+statement = let_statement ";"
+            | assignment_statement ";"
+            | expression_statement ";"
             | if_statement
             | while_statement
             | for_statement
-            | return_statement
+            | return_statement ";"
             | block_statement
-            | function_definition ;
+            | function_definition
+            | class_definition
+            | method_definition ;
 
-let_statement = let_declaration, ";" ;
-assignment_statement = assignment_expression, ";" ;
+let_statement = "let", identifier, "=", expression ;
 
-let_declaration = "let", identifier, "=", expression ;
-assignment_expression = identifier, "=", expression ;
+assignment_statement = identifier, "=", expression
+                     | identifier, ":", identifier, "=", expression ;
 
-expression_statement = expression, ";" ;
-return_statement = "return", [expression], ";" ;
+expression_statement = expression ;
+return_statement = "return", [ expression ] ;
 block_statement = "{", { statement }, "}" ;
 
 (========== Управляющие конструкции ==========)
-if_statement = "if", "(", logical_expression, ")", block_statement, [ "else", (if_statement | block_statement) ] ;
-while_statement = "while", "(", logical_expression, ")", block_statement ;
-for_statement = "for", "(", let_declaration, ";", logical_expression, ";", assignment_expression, ")", block_statement ;
+if_statement = "if", "(", expression, ")", block_statement, [ "else", block_statement ] ;
+while_statement = "while", "(", expression, ")", block_statement ;
+for_statement = "for", "(", let_statement, ";", expression, ";", assignment_statement, ")", block_statement ;
 
 (===== Выражения =====)
-expression = logical_expression | arithmetic_expression | string_literal | boolean | array_literal | function_call | identifier | type_value | cat_expression;
-cat_expression = logical_expression, [ "^-^", expression ] ;
+expression = cat_expression ;
+cat_expression = logical_expression, { "^-^", logical_expression } ;
 
 logical_expression = logical_or ;
 logical_or = logical_and, { "||", logical_and } ;
 logical_and = logical_comparison, { "&&", logical_comparison } ;
-logical_comparison = comparison | unary_logical ;
-comparison = arithmetic_expression, { ("==" | "!=" | ">" | "<" | ">=" | "<="), arithmetic_expression } 
-           | string_literal, { ("==" | "!=" | ">" | "<" | ">=" | "<="), string_literal } 
-           | array_literal, { ("==" | "!="), array_literal }
-           | identifier, { ("==" | "!=" | ">" | "<" | ">=" | "<="), (identifier | string_literal | arithmetic_expression) } 
-           | identifier, { ("==" | "!="), array_literal } ;
-unary_logical = "!", (boolean | identifier | function_call | "(", logical_expression, ")") ;
+logical_comparison = comparison | "!", logical_comparison ;
+
+comparison = arithmetic_expression, [ ("==" | "!=" | ">" | "<" | ">=" | "<="), arithmetic_expression ]
+           | string_literal, "==", string_literal ;
 
 arithmetic_expression = term ;
 term = factor, { ("+" | "-"), factor } ;
 factor = unary_arithmetic, { ("*" | "/" | "%"), unary_arithmetic } ;
-unary_arithmetic = [("-" | "+")], arithmetic_primary ;
-arithmetic_primary = number | identifier | function_call | "(", arithmetic_expression, ")" | type_value ;
+unary_arithmetic = [ ("+" | "-") ], arithmetic_primary ;
+arithmetic_primary = postfix ;
+
+postfix = primary, { ( ":", identifier ) | ( "$", identifier, "(", [ argument_list ], ")" ) } ;
+primary = integer
+        | double
+        | string_literal
+        | boolean
+        | "unit"
+        | member_access
+        | method_call
+        | identifier
+        | array_literal
+        | function_call
+        | "(", expression, ")" ;
+
+(===== Доступ к полям и методам =====)
+member_access = identifier, ":", identifier ;
+method_call = identifier, "$", identifier, "(", [ argument_list ], ")" ;
 
 (===== Функции =====)
-function_definition = "fun", identifier, "(", [parameter_list], ")", "->", return_type, block_statement ;
+function_definition = "fun", identifier, "(", [ parameter_list ], ")", "->", return_type, block_statement ;
 parameter_list = identifier, { ",", identifier } ;
-return_type = basic_type | array_type;
-basic_type = "int" | "double" | "string" | "bool" | "unit";
+return_type = basic_type | array_type | identifier ;
+basic_type = "int" | "double" | "string" | "bool" | "unit" ;
 array_type = "[", "]" ;
-function_call = identifier, "(", [argument_list], ")" ;
+function_call = identifier, "(", [ argument_list ], ")" ;
 argument_list = expression, { ",", expression } ;
 
+(===== Классы и методы =====)
+class_definition = "class", identifier, "{", class_body, "}" ;
+class_body = { let_statement, ";" } ;
+method_definition = "method", identifier, identifier, "(", [ parameter_list ], ")", "->", return_type, block_statement ;
+
 (===== Массивы =====)
-array_literal = "[", [expression_list], "]" ;
+array_literal = "[", [ expression_list ], "]" ;
 expression_list = expression, { ",", expression } ;
 
 (======= Базовые типы =========)
-number = integer | double ;
-integer = ["+" | "-"], digit, { digit } ; 
-double = ["+" | "-"], digit, { digit }, ".", digit, { digit } ;
-string_literal = '"', { string_character }, '"' ; 
+integer = digit, { digit } ;
+double = digit, { digit }, ".", digit, { digit } ;
+string_literal = '"', { string_character }, '"' ;
 boolean = "true" | "false" ;
 identifier = (letter | "_"), {letter | digit | "_"} ;
-type_value = "unit" ;
 
 (======= Базовые символы =======)
 letter = "A" | "B" | "C" | "D" | "E" | "F" | "G"
@@ -296,81 +880,96 @@ digit = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" ;
 string_character = ? все символы кроме '"' ? ;
 ```
 
-## 5. Байткод
+## 7. Байткод
 * Виртуальная машина использует **стековую** архитектуру.  
 * Каждая инструкция имеет вид: `[opcode - 1B][operands...]`. Типы данных для операндов: `int64`
 * Все числа записываются в **Little Endian**
 * Все строки записываются в кодировке **UTF-8**
 * Компилятор создаёт таблицу констант вида:
 
-    | ID  | Type  | Value  |
-    |:---:|:-----:|:------:|
+  | Type  | Value  |
+  |:-----:|:------:|
 
-  Типы записей в таблицу констант: `int64`, `double`, `string`
+  Типы записей в таблицу констант: `int64` - 0x01, `double` - 0x02, `string` - 0x03, `unit` - 0x04
 * Компилятор создаёт таблицу функций вида:
 
-  | ID  | CodeOffsetBeg  |      CodeOffsetEnd      | ArgCount  | LocalCount |
-  |:---:|:--------------:|:-----------------------:|:---------:|:----------:|
+   | CodeOffsetBeg  |      CodeOffsetEnd      | ArgCount  | LocalCount |
+   |:--------------:|:-----------------------:|:---------:|:----------:|
 
   Где: 
     - `CodeOffset` — смещение (`int64`) в секции байткода, с которого начинается тело функции
     - `ArgCount` — количество аргументов функции (`int64`)
     - `LocalCount` — количество локальных переменных, включая аргументы (`int64`)
-### Описание
+* Компилятор создаёт таблицу виртуальных методов вида:
 
-> **NOTE** "первое значение" = значение, которое POP вызывается первым (верх стека)  
-"второе значение" = значение под ним  
-left = второе значение (pop вторым)  
-right = первое значение (pop первым)  
+  | ClassID | MethodID |  FunctionID  |
+  |:-------:|:--------:|:------------:|
 
-| Инструкция       | Код      | Операнды            | Описание                                                                                  |
-|------------------|----------|---------------------|-------------------------------------------------------------------------------------------|
-| **PUSH_CONST**   | `0x01`   | `int64` const_index | помещает значение из таблицы констант на стек                                             |
-| **POP**          | `0x02`   | -                   | удалить первое значение со стека                                                          |
-| **STORE**        | `0x03`   | `int64` var_index   | сохраняет первый элемент в переменную по индексу и удаляет его со стека                   |
-| **LOAD**         | `0x04`   | `int64` var_index   | загружает переменную по индексу на стек                                                   |
-| **ADD**          | `0x10`   | -                   | left + right                                                                              |
-| **SUB**          | `0x11`   | -                   | left - right                                                                              |
-| **MUL**          | `0x12`   | -                   | left * right                                                                              |
-| **DIV**          | `0x13`   | -                   | left / right                                                                              |
-| **REM**          | `0x14`   | -                   | left % right                                                                              |
-| **NOT**          | `0x17`   | -                   | инвертирует первое логическое значение                                                    |
-| **AND**          | `0x18`   | -                   | применяет логическое И к первому и второму значению                                       |
-| **OR**           | `0x19`   | -                   | применяет логическое ИЛИ к первому и второму значению                                     |
-| **EQ**           | `0x1A`   | -                   | проверяет, что первое и второе значение равны                                             |
-| **NEQ**          | `0x1B`   | -                   | проверяет, что первое и второе значение не равны                                          |
-| **GT**           | `0x1C`   | -                   | left > right                                                                              |
-| **LT**           | `0x1D`   | -                   | left < right                                                                              |
-| **GTE**          | `0x1E`   | -                   | left >= right                                                                             |
-| **LTE**          | `0x1F`   | -                   | left <= right                                                                             |
-| **JMP**          | `0x20`   | `int64` offset      | безусловный переход на offset байт                                                        |
-| **JMP_IF_FALSE** | `0x21`   | `int64` offset      | условный переход если первое значение `false`                                             |
-| **JMP_IF_TRUE**  | `0x22`   | `int64` offset      | условный переход если первое значение `true`                                              |
-| **CALL**         | `0x23`   | `int64` func_index  | вызывает функцию по func_index                                                            |
-| **RETURN**       | `0x24`   | -                   | возвращает управление из функции, может брать возвращаемое значение с вершины стека       |
-| **BUILD_ARR**    | `0x30`   | `int64` const_index | создает массив, беря количество элементов по const_index, а сами элементы с вершины стека |
-| **OPCOT**        | `0x40`   | -                   | проверяет, является ли переменная unit типом                                              |
-| **TO_STRING**    | `0x60`   | -                   | конвертирует первое значение в строку                                                     |
-| **TO_DOUBLE**    | `0x61`   | -                   | конвертирует первое на стеке значение в число с плавающей точкой                          |
-| **TO_INT**       | `0x62`   | -                   | конвертирует первое на стеке значение в целое число                                       |
+  Где:
+    - `ClassID` — уникальный идентификатор класса (`int64`)
+    - `MethodID` — уникальный идентификатор метода, глобальный для всех классов (`int64`)
+    - `FunctionID` — индекс функции в таблице функций (`int64`)
+* Компилятор создаёт таблицу виртуальных полей вида: 
 
+  | ClassID | FieldID | FieldIndex |
+  |:-------:|:-------:|:----------:|
+
+  Где:
+    - `ClassID` — уникальный идентификатор класса (`int64`)
+    - `FieldID` — уникальный идентификатор поля, глобальный для всех классов (`int64`)
+    - `FieldIndex` — индекс поля в массиве экземпляра объекта (`int64`)
+### Описание 
+
+| Инструкция         | Код    | Операнды            | Описание                                                                                  |
+|--------------------|--------|---------------------|-------------------------------------------------------------------------------------------|
+| **PUSH_CONST**     | `0x01` | `int64` const_index | помещает значение из таблицы констант на стек                                             |
+| **POP**            | `0x02` | -                   | удалить первое значение со стека                                                          |
+| **STORE**          | `0x03` | `int64` var_index   | сохраняет первый элемент в переменную по индексу и удаляет его со стека                   |
+| **LOAD**           | `0x04` | `int64` var_index   | загружает переменную по индексу на стек                                                   |
+| **ADD**            | `0x10` | -                   | left + right                                                                              |
+| **SUB**            | `0x11` | -                   | left - right                                                                              |
+| **MUL**            | `0x12` | -                   | left * right                                                                              |
+| **DIV**            | `0x13` | -                   | left / right                                                                              |
+| **REM**            | `0x14` | -                   | left % right                                                                              |
+| **NOT**            | `0x17` | -                   | инвертирует первое логическое значение                                                    |
+| **AND**            | `0x18` | -                   | применяет логическое И к первому и второму значению                                       |
+| **OR**             | `0x19` | -                   | применяет логическое ИЛИ к первому и второму значению                                     |
+| **EQ**             | `0x1A` | -                   | проверяет, что первое и второе значение равны                                             |
+| **NEQ**            | `0x1B` | -                   | проверяет, что первое и второе значение не равны                                          |
+| **GT**             | `0x1C` | -                   | left > right                                                                              |
+| **LT**             | `0x1D` | -                   | left < right                                                                              |
+| **GTE**            | `0x1E` | -                   | left >= right                                                                             |
+| **LTE**            | `0x1F` | -                   | left <= right                                                                             |
+| **JMP**            | `0x20` | `int64` offset      | безусловный переход на offset инструкций                                                  |
+| **JMP_IF_FALSE**   | `0x21` | `int64` offset      | условный переход если первое значение `false`                                             |
+| **JMP_IF_TRUE**    | `0x22` | `int64` offset      | условный переход если первое значение `true`                                              |
+| **CALL**           | `0x23` | `int64` func_index  | вызывает функцию по func_index                                                            |
+| **RETURN**         | `0x24` | -                   | возвращает управление из функции, может брать возвращаемое значение с вершины стека       |
+| **BUILD_ARR**      | `0x30` | `int64` const_index | создает массив, беря количество элементов по const_index, а сами элементы с вершины стека |
+| **OPCOT**          | `0x40` | -                   | проверяет, является ли переменная unit типом                                              |
+| **CALL_METHOD**    | `0x50` | `int64` meth_index  | вызывает метод класса по индексу meth_index                                               |
+| **GET_FIELD**      | `0x51` | `int64` field_index | получает поле класса по индексу field_index                                               |
+| **TO_STRING**      | `0x60` | -                   | конвертирует первое значение в строку                                                     |
+| **TO_DOUBLE**      | `0x61` | -                   | конвертирует первое на стеке значение в число с плавающей точкой                          |
+| **TO_INT**         | `0x62` | -                   | конвертирует первое на стеке значение в целое число                                       |
 
 ### Примеры
 
 #### Пример №1
 
 **Код UMKA**
-```kt
+```rust
 fun main() -> unit {
     let x = 10;
     let y = 5;
     let z = x + y;
     print(z);
+    return;
 }
 ```
 
 **Текстовый байткод**
-```kt
+```rust
 PUSH_CONST 0
 STORE 0        ; x = 10
 PUSH_CONST 1
@@ -383,50 +982,23 @@ LOAD 2
 CALL 0         ; вызов стандартной функции print(z)
 RETURN
 ```
-**Бинарный код**
-
-```kt
-01              ; version = 1
-02 00           ; const_count = 2
-01 00           ; func_count = 1
-1D 00 00 00     ; code_size = 29 bytes
-
--- constant pool --
-01 0A 00 00 00 00 00 00 00  ; type=0x01 int64(10)
-01 05 00 00 00 00 00 00 00  ; type=0x01 int64(5)
-
--- function table --
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 03 00 00 00 00 00 00 00      ; CodeOffset=0, ArgCount=0, LocalCount=3
-
--- code section --
-01 00 00 00 00 00 00 00 00       ; PUSH_CONST 0
-03 00 00 00 00 00 00 00 00       ; STORE 0
-01 01 00 00 00 00 00 00 00       ; PUSH_CONST 1
-03 01 00 00 00 00 00 00 00       ; STORE 1
-04 00 00 00 00 00 00 00 00       ; LOAD 0
-04 01 00 00 00 00 00 00 00       ; LOAD 1
-10                               ; ADD
-03 02 00 00 00 00 00 00 00       ; STORE 2
-04 02 00 00 00 00 00 00 00       ; LOAD 2
-23 FF FF 00 00 00 00 00 00       ; CALL стандартная библиотека print
-24                               ; RETURN
-```
 
 #### Пример №2
 
 **Код UMKA**
-```kt
+```rust
 fun main() -> unit {
     let i = 0;
     while (i < 3) {
         print(i);
         i = i + 1;
     }
+    return;
 }
 ```
 
 **Текстовый байткод (с метками)**
-```kt
+```rust
 PUSH_CONST 0
 STORE 0          ; i = 0
 
@@ -447,40 +1019,9 @@ JMP L0
 L1:
 RETURN
 ```
-**Бинарный код**
-```kt
-01              ; version = 1
-03 00           ; const_count = 3
-01 00           ; func_count = 1
-28 00 00 00     ; code_size = 40 bytes
-
--- constant pool --
-01 00 00 00 00 00 00 00 00  ; type=0x01 int64(0)
-01 03 00 00 00 00 00 00 00  ; type=0x01 int64(3)
-01 01 00 00 00 00 00 00 00  ; type=0x01 int64(1)
-
--- function table --
-00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00     ; main
-
--- code section --
-01 00 00 00 00 00 00 00 00       ; PUSH_CONST 0
-03 00 00 00 00 00 00 00 00       ; STORE 0
-04 00 00 00 00 00 00 00 00       ; LOAD 0
-01 01 00 00 00 00 00 00 00       ; PUSH_CONST 1
-1D                               ; LT
-21 0C 00 00 00 00 00 00 00       ; JMP_IF_FALSE +12
-04 00 00 00 00 00 00 00 00       ; LOAD 0
-23 FF FF 00 00 00 00 00 00       ; CALL print
-04 00 00 00 00 00 00 00 00       ; LOAD 0
-01 02 00 00 00 00 00 00 00       ; PUSH_CONST 2
-10                               ; ADD
-03 00 00 00 00 00 00 00 00       ; STORE 0
-20 F1 FF FF FF 00 00 00 00       ; JMP -15
-24                               ; RETURN
-```
 #### Пример №3
 **Код UMKA**
-```kt
+```rust
 fun processAndSave(arr) -> unit {
     set(arr, 0, 10);     
     add(arr, 4);          
@@ -501,7 +1042,7 @@ fun main() -> unit {
 
 ```
 **Текстовый байткод (с метками)**
-```kt
+```rust
 ; processAndSave
 LOAD 0
 PUSH_CONST 5
@@ -557,73 +1098,49 @@ CALL 7          ; print(read_file("out.txt"))
 RETURN
 ```
 
-**Бинарный код**
-```kt
-01              ; version = 1
-09 00           ; const_count = 9
-02 00           ; func_count = 2
-6E 00 00 00     ; code_size = 110 bytes
+#### Пример №4
+**Код UMKA**
+```rust
+class Cat {
+    let name = "Aboba";
+}
 
--- constant pool --
-01 01 00 00 00 00 00 00 00    ; type=0x01 int64(1)
-01 02 00 00 00 00 00 00 00    ; type=0x01 int64(2)
-01 03 00 00 00 00 00 00 00    ; type=0x01 int64(3)
-01 04 00 00 00 00 00 00 00    ; type=0x01 int64(4)
-01 0A 00 00 00 00 00 00 00    ; type=0x01 int64(10)
-01 00 00 00 00 00 00 00 00    ; type=0x01 int64(0)
-01 11 00 00 00 00 00 00 00    ; type=0x01 int64(17)
-01 05 00 00 00 00 00 00 00    ; type=0x01 int64(5)
-03 07 00 6F 75 74 2E 74 78 74 ; type=0x03 string len=7 "out.txt" 
+method Cat say_hello(self) -> unit {
+    print(self:name + " says: Meow!");
+    return;
+}
 
--- function table --
-00 00 00 00 00 00 00 00 01 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00   ; func0: CodeOffset=0x00000000, ArgCount=1, LocalCount=2
-48 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 02 00 00 00 00 00 00 00    ; func1: CodeOffset=0x00000048 (72), ArgCount=0, LocalCount=2
-
--- processAndSave --
-04 00 00 00 00 00 00 00 00
-01 05 00 00 00 00 00 00 00
-01 04 00 00 00 00 00 00 00
-23 FE FE 00 00 00 00 00 00       ; set(arr,0,10)
-04 00 00 00 00 00 00 00 00
-01 03 00 00 00 00 00 00 00
-23 FD FE 00 00 00 00 00 00       ; add(arr,4)
-04 00 00 00 00 00 00 00 00
-01 00 00 00 00 00 00 00 00
-23 FF FF 00 00 00 00 00 00       ; print(get(arr,1))
-04 00 00 00 00 00 00 00 00
-01 00 00 00 00 00 00 00 00
-23 FC FE 00 00 00 00 00 00       ; remove(arr,1)
-04 00 00 00 00 00 00 00 00
-01 05 00 00 00 00 00 00 00
-23 FB FE 00 00 00 00 00 00       ; get(arr,0)
-04 00 00 00 00 00 00 00 00
-01 00 00 00 00 00 00 00 00
-23 FB FE 00 00 00 00 00 00       ; get(arr,1)
-10
-03 01 00 00 00 00 00 00 00       ; STORE total
-01 08 00 00 00 00 00 00 00
-04 01 00 00 00 00 00 00 00
-60
-23 FA FE 00 00 00 00 00 00       ; write_file("out.txt", to_string(total))
-24              ; RETURN
-
--- main --
-01 00 00 00 00 00 00 00 00
-01 01 00 00 00 00 00 00 00
-01 02 00 00 00 00 00 00 00
-30 03 00 00 00 00 00 00 00
-03 00 00 00 00 00 00 00 00
-04 00 00 00 00 00 00 00 00
-23 00 00 00 00 00 00 00 00       ; CALL processAndSave
-01 06 00 00 00 00 00 00 00
-01 07 00 00 00 00 00 00 00
-14
-23 FF FF 00 00 00 00 00 00       ; CALL print
-01 08 00 00 00 00 00 00 00
-23 FF FE 00 00 00 00 00 00       ; CALL read_file("out.txt")
-24
+fun main() -> unit {
+    let my_cat = Cat;
+    my_cat$say_hello();
+    return;
+}
 ```
-## 6. Стековая машина и память 
+**Текстовый байткод (с метками)**
+```rust
+;main
+PUSH_CONST 0      ; class_id для Cat
+PUSH_CONST 1      ; "Aboba" (дефолтное значение name)
+BUILD_ARR 2       ; создаем объект [class_id, name]
+STORE 0           ; сохраняем в переменную my_cat (индекс 0)
+
+LOAD 0           
+CALL_METHOD 0     ; say_hello (method_id=0)
+
+PUSH_CONST 3     
+RETURN
+
+;say_hello
+LOAD 0            
+GET_FIELD 0       
+PUSH_CONST 2     
+ADD               
+CALL 9223372036854775807  ;  print
+PUSH_CONST 3      
+RETURN           
+```
+
+## 8. Стековая машина и память 
 #### Стековая машина
 * Все операции выполняются над данными, размещенными на стеке
 * Операнды для инструкций (арифметики, сравнений, вызовов) берутся с вершины стека
@@ -633,8 +1150,8 @@ RETURN
 
 #### Переменные и типы
 * Все переменные выделяются на куче (heap)
-* Примитивные типы: `int`, `float`, `bool`, `string`являются значимыми типами (value types).
-* Массив `[]` является ссылочным типом (reference type).
+* Примитивные типы: `int`, `float`, `bool`, `string` являются значимыми типами (value types).
+* Массив `[]` и классы являются ссылочными типами (reference type).
 * Сборка мусора автоматически освобождает неиспользуемую память
 
 
@@ -643,16 +1160,27 @@ RETURN
 * На каждую функцию создается новый скоуп
 * Возвращаемые значения помещаются на стек
 * Локальные переменные уничтожаются при выходе из скоупа
+* Методы работают также, как и функции, за исключением того, что первым аргументом в метод всегда передается экземпляр класса `self`
 
-## 7. Сборка мусора
+## 9. Сборка мусора
 
 Используется алгоритм **Mark-and-Sweep**:
 
 1. **Mark** - пометка достижимых объектов из стека и глобальных переменных
 2. **Sweep** - очистка непомеченных объектов
-   [TODO: описать алгоритм и стратегию работы]
 
-## 8. JIT-компиляция
+**Назначение:** Автоматическое управление памятью программы без участия пользователя.
+
+**Процесс обработки:**
+
+- Сборщик отслеживает общий объем выделенной памяти в куче (`bytes_allocated`).  При каждом выделении памяти проверяется, превышает ли прирост памяти после последней сборки порог `GC_THRESHOLD`.
+- При превышении порога запускается алгоритм **Mark-and-Sweep**:
+  - находит все объекты, до которых можно добраться из текущего состояния программы (стек операндов, стек вызовов, локальные переменные) и помечает их как "живые";
+  - проходит по всей куче и удаляет непомеченные объекты, освобождая память.
+- На время работы GC выполнение байткода приостанавливается (**stop-the-world**), затем программа продолжает работу с очищенной памятью.
+
+
+## 10. JIT-компиляция
 
 Динамическая компиляция "горячего" кода во время выполнения программы. Также анализирует прошедшие
 инструкции и добавляет упрощения, которые сыграют свою роль в случае повторного вызова инструкции.
@@ -674,101 +1202,167 @@ RETURN
   типы/принимают их и не изменяют, а также не имеют в себе глобальных констант) можно запоминать
   значение вычисленной функции и выдавать их, не пересчитывая.
 
-## 9. Встроенные функции
-
-[TODO добавить доку по ним: что принимают, что возвращают, как устроены]
-
-## 10. Примеры программ
-
-#### Факториал
-
-```kt
-fun factorial_tail(n, acc) -> int {
-  if (n < 2) {
-    return acc;
-  }
-  return factorial_tail(n - 1, acc * n);
-}
-
-let result = factorial (10);
-print(result); // 3628800
-```
-
-#### Сортировка массивов
-
-* *Пузырьком*
-
-```kt
-fun sort(arr) -> [] {
-    let n = len(arr);
-    for (let i = 0; i < n; i = i + 1) {
-    for (let j = 0; j < n - i - 1; j = j + 1) {
-    if (get(arr, j) > get(arr, j + 1)) {
-        let temp = get (arr, j);
-        set(arr, j, get(arr, j + 1));
-        set(arr, j + 1, temp);
-    }
-}
-}
-    return arr;
-}
-```
-
-#### Решето Эратосфена
-
-```kt
-fun primes(limit) -> [] {
-    let sieve = [];
-    let result = [];
-    
-    for (let i = 0; i <= limit; i = i + 1) {
-    add(sieve, true);
-}
-
-    for (let i = 2; i <= limit; i = i + 1) {
-    if (get(sieve, i)) {
-        add(result, i);
-        let j = i * i;
-        while (j <= limit) {
-            set(sieve, j, false);
-            j = j + i;
-        }
-    }
-}
-
-    return result;
-}
-```
-
-#### Массивы
-
-```kt
-let arr =[1, 2, 3, "string", ["aboba", 1]]     // гетерогенный массив
-remove(arr, 1);
-add(arr, 4);
-set(arr, 0, "cringe");
-```
-
-[TODO добавить shitty примеров]
 
 ## 11. Поведение языка (ошибки)
-### Классы ошибок
-#### Синтаксические ошибки `SyntaxError`
-* `UnexpectedToken` - последовательность токенов не удовлетворяет грамматике языка
 
-#### Ошибка компиляции `CompilationError`
-* `UndefinedIdentifier` - обращение к необъявленному идентификатору
-* `NotEnoughArguments` - недостаточно аргументов для вызова функции
+### Обработка ошибок в UMKA
 
-#### Ошибка выполнения `RuntimeError`
-* `DivisionByZero` - деление на ноль
-* `IndexOutOfBounds` - обращение к несуществующему индексу массива
-* `IOError` - ошибка ввода-вывода
-* `TypeError` - ошибка приведения типа
-* `InvalidArgument` - нарушено предусловие функции
+UMKA использует механизм исключений для обработки ошибок во время выполнения программы. Все ошибки прерывают выполнение программы и выводят сообщение об ошибке в стандартный поток.
 
-[TODO доработать]
+### Типы ошибок в UMKA
 
+В системе UMKA ошибки могут возникать на разных этапах выполнения программы:
+
+#### Ошибки парсинга (Parsing Errors)
+
+Эти ошибки возникают на этапе разбора исходного кода и связаны с синтаксическими или грамматическими нарушениями:
+
+- **Синтаксические ошибки**: Неправильная структура кода, отсутствующие скобки, точки с запятой и т.д.
+- **Лексические ошибки**: Недопустимые символы или токены
+- **Грамматические ошибки**: Нарушение правил EBNF грамматики языка
+
+Сообщение об ошибке: `Parsing failed.`
+
+#### Ошибки компиляции (Compilation Errors)
+
+Эти ошибки возникают на этапе компиляции AST в байткод:
+
+- **Неизвестные переменные**: Попытка использования необъявленной переменной
+  Сообщение об ошибке: `genExpr: unknown local var '<имя_переменной>'`
+
+- **Неизвестные функции**: Попытка вызова несуществующей функции
+  Сообщение об ошибке: `genExpr: call to unknown function '<имя_функции>'`
+
+- **Неизвестные поля класса**: Попытка доступа к несуществующему полю класса
+  Сообщение об ошибке: `Field access to unknown field '<имя_поля>'`
+
+- **Неизвестные методы класса**: Попытка вызова несуществующего метода класса
+  Сообщение об ошибке: `Method call to unknown method '<имя_метода>'`
+
+- **Неизвестные объекты**: Попытка доступа к необъявленному объекту
+  Сообщение об ошибке: `Member access to unknown object '<имя_объекта>'`
+
+- **Неправильное присваивание**: Попытка присвоить значение необъявленной переменной
+  Сообщение об ошибке: `Assign to unknown var '<имя_переменной>'`
+
+- **Неизвестные классы**: Попытка создания экземпляра несуществующего класса
+  Сообщение об ошибке: `No default values for class <имя_класса>` или `No class ID for class <имя_класса>`
+
+- **Неподдерживаемые операции**: Использование неизвестных бинарных или унарных операторов
+  Сообщение об ошибке: `genExpr: unknown binary op '<оператор>'` или `genExpr: unknown unary op '<оператор>'`
+
+- **Ошибки преобразования типов**: Неправильное количество аргументов у функций преобразования
+  Сообщение об ошибке: `Cast '<имя_функции>' requires exactly 1 argument`
+
+- **Неизвестные узлы AST**: Встреча неподдерживаемых узлов в абстрактном синтаксическом дереве
+  Сообщение об ошибке: `genExpr: unknown expr node` или `gen_stmt_in_func: unknown stmt node`
+
+#### Ошибки виртуальной машины (Runtime Errors)
+
+Эти ошибки возникают во время выполнения байткода в виртуальной машине:
+
+- **Недостаток памяти**: Превышение лимита памяти при сборке мусора
+  Сообщение об ошибке: `OutOfMemory: Garbage collection did not free enough memory`
+
+- **Недостаток элементов на стеке**: Попытка выполнения операции с пустым стеком
+  Сообщение об ошибке: `Stack underflow at operation: <имя_операции>`
+
+- **Истекшие ссылки**: Попытка доступа к освобожденным объектам
+  Сообщение об ошибке: `Reference expired at <файл>:<строка>`
+
+- **Выход за границы массива**: Попытка доступа к элементу массива по недопустимому индексу
+  Сообщение об ошибке: `Array index out of bounds`
+
+- **Неверные индексы констант**: Попытка доступа к несуществующей константе
+  Сообщение об ошибке: `Constant index out of bounds`
+
+- **Неверные индексы переменных**: Попытка доступа к несуществующей переменной
+  Сообщение об ошибке: `Variable not found`
+
+- **Неверные индексы функций**: Попытка вызова несуществующей функции
+  Сообщение об ошибке: `Function not found: <индекс_функции>` или `Invalid function code range`
+
+- **Недостаток аргументов**: Недостаточное количество аргументов для вызова функции
+  Сообщение об ошибке: `Not enough arguments for <контекст>`
+
+- **Неверные аргументы для создания массива**: Недостаточное количество операндов для создания массива
+  Сообщение об ошибке: `Not enough operands for BUILD_ARR`
+
+- **Ошибки файловых операций**: Проблемы с открытием файлов
+  Сообщение об ошибке: `Failed to open file: <имя_файла>`
+
+- **Ошибки утверждений**: Невыполнение условия в функции assert
+  Сообщение об ошибке: `Assertion failed`
+
+- **Ошибки преобразования типов**: Невозможность преобразования значения к требуемому типу
+  Сообщение об ошибке: `bad cast in f` или `bad cast in unary operation` или `Bad cast in umka_cast`
+
+- **Ошибки вызова методов**: Попытка вызова несуществующего метода класса
+  Сообщение об ошибке: `CALL_METHOD: method not found for class_id=<id>, method_id=<id>`
+
+- **Ошибки доступа к полям**: Попытка доступа к несуществующему полю класса
+  Сообщение об ошибке: `GET_FIELD: field not found for class_id=<id>, field_id=<id>`
+
+- **Неизвестные опкоды**: Встреча неподдерживаемого байткода
+  Сообщение об ошибке: `Unknown opcode: <код> at <смещение>`
+
+- **Ошибки возврата**: Попытка возврата при отсутствии активного фрейма
+  Сообщение об ошибке: `No frame to return from`
+
+- **Ошибки фреймов стека**: Попытка доступа к переменным при отсутствии активного фрейма
+  Сообщение об ошибке: `No active stack frame`
+
+- **Ошибки конвертации в строку**: Невозможность преобразования значения к строке
+  Сообщение об ошибке: `Cannot convert to string`
+
+- **Ошибки сравнения ссылок**: Попытка сравнения истекших ссылок
+  Сообщение об ошибке: `Reference is expired`
+
+
+### Рекомендации по обработке ошибок
+
+1. **Проверяйте входные данные**: Перед вызовом функций убедитесь, что передаете правильное количество аргументов правильного типа.
+
+2. **Проверяйте границы массивов**: Перед доступом к элементам массива проверяйте, что индекс находится в допустимом диапазоне.
+
+3. **Обрабатывайте файловые операции**: При работе с файлами через `read` и `write` убедитесь, что файлы существуют и доступны для чтения/записи.
+
+4. **Используйте assert для отладки**: Функция `assert` полезна для проверки инвариантов в процессе разработки.
+
+5. **Проверяйте типы перед преобразованиями**: Перед использованием функций `to_int`, `to_double` убедитесь, что значения могут быть корректно преобразованы.
+
+
+## 12. Запуск
+
+Для запуска программы нужно скомпилировать два таргета: виртуальную машину и компилятор.
+Например, вот эта команда скомпилит все, что надо
+```cmake --build cmake-build --target umka_compiler ; cmake --build cmake-build --target umka_vm```
+
+После этого в директории `cmake-build` (или другой указанной вами директории) будут созданы два исполняемых файла: `umka_compiler` и `umka_vm`.
+
+Сборка виртуальной машины может выполняться в двух режимах:
+1. `DebugMod` - вывод таблиц констант, функций и классов, вывод исполняемого байткода, а также исполняемых команд
+2. `ReleaseMod` - вывод только исполняемых команд
+
+Для запуска кода на UMKA нужно:
+
+1. Скомпилировать код на UMKA
+    `./cmake-build/bin/umka_compiler <path_to_your_code>`
+    
+    В резуальтате в директории `cmake-build` будет создан бинарь `<path_to_your_code>.bin`.
+    
+    Можно запустить с флагом `--ast`, тогда будет выведено абстрактное синтаксическое дерево вашей программы.
+2. Запустить виртуальную машину
+
+    `./cmake-build/bin/umka_vm <path_to_your_code>.bin`
+    
+    Ваш код будет исполнен.
+
+
+Приоритет выполнения кода:
+1. Инструкции, объявленные вне функций
+2. Внутрии функции `main`. Объявление функции `main` не обязательно!
+3. Остальные пользовательские функции выполняются только при их вызове
 
 ----
 Команда ЮМКА \
