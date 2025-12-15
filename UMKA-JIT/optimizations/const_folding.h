@@ -10,7 +10,7 @@ class ConstFolding final: public IOptimize {
     void run(
       std::vector<vm::Command> &code,
       std::vector<vm::Constant> &const_pool,
-      std::unordered_map<size_t, vm::FunctionTableEntry>&,
+      std::unordered_map<size_t, vm::FunctionTableEntry> &,
       vm::FunctionTableEntry &meta
     ) override {
       std::vector<vm::Command> out;
@@ -20,7 +20,7 @@ class ConstFolding final: public IOptimize {
       std::vector<ConstValue> stack;
 
       auto flush_stack = [&]() {
-        for (const auto& val: stack) {
+        for (const auto &val: stack) {
           vm::Constant c;
           if (std::holds_alternative<int64_t>(val)) {
             c.type = vm::TYPE_INT64;
@@ -77,7 +77,7 @@ class ConstFolding final: public IOptimize {
         }
 
         if (op == vm::OpCode::PUSH_CONST) {
-          const auto& constant = const_pool[code[i].arg];
+          const auto &constant = const_pool[code[i].arg];
           if (constant.type == vm::TYPE_INT64) {
             int64_t value = load_int(constant);
             stack.push_back(value);
@@ -132,10 +132,9 @@ class ConstFolding final: public IOptimize {
     }
 
     static std::variant<int64_t, double> eval(
-        const std::variant<int64_t, double>& a,
-        const std::variant<int64_t, double>& b,
-        vm::OpCode op) {
-
+      const std::variant<int64_t, double> &a,
+      const std::variant<int64_t, double> &b,
+      vm::OpCode op) {
       if (std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b)) {
         int64_t lhs = std::get<int64_t>(a);
         int64_t rhs = std::get<int64_t>(b);
@@ -145,14 +144,14 @@ class ConstFolding final: public IOptimize {
           case vm::OpCode::MUL: return lhs * rhs;
           case vm::OpCode::DIV: return rhs != 0 ? lhs / rhs : 0;
           case vm::OpCode::REM: return rhs != 0 ? lhs % rhs : 0;
-          case vm::OpCode::LT: return static_cast<int64_t>(lhs < rhs);
-          case vm::OpCode::GT: return static_cast<int64_t>(lhs > rhs);
-          case vm::OpCode::LTE: return static_cast<int64_t>(lhs <= rhs);
-          case vm::OpCode::GTE: return static_cast<int64_t>(lhs >= rhs);
-          case vm::OpCode::EQ: return static_cast<int64_t>(lhs == rhs);
-          case vm::OpCode::NEQ: return static_cast<int64_t>(lhs != rhs);
-          case vm::OpCode::AND: return static_cast<int64_t>(lhs && rhs);
-          case vm::OpCode::OR: return static_cast<int64_t>(lhs || rhs);
+          case vm::OpCode::LT: return (lhs < rhs);
+          case vm::OpCode::GT: return (lhs > rhs);
+          case vm::OpCode::LTE: return (lhs <= rhs);
+          case vm::OpCode::GTE: return (lhs >= rhs);
+          case vm::OpCode::EQ: return (lhs == rhs);
+          case vm::OpCode::NEQ: return (lhs != rhs);
+          case vm::OpCode::AND: return (lhs && rhs);
+          case vm::OpCode::OR: return (lhs || rhs);
           default: return lhs;
         }
       }
@@ -165,38 +164,38 @@ class ConstFolding final: public IOptimize {
           case vm::OpCode::SUB: return lhs - rhs;
           case vm::OpCode::MUL: return lhs * rhs;
           case vm::OpCode::DIV: return rhs != 0.0 ? lhs / rhs : 0.0;
-          case vm::OpCode::LT: return static_cast<double>(lhs < rhs);
-          case vm::OpCode::GT: return static_cast<double>(lhs > rhs);
-          case vm::OpCode::LTE: return static_cast<double>(lhs <= rhs);
-          case vm::OpCode::GTE: return static_cast<double>(lhs >= rhs);
-          case vm::OpCode::EQ: return static_cast<double>(lhs == rhs);
-          case vm::OpCode::NEQ: return static_cast<double>(lhs != rhs);
-          case vm::OpCode::AND: return static_cast<double>(lhs && rhs);
-          case vm::OpCode::OR: return static_cast<double>(lhs || rhs);
+          case vm::OpCode::LT: return (lhs < rhs);
+          case vm::OpCode::GT: return (lhs > rhs);
+          case vm::OpCode::LTE: return (lhs <= rhs);
+          case vm::OpCode::GTE: return (lhs >= rhs);
+          case vm::OpCode::EQ: return (lhs == rhs);
+          case vm::OpCode::NEQ: return (lhs != rhs);
+          case vm::OpCode::AND: return (lhs && rhs);
+          case vm::OpCode::OR: return (lhs || rhs);
           default: return lhs;
         }
       }
 
-      double lhs_d = std::holds_alternative<int64_t>(a) 
-          ? static_cast<double>(std::get<int64_t>(a))
-          : std::get<double>(a);
+      double lhs_d = std::holds_alternative<int64_t>(a)
+                       ? static_cast<double>(std::get<int64_t>(a))
+                       : std::get<double>(a);
       double rhs_d = std::holds_alternative<int64_t>(b)
-          ? static_cast<double>(std::get<int64_t>(b))
-          : std::get<double>(b);
-      
+                       ? static_cast<double>(std::get<int64_t>(b))
+                       : std::get<double>(b);
+
       switch (op) {
         case vm::OpCode::ADD: return lhs_d + rhs_d;
         case vm::OpCode::SUB: return lhs_d - rhs_d;
         case vm::OpCode::MUL: return lhs_d * rhs_d;
         case vm::OpCode::DIV: return rhs_d != 0.0 ? lhs_d / rhs_d : 0.0;
-        case vm::OpCode::LT: return static_cast<double>(lhs_d < rhs_d);
-        case vm::OpCode::GT: return static_cast<double>(lhs_d > rhs_d);
-        case vm::OpCode::LTE: return static_cast<double>(lhs_d <= rhs_d);
-        case vm::OpCode::GTE: return static_cast<double>(lhs_d >= rhs_d);
-        case vm::OpCode::EQ: return static_cast<double>(lhs_d == rhs_d);
-        case vm::OpCode::NEQ: return static_cast<double>(lhs_d != rhs_d);
-        case vm::OpCode::AND: return static_cast<double>(lhs_d && rhs_d);
-        case vm::OpCode::OR: return static_cast<double>(lhs_d || rhs_d);
+        case vm::OpCode::LT: return (lhs_d < rhs_d);
+        case vm::OpCode::GT: return (lhs_d > rhs_d);
+        case vm::OpCode::LTE: return (lhs_d <= rhs_d);
+        case vm::OpCode::GTE: return (lhs_d >= rhs_d);
+        case vm::OpCode::EQ: return (lhs_d == rhs_d);
+        case vm::OpCode::NEQ: return (lhs_d != rhs_d);
+        case vm::OpCode::AND: return (lhs_d && rhs_d);
+        case vm::OpCode::OR: return (lhs_d || rhs_d);
         default: return lhs_d;
       }
     }
