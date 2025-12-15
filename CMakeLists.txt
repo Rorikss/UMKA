@@ -77,6 +77,7 @@ add_library(umka_jit
         UMKA-JIT/optimizations/dce.h
         UMKA-JIT/jit_manager.cpp
         UMKA-JIT/jit_manager.h
+        UMKA-JIT/optimizations/constant_propagation.h
 )
 
 target_include_directories(umka_jit PUBLIC
@@ -133,6 +134,7 @@ add_executable(jit_tests
         UMKA-VM/model/model.cpp
         UMKA-JIT/jit_manager.cpp
         UMKA-JIT/jit_manager.h
+        UMKA-JIT/optimizations/constant_propagation.h
 )
 
 target_include_directories(jit_tests PRIVATE

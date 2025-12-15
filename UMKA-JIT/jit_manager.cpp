@@ -1,6 +1,7 @@
 #include "jit_manager.h"
 #include "const_folding.h"
 #include "dce.h"
+#include "constant_propagation.h"
 
 namespace umka::jit {
 
@@ -12,7 +13,9 @@ JitManager::JitManager(std::vector<vm::Command> &commands,
   for (const auto &id: func_table | std::views::keys) {
     jit_state[id] = JitState::NONE;
   }
+  runner->add_optimization(std::make_unique<ConstantPropagation>());
   runner->add_optimization(std::make_unique<ConstFolding>());
+  runner->add_optimization(std::make_unique<ConstantPropagation>());
   runner->add_optimization(std::make_unique<DeadCodeElimination>());
   running = true;
   worker = std::thread([this] { worker_loop(); });
