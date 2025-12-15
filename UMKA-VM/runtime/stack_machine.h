@@ -167,7 +167,7 @@ class StackMachine
                 new_frame.name_resolver[i] = arg_ref;
             }
 
-            stack_of_functions.push_back(new_frame);
+            stack_of_functions.emplace_back(std::move(new_frame));
         };
 
         auto BinaryOperationDecoratorWithApplier = [machine = this](const std::string& op_name, auto f, auto applier) {
@@ -228,7 +228,7 @@ class StackMachine
                 if (!frame.name_resolver.contains(var_index)) {
                     throw std::runtime_error("Variable not found");
                 }
-                operand_stack.push_back(frame.name_resolver[var_index]);
+                operand_stack.emplace_back(frame.name_resolver[var_index]);
                 break;
             }
             case ADD:
@@ -310,7 +310,7 @@ class StackMachine
                 stack_of_functions.pop_back();
 
                 if (!return_value.expired() && !stack_of_functions.empty()) {
-                    operand_stack.push_back(return_value);
+                    operand_stack.emplace_back(return_value);
                 }
                 break;
             }
@@ -394,8 +394,7 @@ class StackMachine
 
                 int64_t field_index = it->second;
 
-                Reference<Entity> field_ref = get(obj, field_index);
-                operand_stack.push_back(field_ref);
+                operand_stack.emplace_back(get(obj, field_index));
                 break;
             }
             default:
@@ -454,7 +453,7 @@ class StackMachine
     }
 
     void create_and_push(Entity result) { 
-        operand_stack.push_back(create(std::move(result))); 
+        operand_stack.emplace_back(create(std::move(result))); 
     }
 
     bool jump_condition() {
@@ -477,6 +476,17 @@ class StackMachine
         auto call_value_proc = [this](auto proc) {
             auto arg = get_operand_from_stack("CALL PROC");
             create_and_push(make_entity(proc(arg)));
+        };
+
+        auto create_array = [this](auto values) {
+            Entity array_entity = make_array();
+            Array& array = *std::get<Owner<Array>>(array_entity.value);
+            for (size_t i = 0; i < values.size(); ++i) {
+                Owner<Entity> line_entity = create(make_entity(std::move(values[i])));
+                array.emplace_back(std::move(line_entity));
+            }
+
+            create_and_push(array_entity);
         };
 
         switch (func_id) {
@@ -516,15 +526,7 @@ class StackMachine
         case READ_FUN: {
             auto filename = get_operand_from_stack("CALL READ");
             std::vector<std::string> lines = read(filename.to_string());
-
-            Entity array_entity = make_array();
-            Array& array = *std::get<Owner<Array>>(array_entity.value);
-            for (size_t i = 0; i < lines.size(); ++i) {
-                Owner<Entity> line_entity = create(make_entity(lines[i]));
-                array[i] = line_entity;
-            }
-
-            create_and_push(array_entity);
+            create_array(lines);
             return true;
         }
         case ASSERT_FUN: {
@@ -567,6 +569,25 @@ class StackMachine
         }
         case SORT_FUN: {
             call_void_proc([&](auto arr) { umka_sort(arr); });
+            return true;
+        }
+        case SPLIT_FUN: {
+            auto [str, delim] = get_operands_from_stack("CALL SPLIT");
+            std::vector<std::string> lines = split(str, delim);
+            create_array(lines);
+            return true;
+        }
+        case MAKE_HEAP_FUN: {
+            call_void_proc([&](auto arr) { make_heap(arr); });
+            return true;
+        }
+        case POP_HEAP_FUN: {
+            call_void_proc([&](auto arr) { pop_heap(arr); });
+            return true;
+        }
+        case PUSH_HEAP_FUN: {
+            auto val = stack_pop();
+            call_void_proc([&](auto arr) { push_heap(arr, val); });
             return true;
         }
         default: 

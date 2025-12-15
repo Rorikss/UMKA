@@ -37,5 +37,18 @@ fun main() -> unit {
     print(max(2, 10));
     print(min("aboba", "cat"));
     print(max("aboba", 5));
+
+    let arr = [1, 2, 3, 4, 5];
+    make_heap(arr);
+    print(arr);
+    pop_heap(arr);
+    print(arr);
+    push_heap(arr, 6);
+    print(arr);
+    print(get(arr, 0));
+
+    let long_line = "This ABC is ABC a ABC very ABC long ABC line.";
+    let tokens = split(long_line, "ABC");
+    print(tokens);
     return;
 }
