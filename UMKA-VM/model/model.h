@@ -174,6 +174,13 @@ enum BuiltinFunctionIDs : int64_t {
     RANDOM_FUN = kMaxI64 - 11,
     POW_FUN = kMaxI64 - 12,
     SQRT_FUN = kMaxI64 - 13,
+    MIN_FUN = kMaxI64 - 14,
+    MAX_FUN = kMaxI64 - 15,
+    SORT_FUN = kMaxI64 - 16,
+    SPLIT_FUN = kMaxI64 - 17,
+    MAKE_HEAP_FUN = kMaxI64 - 18,
+    POP_HEAP_FUN = kMaxI64 - 19,
+    PUSH_HEAP_FUN = kMaxI64 - 20,
 };
 
 enum ConstantType : uint8_t {

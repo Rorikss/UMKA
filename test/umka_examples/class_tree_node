@@ -30,18 +30,6 @@ fun BottomUpTree(item, depth) -> TreeNode {
     return MakeNode(unit, unit, item);
 }
 
-fun pow(x, y) -> int {
-    let ret = 1;
-    for (let i = 0; i < y; i = i + 1) {
-        ret = ret * x;
-    }
-    return ret;
-}
-
-fun max(a, b) -> int {
-    if (a > b) { return a; } else { return b; }
-}
-
 fun main() -> unit {
     let ret = 0;
 

@@ -22,4 +22,9 @@ std::string input();
 double random();
 double pow(double base, double exp);
 double sqrt(double number);
+void umka_sort(Entity array);
+std::vector<std::string> split(const Entity& str_entity, const Entity& delim_entity);
+void make_heap(Entity array);
+void pop_heap(Entity array);
+void push_heap(Entity array, Reference<Entity> elem);
 }

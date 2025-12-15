@@ -20,20 +20,27 @@ public:
     constexpr static int64_t kMaxI64 = std::numeric_limits<int64_t>::max();
 
     static inline const std::unordered_map<std::string, int64_t> builtinIDs = {
-            {"print",      kMaxI64 - 0},
-            {"len",        kMaxI64 - 1},
-            {"get",        kMaxI64 - 2},
-            {"set",        kMaxI64 - 3},
-            {"add",        kMaxI64 - 4},
-            {"remove",     kMaxI64 - 5},
-            {"concat",     kMaxI64 - 6},
-            {"write",      kMaxI64 - 7},
-            {"read",       kMaxI64 - 8},
-            {"assert",     kMaxI64 - 9},
-            {"input",      kMaxI64 - 10},
-            {"random",     kMaxI64 - 11},
-            {"pow",        kMaxI64 - 12},
-            {"sqrt",       kMaxI64 - 13}
+        {"print",      kMaxI64 - 0},
+        {"len",        kMaxI64 - 1},
+        {"get",        kMaxI64 - 2},
+        {"set",        kMaxI64 - 3},
+        {"add",        kMaxI64 - 4},
+        {"remove",     kMaxI64 - 5},
+        {"concat",     kMaxI64 - 6},
+        {"write",      kMaxI64 - 7},
+        {"read",       kMaxI64 - 8},
+        {"assert",     kMaxI64 - 9},
+        {"input",      kMaxI64 - 10},
+        {"random",     kMaxI64 - 11},
+        {"pow",        kMaxI64 - 12},
+        {"sqrt",       kMaxI64 - 13},
+        {"min",        kMaxI64 - 14},
+        {"max",        kMaxI64 - 15},
+        {"sort",       kMaxI64 - 16},
+        {"split",      kMaxI64 - 17},
+        {"make_heap",  kMaxI64 - 18},
+        {"pop_heap",   kMaxI64 - 19},
+        {"push_heap",  kMaxI64 - 20},
     };
 
     static inline const std::unordered_map<std::string, uint8_t> BINOP_MAP = {

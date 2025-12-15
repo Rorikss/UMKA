@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <ostream>
+#include <string>
 #include <sstream>
 #include <variant>
 #include <vector>
@@ -99,5 +100,55 @@ double pow(double base, double exp) {
 
 double sqrt(double number) {
     return std::sqrt(number);
+}
+
+void umka_sort(Entity array) {
+    auto arr = std::get<Owner<Array>>(array.value);
+    std::sort(arr->begin(), arr->end(), [](const auto a, const auto b) {
+        return *a.lock() < *b.lock();
+    });
+}
+
+std::vector<std::string> split(const Entity& str_entity, const Entity& delim_entty) {
+    std::string str = str_entity.to_string();
+    std::string delim = delim_entty.to_string();
+
+    auto tokens = make_array();
+    std::string processed = str;
+    std::string::size_type n = 0;
+    while ((n = processed.find(delim, n)) != std::string::npos) {
+        processed.replace(n, delim.length(), " ");
+        n += 1; 
+    }
+    
+    std::istringstream stream(processed);
+
+    return std::vector<std::string>(
+        std::istream_iterator<std::string>(stream),
+        std::istream_iterator<std::string>()
+    );
+}
+
+void make_heap(Entity array) {
+    auto arr = std::get<Owner<Array>>(array.value);
+    std::make_heap(arr->begin(), arr->end(), [](const auto a, const auto b) {
+        return *a.lock() < *b.lock();
+    });
+}
+
+void pop_heap(Entity array) {
+    auto arr = std::get<Owner<Array>>(array.value);
+    std::pop_heap(arr->begin(), arr->end(), [](const auto a, const auto b) {
+        return *a.lock() < *b.lock();
+    });
+    arr->pop_back();
+}
+
+void push_heap(Entity array, Reference<Entity> elem) {
+    auto arr = std::get<Owner<Array>>(array.value);
+    arr->emplace_back(elem);
+    std::push_heap(arr->begin(), arr->end(), [](const auto a, const auto b) {
+        return *a.lock() < *b.lock();
+    });
 }
 }
