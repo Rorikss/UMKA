@@ -22,7 +22,6 @@ public:
         }
 
         const size_t n = code.size();
-
         std::vector<bool> reachable(n, false);
 
         std::function<void(size_t)> dfs = [&](size_t i) {
@@ -32,40 +31,23 @@ public:
             auto op = static_cast<vm::OpCode>(code[i].code);
 
             if (op == vm::OpCode::JMP) {
-                int target = static_cast<int>(i) + static_cast<int>(code[i].arg);
+                int64_t target = static_cast<int64_t>(i) + (code[i].arg) + 1;
                 if (target >= 0 && target < static_cast<int>(n)) {
-                    dfs(static_cast<size_t>(target));
-                }
-                return;
-            }
-
-            if (op == vm::JMP_IF_FALSE || op == vm::JMP_IF_TRUE) {
-
-                bool condition_known = false;
-                bool condition_value = false;
-
-                int target = static_cast<int>(i) + static_cast<int>(code[i].arg);
-
-                if (i > 0 && code[i-1].code == vm::OpCode::PUSH_CONST) {
-                    condition_known = true;
-                    condition_value = load_int(const_pool[code[i-1].arg]);
-                }
-
-                if (!condition_known) {
-                    dfs(i + 1);
                     dfs(target);
-                } else {
-                    if (op == vm::JMP_IF_FALSE) {
-                        if (!condition_value) dfs(target);
-                        else dfs(i + 1);
-                    } else { // JMP_IF_TRUE
-                        if (condition_value) dfs(target);
-                        else dfs(i + 1);
-                    }
                 }
                 return;
             }
 
+            if (op == vm::OpCode::JMP_IF_FALSE || op == vm::OpCode::JMP_IF_TRUE) {
+                int64_t target = static_cast<int64_t>(i) + (code[i].arg)+1;
+                dfs(i + 1); // fallthrough
+                if (target >= 0 && target < static_cast<int>(n)) {
+                    dfs(target); // branch target
+                }
+                return;
+            }
+
+            // обычный fallthrough
             dfs(i + 1);
         };
 
@@ -73,8 +55,7 @@ public:
 
         auto jump_targets = compute_jump_targets(code, reachable);
 
-        std::vector<bool> needed(n, false);
-
+        std::vector needed(n, false);
         for (size_t t : jump_targets) {
             if (t < n && reachable[t]) {
                 needed[t] = true;
@@ -89,6 +70,12 @@ public:
             }
 
             auto op = static_cast<vm::OpCode>(code[i].code);
+
+            if (op == vm::OpCode::RETURN) {
+                needed[static_cast<size_t>(i)] = true;
+                demand = std::max(demand, 1);
+            }
+
             const int64_t consumes = stack_consumed(op, code[i].arg, func_table);
             const int64_t produces = stack_produced(op);
             const bool has_side_effects = is_side_effect(op);
@@ -100,16 +87,18 @@ public:
 
             if (is_needed) {
                 needed[static_cast<size_t>(i)] = true;
-                demand -= produces;
+
+                demand -= static_cast<int>(produces);
                 if (demand < 0) demand = 0;
-                demand += consumes;
+
+                demand += static_cast<int>(consumes);
             }
         }
 
         std::vector<vm::Command> new_code;
         new_code.reserve(n);
 
-        std::vector old_to_new(n, -1);
+        std::vector<int> old_to_new(n, -1);
 
         for (size_t i = 0; i < n; ++i) {
             if (reachable[i] && needed[i]) {
@@ -126,7 +115,7 @@ public:
 
             auto op = static_cast<vm::OpCode>(code[old_i].code);
             if (op == vm::OpCode::JMP || op == vm::OpCode::JMP_IF_FALSE || op == vm::OpCode::JMP_IF_TRUE) {
-                int old_target = static_cast<int>(old_i) + static_cast<int>(code[old_i].arg);
+                int64_t old_target = static_cast<int64_t>(old_i) + static_cast<int64_t>(code[old_i].arg)+1;
 
                 if (old_target >= 0 && old_target < static_cast<int>(n) &&
                     reachable[static_cast<size_t>(old_target)] &&
@@ -134,33 +123,27 @@ public:
 
                     int new_target = old_to_new[static_cast<size_t>(old_target)];
                     if (new_target >= 0) {
-                        new_code[static_cast<size_t>(new_i)].arg = new_target - new_i;
+                        new_code[static_cast<size_t>(new_i)].arg = new_target - new_i-1;
                     }
                 }
             }
         }
+
         code.swap(new_code);
+
     }
 
 private:
-
     static int stack_consumed(
         vm::OpCode op,
         int64_t arg,
         const std::unordered_map<size_t, vm::FunctionTableEntry>& func_table
     ) {
         switch (op) {
-            case vm::OpCode::PUSH_CONST:
-                return 0;
-
-            case vm::OpCode::POP:
-                return 1;
-
-            case vm::OpCode::LOAD:
-                return 0;
-
-            case vm::OpCode::STORE:
-                return 1;
+            case vm::OpCode::PUSH_CONST: return 0;
+            case vm::OpCode::POP: return 1;
+            case vm::OpCode::LOAD: return 0;
+            case vm::OpCode::STORE: return 1;
 
             case vm::OpCode::ADD:
             case vm::OpCode::SUB:
@@ -188,8 +171,13 @@ private:
                 return call_arity(arg, func_table);
 
             case vm::OpCode::BUILD_ARR:
-                return arg;   // N элементов массива
+                return static_cast<int>(arg);
 
+            // ========================= CHANGED =========================
+            // RETURN мы теперь обрабатываем отдельно в backward-проходе,
+            // чтобы не зависеть от "обычного" demand правила.
+            // Здесь можно оставить 1 (как было), но он уже не критичен.
+            // ===========================================================
             case vm::OpCode::RETURN:
                 return 1;
 
@@ -232,7 +220,7 @@ private:
                 return 1;
 
             case vm::OpCode::CALL:
-                return 1; // CALL кладёт на стек 1 возвращаемое значение
+                return 1;
 
             case vm::OpCode::BUILD_ARR:
                 return 1;
@@ -263,7 +251,6 @@ private:
         }
     }
 
-    // Собираем все jump targets среди reachable инструкций
     static std::unordered_set<size_t> compute_jump_targets(
         const std::vector<vm::Command>& code,
         const std::vector<bool>& reachable
@@ -276,19 +263,13 @@ private:
 
             auto op = static_cast<vm::OpCode>(code[i].code);
             if (op == vm::OpCode::JMP || op == vm::OpCode::JMP_IF_FALSE || op == vm::OpCode::JMP_IF_TRUE) {
-                int target = static_cast<int>(i) + static_cast<int>(code[i].arg);
-                if (target >= 0 && target < static_cast<int>(n)) {
+                int64_t target = static_cast<int64_t>(i) + static_cast<int64_t>(code[i].arg)+1;
+                if (target >= 0 && target < static_cast<int64_t>(n)) {
                     result.insert(static_cast<size_t>(target));
                 }
             }
         }
-
         return result;
-    }
-        static int64_t load_int(const vm::Constant &c) {
-        int64_t v;
-        memcpy(&v, c.data.data(), 8);
-        return v;
     }
 
     static int call_arity(
@@ -313,11 +294,10 @@ private:
 
         if (const auto it = func_table.find(id); it != func_table.end()) {
             if (it->second.arg_count >= 0 &&
-                it->second.arg_count <= std::numeric_limits<int>::max()) {
+                it->second.arg_count <= std::numeric_limits<int64_t>::max()) {
                 return static_cast<int>(it->second.arg_count);
             }
         }
-        // Unknown arity: treat as side-effect; keep it and avoid UB.
         return 0;
     }
 };

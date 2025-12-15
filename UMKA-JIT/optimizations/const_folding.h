@@ -1,5 +1,6 @@
 #pragma once
 #include "base_optimization.h"
+#include <model/model.h>
 #include <cstring>
 #include <variant>
 

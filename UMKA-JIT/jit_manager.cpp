@@ -1,11 +1,28 @@
 #include "jit_manager.h"
+#include "const_folding.h"
+#include "dce.h"
 
 namespace umka::jit {
+
+JitManager::JitManager(std::vector<vm::Command> &commands,
+               std::vector<vm::Constant> &const_pool,
+               std::unordered_map<size_t, vm::FunctionTableEntry> &func_table)
+      : runner(std::make_unique<JitRunner>(commands, const_pool, func_table)),
+        func_table(func_table) {
+  for (const auto &id: func_table | std::views::keys) {
+    jit_state[id] = JitState::NONE;
+  }
+  runner->add_optimization(std::make_unique<ConstFolding>());
+  runner->add_optimization(std::make_unique<DeadCodeElimination>());
+  running = true;
+  worker = std::thread([this] { worker_loop(); });
+
+}
+
 void JitManager::worker_loop() {
   while (running) {
     size_t fid;
 
-    // ждать задачу
     {
       std::unique_lock lock(queue_mutex);
       cv.wait(lock,
