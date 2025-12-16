@@ -134,7 +134,7 @@ class ConstFolding final: public IOptimize {
     static std::variant<int64_t, double> eval(
       const std::variant<int64_t, double> &a,
       const std::variant<int64_t, double> &b,
-      vm::OpCode op) {
+      const vm::OpCode op) {
       if (std::holds_alternative<int64_t>(a) && std::holds_alternative<int64_t>(b)) {
         int64_t lhs = std::get<int64_t>(a);
         int64_t rhs = std::get<int64_t>(b);

@@ -4,12 +4,11 @@
 #include "constant_propagation.h"
 
 namespace umka::jit {
-
 JitManager::JitManager(std::vector<vm::Command> &commands,
-               std::vector<vm::Constant> &const_pool,
-               std::unordered_map<size_t, vm::FunctionTableEntry> &func_table)
-      : runner(std::make_unique<JitRunner>(commands, const_pool, func_table)),
-        func_table(func_table) {
+                       std::vector<vm::Constant> &const_pool,
+                       std::unordered_map<size_t, vm::FunctionTableEntry> &func_table)
+  : runner(std::make_unique<JitRunner>(commands, const_pool, func_table)),
+    func_table(func_table) {
   for (const auto &id: func_table | std::views::keys) {
     jit_state[id] = JitState::NONE;
   }
@@ -19,7 +18,6 @@ JitManager::JitManager(std::vector<vm::Command> &commands,
   runner->add_optimization(std::make_unique<DeadCodeElimination>());
   running = true;
   worker = std::thread([this] { worker_loop(); });
-
 }
 
 void JitManager::worker_loop() {
@@ -44,7 +42,6 @@ void JitManager::worker_loop() {
       jit_state[fid] = JitState::RUNNING;
     }
 
-    // выполнить оптимизацию
     JittedFunction optimized = runner->optimize_function(fid);
 
     {
@@ -64,7 +61,8 @@ bool JitManager::has_jitted(size_t fid) {
   return jit_state[fid] == JitState::READY;
 }
 
-std::optional<std::reference_wrapper<const JittedFunction>> JitManager::try_get_jitted(size_t fid) {
+std::optional<std::reference_wrapper<const JittedFunction> >
+JitManager::try_get_jitted(size_t fid) {
   std::lock_guard lock(data_mutex);
   const auto it = jit_functions.find(fid);
   if (it == jit_functions.end()) {
