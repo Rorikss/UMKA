@@ -1,5 +1,5 @@
 #include "standart_funcs.h"
-#include "../model/model.h"
+#include <model/model.h>
 #include <iostream>
 #include <fstream>
 #include <ostream>

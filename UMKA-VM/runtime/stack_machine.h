@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../garbage_collector/garbage_collector.h"
-#include "../parser/command_parser.h"
+#include <garbage_collector/garbage_collector.h>
+#include <parser/command_parser.h>
 #include "model/model.h"
 #include "operations.h"
 #include "profiler.h"

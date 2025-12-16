@@ -91,8 +91,8 @@ target_include_directories(umka_jit PUBLIC
 )
 
 # VM
-add_executable(umka_vm
-    UMKA-VM/main.cpp
+
+add_library(umka_vm_lib
     UMKA-VM/garbage_collector/garbage_collector.h
     UMKA-VM/model/model.h
     UMKA-VM/model/model.cpp
@@ -104,9 +104,18 @@ add_executable(umka_vm
     UMKA-VM/runtime/standart_funcs.cpp
 )
 
-target_include_directories(umka_vm PRIVATE UMKA-VM UMKA-JIT)
+target_include_directories(umka_vm_lib PUBLIC
+    ${CMAKE_SOURCE_DIR}/UMKA-VM
+    ${CMAKE_SOURCE_DIR}/UMKA-JIT
+)
 
-target_link_libraries(umka_vm PRIVATE umka_jit)
+add_executable(umka_vm
+        UMKA-VM/main.cpp
+)
+
+target_include_directories(umka_vm PRIVATE UMKA-JIT)
+
+target_link_libraries(umka_vm PRIVATE umka_jit umka_vm_lib)
 
 
 # VM tests
@@ -158,8 +167,7 @@ set_target_properties(stack_machine_tests PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin/test
 )
 
-target_include_directories(stack_machine_tests PRIVATE UMKA-VM)
-target_link_libraries(stack_machine_tests PRIVATE gtest_main)
+target_link_libraries(stack_machine_tests PRIVATE gtest_main umka_vm_lib umka_jit)
 
 enable_testing()
 add_test(NAME stack_machine_tests COMMAND stack_machine_tests)
