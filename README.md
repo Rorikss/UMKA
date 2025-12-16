@@ -39,7 +39,8 @@
   - [4.3 Управление потоком](#43-управление-потоком)
   - [4.4 Математика](#44-математика)
   - [4.5 Строки](#45-строки)
-  - [4.5 Касты](#46-касты)
+  - [4.6 Касты](#46-касты)
+  - [4.7 Алгоритмы](#47-алгоритмы)
 - [5. Примеры программ](#5-примеры-программ)
 - [6. Грамматика EBNF](#6-грамматика-ebnf)
 - [7. Байткод](#7-байткод)
@@ -651,7 +652,7 @@ let a = "5.5";
 let b = to_double(a);  // b = 5.5
 ```
 
-### Алгоритмы
+### 4.7 Алгоритмы
 #### `sort(arr)`
 Сортирует массив.
 
@@ -836,6 +837,17 @@ add(arr, 4);
 set(arr, 0, "cringe");
 print(len(arr)); // 6
 print(arr); // [0: "cringe", 1: 2, 2: 3, 3: "string", 4: [0: "aboba", 1: 1], 5:  4]
+
+let another_arr = [1, 5, 7, 2, 3, 9];
+sort(another_arr);
+print(another_arr); // [0: 1, 1: 2, 2: 3, 3: 5, 4: 7, 5: 9]
+
+// PriorityQueue
+let heaped_arr = [5, 6, 2, 8, 1, 9, 10, 3]
+make_heap(heaped_arr);
+print(get(heaped_arr, 0)) // 10
+push_heap(heaped_arr, 100);
+print(get(heaped_arr, 0)) // 100
 ```
 
 #### Математика и встроенные функции
@@ -856,6 +868,11 @@ let c = "Hello";
 let d = "World";
 
 print(concat(c, d)); // HelloWorld
+
+// Ввод чисел из консоли
+let input_line = input(); // Ввод строки. Допустим "1, 2, 3"
+let numbers = split(input_line, ", "); // [0: "1", 1: "2", 2: "3"]
+let number = to_int(get(numbers, 0)); // 1
 
 ```
 
