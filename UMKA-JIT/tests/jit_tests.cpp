@@ -40,12 +40,12 @@ TEST(JitConstantPropagation, PropagatesKnownLocalsThroughLoad) {
     cmd(OpCode::PUSH_CONST, 1),
     cmd(OpCode::STORE, 1),
 
-    cmd(OpCode::LOAD, 0), // should become PUSH_CONST 0
-    cmd(OpCode::LOAD, 1), // should become PUSH_CONST 1
+    cmd(OpCode::LOAD, 0),
+    cmd(OpCode::LOAD, 1),
     cmd(OpCode::ADD),
     cmd(OpCode::STORE, 2),
 
-    cmd(OpCode::LOAD, 2), // must NOT be replaced
+    cmd(OpCode::LOAD, 2),
     cmd(OpCode::CALL, std::numeric_limits<int64_t>::max()),
 
     cmd(OpCode::RETURN)
@@ -68,10 +68,8 @@ TEST(JitConstantPropagation, PropagatesKnownLocalsThroughLoad) {
     return -1;
   };
 
-  // ADD должен быть УДАЛЁН folding'ом
   EXPECT_EQ(find_first(OpCode::ADD), -1);
 
-  // STORE 2 должен существовать
   EXPECT_NE(find_first(OpCode::STORE), -1);
 
   // LOAD 2 → PUSH_CONST (после folding + cp)
@@ -175,14 +173,14 @@ TEST(JitConstFolding, ArithmeticNested) {
 }
 
 TEST(JitConstFolding, MultiplyTwoSums) {
-  std::vector<umka::vm::Constant> pool = {
+  std::vector pool = {
     make_int(1), // 0
     make_int(2), // 1
     make_int(3), // 2
     make_int(4) // 3
   };
 
-  std::vector<umka::vm::Command> code = {
+  std::vector code = {
     cmd(umka::vm::OpCode::PUSH_CONST, 0),
     cmd(umka::vm::OpCode::PUSH_CONST, 1),
     cmd(umka::vm::OpCode::ADD), // = 3
@@ -285,7 +283,7 @@ TEST(JitConstFolding, CannotFoldAcrossCall) {
 TEST(JitConstFolding, CannotFoldMixedStackValues) {
   std::vector pool = {make_int(1), make_int(2)};
 
-  std::vector<umka::vm::Command> code = {
+  std::vector code = {
     cmd(umka::vm::OpCode::PUSH_CONST, 0),
     cmd(umka::vm::OpCode::LOAD, 0),
     cmd(umka::vm::OpCode::PUSH_CONST, 1),
@@ -304,7 +302,7 @@ TEST(JitConstFolding, CannotFoldMixedStackValues) {
   EXPECT_EQ(static_cast<umka::vm::OpCode>(code[2].code), umka::vm::OpCode::PUSH_CONST);
   EXPECT_EQ(static_cast<umka::vm::OpCode>(code[3].code), umka::vm::OpCode::ADD);
 }
-/*
+
 TEST(JitDCE, RemoveUnusedArithmetic) {
   std::vector pool = {make_int(1), make_int(2)};
 
@@ -470,4 +468,3 @@ TEST(JitDCE, DeadLoopConstantFalse) {
   EXPECT_EQ(static_cast<umka::vm::OpCode>(code[1].code), umka::vm::OpCode::JMP_IF_FALSE);
   EXPECT_EQ(static_cast<umka::vm::OpCode>(code[2].code), umka::vm::OpCode::RETURN);
 }
-*/
