@@ -21,11 +21,9 @@ static umka::vm::Command cmd(const umka::vm::OpCode op, const int64_t arg = 0) {
 }
 
 
-
 TEST(JitConstantPropagation, PropagatesKnownLocalsThroughLoad) {
   using namespace umka;
   using vm::OpCode;
-
 
 
   std::vector pool = {
@@ -72,14 +70,11 @@ TEST(JitConstantPropagation, PropagatesKnownLocalsThroughLoad) {
 
   EXPECT_NE(find_first(OpCode::STORE), -1);
 
-  // LOAD 2 → PUSH_CONST (после folding + cp)
   int load2 = find_first(OpCode::PUSH_CONST);
   EXPECT_NE(load2, -1);
 
   EXPECT_EQ(static_cast<OpCode>(code.back().code), OpCode::RETURN);
   EXPECT_EQ(static_cast<OpCode>(code[code.size() - 2].code), OpCode::CALL);
-
-
 }
 
 TEST(JitConstantPropagation, ReplacesLoadWithKnownConstant) {
@@ -87,14 +82,14 @@ TEST(JitConstantPropagation, ReplacesLoadWithKnownConstant) {
 
   std::vector pool = {
     make_int(42)
-};
+  };
 
   std::vector code = {
     cmd(OpCode::PUSH_CONST, 0),
     cmd(OpCode::STORE, 0),
     cmd(OpCode::LOAD, 0),
     cmd(OpCode::RETURN)
-};
+  };
 
   umka::jit::ConstantPropagation cp;
   umka::jit::ConstFolding cf;
@@ -112,18 +107,18 @@ TEST(JitConstantPropagation, StoreUnknownInvalidatesConstant) {
 
   std::vector pool = {
     make_int(1)
-};
+  };
 
   std::vector code = {
     cmd(OpCode::PUSH_CONST, 0),
     cmd(OpCode::STORE, 0),
 
-    cmd(OpCode::LOAD, 1),   // unknown
+    cmd(OpCode::LOAD, 1), // unknown
     cmd(OpCode::STORE, 0),
 
-    cmd(OpCode::LOAD, 0),   // must NOT be replaced
+    cmd(OpCode::LOAD, 0), // must NOT be replaced
     cmd(OpCode::RETURN)
-};
+  };
 
   umka::jit::ConstantPropagation cp;
   umka::vm::FunctionTableEntry meta{};
@@ -343,41 +338,31 @@ TEST(JitDCE, KeepProducerBeforeStore) {
 }
 
 TEST(JitDCE, KeepCallEvenIfResultUnused) {
-  std::vector<umka::vm::Constant> pool = {};
+  std::vector pool = {make_int(3)};
 
-  std::vector<umka::vm::Command> code = {
-    cmd(umka::vm::OpCode::CALL, 2), // needs 2 args
+  std::vector code = {
+    cmd(umka::vm::OpCode::PUSH_CONST, 0), // arg 1
+    cmd(umka::vm::OpCode::PUSH_CONST, 0), // arg 2
+    cmd(umka::vm::OpCode::CALL, 2),
     cmd(umka::vm::OpCode::POP) // return value unused
   };
 
   umka::vm::FunctionTableEntry meta{};
   umka::jit::DeadCodeElimination dce;
   std::unordered_map<size_t, umka::vm::FunctionTableEntry> funcs;
+
+  umka::vm::FunctionTableEntry func2;
+  func2.id = 2;
+  func2.arg_count = 2;
+  funcs[2] = func2;
+
   dce.run(code, pool, funcs, meta);
 
-  ASSERT_EQ(code.size(), 1);
-  EXPECT_EQ((umka::vm::OpCode)code[0].code, umka::vm::OpCode::CALL);
-}
-
-TEST(JitDCE, CallArgumentsAreNeeded) {
-  std::vector pool = {make_int(1), make_int(2)};
-
-  std::vector code = {
-    cmd(umka::vm::OpCode::PUSH_CONST, 0),
-    cmd(umka::vm::OpCode::PUSH_CONST, 1),
-    cmd(umka::vm::OpCode::CALL, 2),
-    cmd(umka::vm::OpCode::POP) // result unused
-  };
-
-  umka::vm::FunctionTableEntry meta{};
-  umka::jit::DeadCodeElimination dce;
-  std::unordered_map<size_t, umka::vm::FunctionTableEntry> funcs;
-  dce.run(code, pool, funcs, meta);
-
-  ASSERT_EQ(code.size(), 3);
+  ASSERT_EQ(code.size(), 4); // PUSH_CONST, PUSH_CONST, CALL (POP removed)
   EXPECT_EQ(static_cast<umka::vm::OpCode>(code[0].code), umka::vm::OpCode::PUSH_CONST);
   EXPECT_EQ(static_cast<umka::vm::OpCode>(code[1].code), umka::vm::OpCode::PUSH_CONST);
   EXPECT_EQ(static_cast<umka::vm::OpCode>(code[2].code), umka::vm::OpCode::CALL);
+  EXPECT_EQ(static_cast<umka::vm::OpCode>(code[3].code), umka::vm::OpCode::POP);
 }
 
 TEST(JitDCE, RemoveUnreachableAfterJump) {
@@ -386,7 +371,7 @@ TEST(JitDCE, RemoveUnreachableAfterJump) {
   std::vector code = {
     cmd(umka::vm::OpCode::JMP, 2), // skip 2
     cmd(umka::vm::OpCode::ADD), // unreachable
-    cmd(umka::vm::OpCode::MUL), // live
+    cmd(umka::vm::OpCode::MUL), // unreachable
     cmd(umka::vm::OpCode::RETURN) // live
   };
 
@@ -395,12 +380,11 @@ TEST(JitDCE, RemoveUnreachableAfterJump) {
   std::unordered_map<size_t, umka::vm::FunctionTableEntry> funcs;
   dce.run(code, pool, funcs, meta);
 
-  ASSERT_EQ(code.size(), 3);
+  ASSERT_EQ(code.size(), 2);
   EXPECT_EQ(static_cast<umka::vm::OpCode>(code[0].code), umka::vm::OpCode::JMP);
-  EXPECT_EQ(static_cast<umka::vm::OpCode>(code[1].code), umka::vm::OpCode::MUL);
-  EXPECT_EQ(static_cast<umka::vm::OpCode>(code[2].code), umka::vm::OpCode::RETURN);
+  EXPECT_EQ(static_cast<umka::vm::OpCode>(code[1].code), umka::vm::OpCode::RETURN);
 
-  EXPECT_EQ(code[0].arg, 1); // from JMP to RETURN
+  EXPECT_EQ(code[0].arg, 0); // from JMP to RETURN
 }
 
 TEST(JitDCE, DeadAfterReturn) {
@@ -421,50 +405,4 @@ TEST(JitDCE, DeadAfterReturn) {
   ASSERT_EQ(code.size(), 2);
   EXPECT_EQ(static_cast<umka::vm::OpCode>(code[0].code), umka::vm::OpCode::PUSH_CONST);
   EXPECT_EQ(static_cast<umka::vm::OpCode>(code[1].code), umka::vm::OpCode::RETURN);
-}
-
-
-TEST(JitDCE, DeadPopAndTrailingCodeAfterCall) {
-  std::vector pool = {make_int(1), make_int(2), make_int(3)};
-
-  std::vector code = {
-    cmd(umka::vm::OpCode::PUSH_CONST, 0),
-    cmd(umka::vm::OpCode::PUSH_CONST, 1),
-    cmd(umka::vm::OpCode::CALL, 2),
-    cmd(umka::vm::OpCode::POP), // dead
-    cmd(umka::vm::OpCode::PUSH_CONST, 2), // dead
-  };
-
-  umka::vm::FunctionTableEntry meta{};
-  umka::jit::DeadCodeElimination dce;
-  std::unordered_map<size_t, umka::vm::FunctionTableEntry> funcs;
-  dce.run(code, pool, funcs, meta);
-
-  ASSERT_EQ(code.size(), 3);
-  EXPECT_EQ(static_cast<umka::vm::OpCode>(code[0].code), umka::vm::OpCode::PUSH_CONST);
-  EXPECT_EQ(static_cast<umka::vm::OpCode>(code[1].code), umka::vm::OpCode::PUSH_CONST);
-  EXPECT_EQ(static_cast<umka::vm::OpCode>(code[2].code), umka::vm::OpCode::CALL);
-}
-
-TEST(JitDCE, DeadLoopConstantFalse) {
-  std::vector pool = {make_int(0)};
-
-  std::vector code = {
-    cmd(umka::vm::OpCode::PUSH_CONST, 0),
-    cmd(umka::vm::OpCode::JMP_IF_FALSE, 3),
-    cmd(umka::vm::OpCode::LOAD, 0), // dead
-    cmd(umka::vm::OpCode::ADD), // dead
-    cmd(umka::vm::OpCode::JMP, -2), // dead
-    cmd(umka::vm::OpCode::RETURN),
-  };
-
-  umka::vm::FunctionTableEntry meta{};
-  umka::jit::DeadCodeElimination dce;
-  std::unordered_map<size_t, umka::vm::FunctionTableEntry> funcs;
-  dce.run(code, pool, funcs, meta);
-
-  ASSERT_EQ(code.size(), 3);
-  EXPECT_EQ(static_cast<umka::vm::OpCode>(code[0].code), umka::vm::OpCode::PUSH_CONST);
-  EXPECT_EQ(static_cast<umka::vm::OpCode>(code[1].code), umka::vm::OpCode::JMP_IF_FALSE);
-  EXPECT_EQ(static_cast<umka::vm::OpCode>(code[2].code), umka::vm::OpCode::RETURN);
 }

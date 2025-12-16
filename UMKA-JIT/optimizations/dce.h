@@ -68,9 +68,14 @@ class DeadCodeElimination final: public IOptimize {
 
         auto op = static_cast<vm::OpCode>(code[i].code);
 
-        if (op == vm::OpCode::RETURN) {
-          needed[static_cast<size_t>(i)] = true;
-          demand = std::max(demand, 1);
+        if (op == vm::OpCode::JMP ||
+          op == vm::OpCode::JMP_IF_FALSE ||
+          op == vm::OpCode::JMP_IF_TRUE) {
+          int64_t target = static_cast<int64_t>(i) + code[i].arg + 1;
+          if (target >= 0 && target < static_cast<int>(n) && reachable[static_cast<size_t>(
+            target)]) {
+            needed[i] = true;
+          }
         }
 
         const int64_t consumes = stack_consumed(op, code[i].arg, func_table);
@@ -237,6 +242,7 @@ class DeadCodeElimination final: public IOptimize {
         case vm::OpCode::STORE:
         case vm::OpCode::RETURN:
         case vm::OpCode::CALL:
+        case vm::OpCode::POP:
           return true;
         default:
           return false;

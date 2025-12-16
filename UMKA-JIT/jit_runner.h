@@ -45,7 +45,7 @@ class JitRunner {
       const auto begin = commands.begin() + meta.code_offset;
       const auto end = commands.begin() + meta.code_offset_end;
 
-      std::vector<vm::Command> local(begin, end);
+      std::vector local(begin, end);
 
       for (auto &opt: optimizations) {
         opt->run(local, const_pool, func_table, meta);
