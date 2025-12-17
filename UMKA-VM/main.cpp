@@ -27,6 +27,7 @@ int main(int argc, char* argv[]) {
 
         StackMachine<ReleaseMod> vm(parser);
         vm.run([init = false](Command cmd, std::string stack_top) mutable {
+            return false;
             if (!init) {
                 init = true;
                 std::cout << "Executing command" << std::endl;

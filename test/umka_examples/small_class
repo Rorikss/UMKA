@@ -8,12 +8,6 @@ method Cat say_hello(self) -> unit {
 }
 
 method Cat catch_mices(self, catched, mices, x) -> unit {
-    print(self);
-    print(catched);
-    print(mices);
-    print(x);
-    print("=====");
-    print(self:name);
     self:name = "kotenok";
     for (let i = 0; i < catched; i = i + 1) {
         print(get(mices, i));
@@ -22,7 +16,6 @@ method Cat catch_mices(self, catched, mices, x) -> unit {
             to_string(get(mices, i))
         ));
     }
-    print("bebra");
 }
 
 fun main() -> unit {

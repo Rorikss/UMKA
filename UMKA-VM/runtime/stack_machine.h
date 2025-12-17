@@ -378,6 +378,7 @@ class StackMachine
             case GET_FIELD: {
                 int64_t field_id = cmd.arg;
 
+                Reference<Entity> obj_ref = operand_stack.back();
                 Entity obj = get_operand_from_stack("GET_FIELD");
                 Owner<Array>& arr = std::get<Owner<Array>>(obj.value);
 
@@ -394,7 +395,8 @@ class StackMachine
 
                 int64_t field_index = it->second;
 
-                operand_stack.emplace_back(get(obj, field_index));
+                create_and_push(make_entity(field_index));
+                operand_stack.emplace_back(std::move(obj_ref));
                 break;
             }
             default:

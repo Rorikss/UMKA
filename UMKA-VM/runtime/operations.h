@@ -28,7 +28,7 @@ Entity numeric_applier(Entity a, Entity b, F op) {
     if_get_then_apply_op(double, double)
     if_get_then_apply_op(double, bool)
 
-    throw std::runtime_error("bad cast in f");
+    throw std::runtime_error("bad cast in numeric_applier");
 }
 
 template<typename F>
@@ -37,7 +37,7 @@ Entity mod_applier(Entity a, Entity b, F op) {
     if_get_then_apply_op(bool, int64_t)
     if_get_then_apply_op(bool, bool)
 
-    throw std::runtime_error("bad cast in f");
+    throw std::runtime_error("bad cast in mod_applier");
 }
 #undef if_get_then_apply_op
 

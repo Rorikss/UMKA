@@ -16,7 +16,7 @@ fun main() -> unit {
     let a = 10;
     let b = 20;
     print(a - b);
-
+    print(-b);
 
     let one = "140";
     let two = "230";

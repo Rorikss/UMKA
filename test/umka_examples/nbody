@@ -13,20 +13,14 @@ class Body {
     let mass = 0.0;
 }
 
-method Body offsetMomentum(self, px, py, pz) -> Body {
-    let PI = 3.141592653589793;
-    let SOLAR_MASS = 4.0 * PI * PI;
-    let DAYS_PER_YEAR = 365.24;
+method Body offsetMomentum(self, px, py, pz, SOLAR_MASS) -> Body {
     self:vx = -px / SOLAR_MASS;
     self:vy = -py / SOLAR_MASS;
     self:vz = -pz / SOLAR_MASS;
     return self;
 }
 
-fun Jupiter() -> Body {
-    let PI = 3.141592653589793;
-    let SOLAR_MASS = 4.0 * PI * PI;
-    let DAYS_PER_YEAR = 365.24;
+fun Jupiter(SOLAR_MASS, DAYS_PER_YEAR) -> Body {
     let b = Body;
     b:x = 4.8414314424647209;
     b:y = -1.1603200440274284;
@@ -38,10 +32,7 @@ fun Jupiter() -> Body {
     return b;
 }
 
-fun Saturn() -> Body {
-    let PI = 3.141592653589793;
-    let SOLAR_MASS = 4.0 * PI * PI;
-    let DAYS_PER_YEAR = 365.24;
+fun Saturn(SOLAR_MASS, DAYS_PER_YEAR) -> Body {
     let b = Body;
     b:x = 8.3433667182445799;
     b:y = 4.1247985641243048;
@@ -53,10 +44,7 @@ fun Saturn() -> Body {
     return b;
 }
 
-fun Uranus() -> Body {
-    let PI = 3.141592653589793;
-    let SOLAR_MASS = 4.0 * PI * PI;
-    let DAYS_PER_YEAR = 365.24;
+fun Uranus(SOLAR_MASS, DAYS_PER_YEAR) -> Body {
     let b = Body;
     b:x = 12.894369562139131;
     b:y = -15.111151401698631;
@@ -68,10 +56,7 @@ fun Uranus() -> Body {
     return b;
 }
 
-fun Neptune() -> Body {
-    let PI = 3.141592653589793;
-    let SOLAR_MASS = 4.0 * PI * PI;
-    let DAYS_PER_YEAR = 365.24;
+fun Neptune(SOLAR_MASS, DAYS_PER_YEAR) -> Body {
     let b = Body;
     b:x = 15.379697114850917;
     b:y = -25.919314609987964;
@@ -83,10 +68,7 @@ fun Neptune() -> Body {
     return b;
 }
 
-fun Sun() -> Body {
-    let PI = 3.141592653589793;
-    let SOLAR_MASS = 4.0 * PI * PI;
-    let DAYS_PER_YEAR = 365.24;
+fun Sun(SOLAR_MASS, DAYS_PER_YEAR) -> Body {
     let b = Body;
     b:x = 0.0;
     b:y = 0.0;
@@ -102,25 +84,13 @@ class NBodySystem {
     let bodies = unit;
 }
 
-method NBodySystem init(self, bodies) -> NBodySystem {
-    print("init0");
-    let PI = 3.141592653589793;
-    let SOLAR_MASS = 4.0 * PI * PI;
-    let DAYS_PER_YEAR = 365.24;
-    print("init1");
+method NBodySystem init(self, bodies, SOLAR_MASS) -> NBodySystem {
     self:bodies = bodies;
-    print("init2");
     let px = 0.0;
     let py = 0.0;
     let pz = 0.0;
-    print(self);
-    print("");
-    print("ZHABA");
-    print(self:bodies);
-    print("ZHABA2");
     let size = len(self:bodies);
-    print("init");
-    
+
     for (let i = 0; i < size; i = i + 1) {
         let b = get(self:bodies, i);
         let m = b:mass;
@@ -130,14 +100,11 @@ method NBodySystem init(self, bodies) -> NBodySystem {
     }
     
     let sun = get(self:bodies, 0);
-    sun$offsetMomentum(px, py, pz);
+    sun$offsetMomentum(px, py, pz, SOLAR_MASS);
     return self;
 }
 
 method NBodySystem advance(self, dt) -> unit {
-    let PI = 3.141592653589793;
-    let SOLAR_MASS = 4.0 * PI * PI;
-    let DAYS_PER_YEAR = 365.24;
     let dx = 0;
     let dy = 0;
     let dz = 0;
@@ -207,13 +174,10 @@ fun main() -> unit {
     for (let n = 3; n <= 24; n = n * 2) {
         print(n);
         let bodies = NBodySystem;
-        let solar_system = [Sun(), Jupiter(), Saturn(), Uranus(), Neptune()];
-        print("GG");
-        print(bodies);
-        bodies$init(solar_system);
+        let solar_system = [Sun(SOLAR_MASS, DAYS_PER_YEAR), Jupiter(SOLAR_MASS, DAYS_PER_YEAR), Saturn(SOLAR_MASS, DAYS_PER_YEAR), Uranus(SOLAR_MASS, DAYS_PER_YEAR), Neptune(SOLAR_MASS, DAYS_PER_YEAR)];
+        bodies$init(solar_system, SOLAR_MASS);
         
         let max = n * 100;
-        print("BEBRA");
         ret = ret + bodies$energy();
         for (let i = 0; i < max; i = i + 1) {
             bodies$advance(0.01);

@@ -389,13 +389,15 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
         }
     } else if (auto ue = dynamic_cast<UnaryExpr*>(expr)) {
         switch (ue->op) {
-            gen_expr_in_func(ue->rhs, fb);
             case '!':
+                gen_expr_in_func(ue->rhs, fb);
                 fb.emit_byte(OP_NOT);
                 break;
             case '+':
+                gen_expr_in_func(ue->rhs, fb);
                 break;
             case '-':
+                gen_expr_in_func(ue->rhs, fb);
                 emit_push_zero_const(fb);
                 fb.emit_byte(OP_SUB);
                 break;
@@ -537,6 +539,11 @@ void BytecodeGenerator::gen_field_access_expr(FieldAccessExpr* expr, FuncBuilder
     
     fb.emit_byte(OP_GET_FIELD);
     fb.emit_int64(field_id);
+
+    auto itb = builtinIDs.find("get");
+    if (itb != builtinIDs.end()) {
+        fb.emit_call(itb->second);
+    }
 }
 
 void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuilder& fb) {
@@ -553,6 +560,11 @@ void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuild
     
     fb.emit_byte(OP_GET_FIELD);
     fb.emit_int64(field_id);
+
+    auto itb = builtinIDs.find("get");
+    if (itb != builtinIDs.end()) {
+        fb.emit_call(itb->second);
+    }
 }
 
 void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb) { 
@@ -566,6 +578,9 @@ void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& 
 }
 
 void BytecodeGenerator::gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuilder& fb) {
+    // Generate the value to assign
+    gen_expr_in_func(stmt->expr, fb);
+    
     auto it = fb.var_index.find(stmt->object_name);
     if (it == fb.var_index.end()) {
         std::cerr << "Member assignment to unknown object '" << stmt->object_name << "'\n";
@@ -575,11 +590,17 @@ void BytecodeGenerator::gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuild
     
     int64_t field_id = get_field_id_or_error(stmt->field, fb);
     if (field_id == -1) return;
-    
-    fb.emit_byte(OP_SET_FIELD);
+
+    // Push the field index as a constant
+    fb.emit_byte(OP_GET_FIELD);
     fb.emit_int64(field_id);
-    
-    gen_expr_in_func(stmt->expr, fb);
+
+    // Use the set builtin function to set the field value
+    auto itb = builtinIDs.find("set");
+    if (itb != builtinIDs.end()) {
+        fb.emit_call(itb->second);
+        fb.emit_byte(OP_POP);
+    }
 }
 
 void BytecodeGenerator::gen_class_instantiation(const std::string& className, FuncBuilder& fb) {
