@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../model/model.h"
+#include <model/model.h>
 #include <string>
 #include <variant>
 #include <algorithm>

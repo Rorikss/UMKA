@@ -837,6 +837,17 @@ add(arr, 4);
 set(arr, 0, "cringe");
 print(len(arr)); // 6
 print(arr); // [0: "cringe", 1: 2, 2: 3, 3: "string", 4: [0: "aboba", 1: 1], 5:  4]
+
+let another_arr = [1, 5, 7, 2, 3, 9];
+sort(another_arr);
+print(another_arr); // [0: 1, 1: 2, 2: 3, 3: 5, 4: 7, 5: 9]
+
+// PriorityQueue
+let heaped_arr = [5, 6, 2, 8, 1, 9, 10, 3]
+make_heap(heaped_arr);
+print(get(heaped_arr, 0)) // 10
+push_heap(heaped_arr, 100);
+print(get(heaped_arr, 0)) // 100
 ```
 
 #### Математика и встроенные функции
@@ -858,6 +869,115 @@ let d = "World";
 
 print(concat(c, d)); // HelloWorld
 
+// Ввод чисел из консоли
+let input_line = input(); // Ввод строки. Допустим "1, 2, 3"
+let numbers = split(input_line, ", "); // [0: "1", 1: "2", 2: "3"]
+let number = to_int(get(numbers, 0)); // 1
+```
+
+#### Дейкстра
+```rust
+class Edge {
+    let v = unit;
+    let u = unit;
+    let w = unit;
+}
+
+fun mk_edge(v, u, w) -> Edge {
+    let e = Edge;
+    e:v = v;
+    e:u = u;
+    e:w = w;
+    return e;
+}
+
+fun mk_array(n, x) -> [] {
+    let arr = [];
+    for (let i = 0; i < n; i = i + 1) {
+        add(arr, x);
+    }
+    return arr;
+}
+
+fun Dijkstra(graph, edges, s) -> [] {
+    let n = len(graph);
+    let inf = 1000000000;
+    let dist = mk_array(n, inf);
+    let q = [];
+    set(dist, s, 0);
+    push_heap(q, [0, s]);
+    while (len(q) > 0) {
+        let d_v = get(q, 0);
+        let v = get(d_v, 1);
+        pop_heap(q);
+        if (get(dist, v) == -get(d_v, 0)) {
+            for (let i = 0; i < len(get(graph, v)); i = i + 1) {
+                let edge = get(get(graph, v), i);
+                if (get(dist, v) + edge:w < get(dist, edge:u)) {
+                    set(dist, edge:u, get(dist, v) + edge:w);
+                    push_heap(q, [-get(dist, edge:u), edge:u]);
+                }
+            }
+        }
+    }
+    for (let i = 0; i < n; i = i + 1) {
+        if (get(dist, i) == inf) {
+            set(dist, i, -1);
+        }
+    }
+    return dist;
+}
+
+//     (A)---2---(B)---3---(C)
+//     / \       / \       / \
+//    1   3     4   2     1   4
+//   /     \   /     \   /     \
+// (D)--2--(E)---5---(F)---3---(G)
+//   \     / \       / \       /
+//    4   3   1     2   2     3
+//     \ /     \   /     \   /
+//     (H)---6--(I)---4---(J)
+
+fun main() -> unit {
+    let n = 10;
+    let g = [];
+    for (let i = 0; i < n; i = i + 1) {
+        add(g, []);
+    }
+
+    let edges = [
+        [1, 2, 2],
+        [1, 4, 1],
+        [1, 5, 3],
+        [2, 3, 3],
+        [2, 5, 4],
+        [2, 6, 2],
+        [3, 6, 1],
+        [3, 7, 4],
+        [4, 5, 2],
+        [4, 8, 4],
+        [5, 6, 5],
+        [5, 8, 3],
+        [5, 9, 1],
+        [6, 7, 3],
+        [6, 9, 2],
+        [6, 10, 2],
+        [7, 10, 3],
+        [8, 9, 6],
+        [9, 10, 4]
+    ];
+
+    for (let i = 0; i < len(edges); i = i + 1) {
+        let edge = get(edges, i);
+        let e = mk_edge(get(edge, 0) - 1, get(edge, 1) - 1, get(edge, 2));
+        add(get(g, e:v), mk_edge(e:v, e:u, e:w));
+        add(get(g, e:u), mk_edge(e:u, e:v, e:w));
+    }
+
+    let dist = Dijkstra(g, edges, 0);
+    print(dist);  // [0: 0, 1: 2, 2: 5, 3: 1, 4: 3, 5: 4, 6: 7, 7: 5, 8: 4, 9: 6]
+    return;
+}
 ```
 
 #### Классы

@@ -9,7 +9,6 @@
 #include <optional>
 #include <functional>
 
-
 #include "jitted_function.h"
 #include "jit_runner.h"
 
@@ -25,16 +24,7 @@ class JitManager {
   public:
     JitManager(std::vector<vm::Command> &commands,
                std::vector<vm::Constant> &const_pool,
-               std::unordered_map<size_t, vm::FunctionTableEntry> &func_table)
-      : runner(std::make_unique<JitRunner>(commands, const_pool, func_table)),
-        func_table(func_table) {
-      for (const auto &id: func_table | std::views::keys) {
-        jit_state[id] = JitState::NONE;
-      }
-
-      running = true;
-      worker = std::thread([this] { worker_loop(); });
-    }
+               std::unordered_map<size_t, vm::FunctionTableEntry> &func_table);
 
     ~JitManager() {
       running = false;

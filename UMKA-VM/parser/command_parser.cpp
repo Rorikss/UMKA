@@ -1,5 +1,5 @@
 #include "command_parser.h"
-#include "../runtime/stack_machine.h"
+#include <runtime/stack_machine.h>
 #include <stdexcept>
 #include <string>
 

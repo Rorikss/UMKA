@@ -115,7 +115,7 @@ struct Entity {
     }
 
     std::partial_ordering operator<=>(const Entity& other) const {
-        return std::visit([&](auto&& arg1) {
+        return std::visit([&](auto&& arg1) -> std::partial_ordering {
             return std::visit([&](auto&& arg2) -> std::partial_ordering {
                 using T1 = std::decay_t<decltype(arg1)>;
                 using T2 = std::decay_t<decltype(arg2)>;
@@ -128,6 +128,20 @@ struct Entity {
                     ? std::partial_ordering::equivalent 
                     : std::partial_ordering::unordered;
                 }
+                // if constexpr (std::is_same_v<Owner<Array>, T1> && std::is_same_v<T1, T2>) {
+                //     static_assert(!std::is_same_v<std::string, T1>);
+                //     static_assert(!std::is_same_v<std::string, T2>);
+                //     size_t sz = std::min(arg1->size(), arg2->size());
+                //     for (size_t i = 0; i < sz; ++i) {
+                //         const auto& x = *((*arg1)[i]).lock();
+                //         static_assert(std::is_same_v<decltype(x), const Entity&>);
+                //         const auto& y = *((*arg2)[i]).lock();
+                //         if (x != y) {
+                //             return x <=> y;
+                //         }
+                //     }
+                //     return arg1->size() <=> arg2->size();
+                // }
                 return std::partial_ordering::unordered;
             }, other.value);
         }, value);

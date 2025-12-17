@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../model/model.h"
+#include <model/model.h>
 
 #include <iostream>
 #include <unordered_map>
@@ -10,7 +10,9 @@
 #include <cstdint>
 
 #if defined(_WIN32)
-  #define NOMINMAX
+  #ifndef NOMINMAX
+    #define NOMINMAX
+  #endif
   #include <windows.h>
 #elif defined(__unix__) || defined(__APPLE__)
   #include <unistd.h>

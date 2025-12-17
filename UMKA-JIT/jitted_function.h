@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include <model/model.h>   // for Command
+#include <model/model.h>
 #include <parser/command_parser.h>
 
 namespace umka::jit {
