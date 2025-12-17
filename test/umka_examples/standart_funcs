@@ -16,10 +16,11 @@ fun main() -> unit {
     let a = 10;
     let b = 20;
     print(a - b);
-
+    print(-b);
 
     let one = "140";
     let two = "230";
+    print([one, two]);
     assert(to_int(one) + to_int(two) == 370.000000);
     let three = "3.14";
     assert(to_double(three) == 3.14);

@@ -1,0 +1,199 @@
+
+let PI = 3.141592653589793;
+let SOLAR_MASS = 4.0 * PI * PI;
+let DAYS_PER_YEAR = 365.24;
+
+class Body {
+    let x = 0.0;
+    let y = 0.0;
+    let z = 0.0;
+    let vx = 0.0;
+    let vy = 0.0;
+    let vz = 0.0;
+    let mass = 0.0;
+}
+
+method Body offsetMomentum(self, px, py, pz, SOLAR_MASS) -> Body {
+    self:vx = -px / SOLAR_MASS;
+    self:vy = -py / SOLAR_MASS;
+    self:vz = -pz / SOLAR_MASS;
+    return self;
+}
+
+fun Jupiter(SOLAR_MASS, DAYS_PER_YEAR) -> Body {
+    let b = Body;
+    b:x = 4.8414314424647209;
+    b:y = -1.1603200440274284;
+    b:z = -0.10362204447112311;
+    b:vx = 0.00166007664274403694 * DAYS_PER_YEAR;
+    b:vy = 0.00769901118419740425 * DAYS_PER_YEAR;
+    b:vz = -0.0000690460016972063023 * DAYS_PER_YEAR;
+    b:mass = 0.0009547919384243266 * SOLAR_MASS;
+    return b;
+}
+
+fun Saturn(SOLAR_MASS, DAYS_PER_YEAR) -> Body {
+    let b = Body;
+    b:x = 8.3433667182445799;
+    b:y = 4.1247985641243048;
+    b:z = -0.40352341711432138;
+    b:vx = -0.00276742510726862411 * DAYS_PER_YEAR;
+    b:vy = 0.00499852801234917238 * DAYS_PER_YEAR;
+    b:vz = 0.0000230417297573763929 * DAYS_PER_YEAR;
+    b:mass = 0.0002858859806661308 * SOLAR_MASS;
+    return b;
+}
+
+fun Uranus(SOLAR_MASS, DAYS_PER_YEAR) -> Body {
+    let b = Body;
+    b:x = 12.894369562139131;
+    b:y = -15.111151401698631;
+    b:z = -0.22330757889265573;
+    b:vx = 0.00296460137564761618 * DAYS_PER_YEAR;
+    b:vy = 0.00237847173959480950 * DAYS_PER_YEAR;
+    b:vz = -0.0000296589568540237556 * DAYS_PER_YEAR;
+    b:mass = 0.00004366244043351563 * SOLAR_MASS;
+    return b;
+}
+
+fun Neptune(SOLAR_MASS, DAYS_PER_YEAR) -> Body {
+    let b = Body;
+    b:x = 15.379697114850917;
+    b:y = -25.919314609987964;
+    b:z = 0.17925877295037118;
+    b:vx = 0.00268067772490389322 * DAYS_PER_YEAR;
+    b:vy = 0.00162824170038242295 * DAYS_PER_YEAR;
+    b:vz = -0.0000951592254519715870 * DAYS_PER_YEAR;
+    b:mass = 0.0000515138902046611451 * SOLAR_MASS;
+    return b;
+}
+
+fun Sun(SOLAR_MASS, DAYS_PER_YEAR) -> Body {
+    let b = Body;
+    b:x = 0.0;
+    b:y = 0.0;
+    b:z = 0.0;
+    b:vx = 0.0;
+    b:vy = 0.0;
+    b:vz = 0.0;
+    b:mass = SOLAR_MASS;
+    return b;
+}
+
+class NBodySystem {
+    let bodies = unit;
+}
+
+method NBodySystem init(self, bodies, SOLAR_MASS) -> NBodySystem {
+    self:bodies = bodies;
+    let px = 0.0;
+    let py = 0.0;
+    let pz = 0.0;
+    let size = len(self:bodies);
+
+    for (let i = 0; i < size; i = i + 1) {
+        let b = get(self:bodies, i);
+        let m = b:mass;
+        px = px + b:vx * m;
+        py = py + b:vy * m;
+        pz = pz + b:vz * m;
+    }
+    
+    let sun = get(self:bodies, 0);
+    sun$offsetMomentum(px, py, pz, SOLAR_MASS);
+    return self;
+}
+
+method NBodySystem advance(self, dt) -> unit {
+    let dx = 0;
+    let dy = 0;
+    let dz = 0;
+    let distance = 0;
+    let mag = 0;
+    let size = len(self:bodies);
+
+    for (let i = 0; i < size; i = i + 1) {
+        let bodyi = get(self:bodies, i);
+        for (let j = i + 1; j < size; j = j + 1) {
+            let bodyj = get(self:bodies, j);
+            dx = bodyi:x - bodyj:x;
+            dy = bodyi:y - bodyj:y;
+            dz = bodyi:z - bodyj:z;
+
+            distance = sqrt(dx*dx + dy*dy + dz*dz);
+            mag = dt / (distance * distance * distance);
+
+            bodyi:vx = bodyi:vx - dx * bodyj:mass * mag;
+            bodyi:vy = bodyi:vy - dy * bodyj:mass * mag;
+            bodyi:vz = bodyi:vz - dz * bodyj:mass * mag;
+
+            bodyj:vx = bodyj:vx + dx * bodyi:mass * mag;
+            bodyj:vy = bodyj:vy + dy * bodyi:mass * mag;
+            bodyj:vz = bodyj:vz + dz * bodyi:mass * mag;
+        }
+    }
+
+    for (let i = 0; i < size; i = i + 1) {
+        let body = get(self:bodies, i);
+        body:x = body:x + dt * body:vx;
+        body:y = body:y + dt * body:vy;
+        body:z = body:z + dt * body:vz;
+    }
+}
+
+method NBodySystem energy(self) -> double {
+    let dx = 0;
+    let dy = 0;
+    let dz = 0;
+    let distance = 0;
+    let e = 0.0;
+    let size = len(self:bodies);
+
+    for (let i = 0; i < size; i = i + 1) {
+        let bodyi = get(self:bodies, i);
+
+        e = e + 0.5 * bodyi:mass * 
+            (bodyi:vx * bodyi:vx + bodyi:vy * bodyi:vy + bodyi:vz * bodyi:vz);
+
+        for (let j = i + 1; j < size; j = j + 1) {
+            let bodyj = get(self:bodies, j);
+            dx = bodyi:x - bodyj:x;
+            dy = bodyi:y - bodyj:y;
+            dz = bodyi:z - bodyj:z;
+
+            distance = sqrt(dx*dx + dy*dy + dz*dz);
+            e = e - (bodyi:mass * bodyj:mass) / distance;
+        }
+    }
+    return e;
+}
+
+fun main() -> unit {
+    let ret = 0.0;
+
+    for (let n = 3; n <= 24; n = n * 2) {
+        print(n);
+        let bodies = NBodySystem;
+        let solar_system = [Sun(SOLAR_MASS, DAYS_PER_YEAR), Jupiter(SOLAR_MASS, DAYS_PER_YEAR), Saturn(SOLAR_MASS, DAYS_PER_YEAR), Uranus(SOLAR_MASS, DAYS_PER_YEAR), Neptune(SOLAR_MASS, DAYS_PER_YEAR)];
+        bodies$init(solar_system, SOLAR_MASS);
+        
+        let max = n * 100;
+        ret = ret + bodies$energy();
+        for (let i = 0; i < max; i = i + 1) {
+            bodies$advance(0.01);
+        }
+        ret = ret + bodies$energy();
+    }
+
+    let expected = -1.3524862408537381;
+    if (ret != expected) {
+        print("ERROR: bad result: expected ");
+        print(expected);
+        print(" but got ");
+        print(ret);
+    } else {
+        print("Success! Result: ");
+        print(ret);
+    }
+    return;
+}

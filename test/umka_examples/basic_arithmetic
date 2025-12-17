@@ -3,5 +3,7 @@ fun main() -> unit {
     let y = 5;
     let z = x + y;
     print(z);
+    print(-z);
+    print(x - y);
     return;
 }

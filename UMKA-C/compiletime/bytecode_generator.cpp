@@ -364,7 +364,7 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
             return;
         }
 
-        for (auto arg: call->args) gen_expr_in_func(arg, fb);
+        for (auto arg: call->args | std::views::reverse) gen_expr_in_func(arg, fb);
 
         auto itb = builtinIDs.find(call->name);
         if (itb != builtinIDs.end()) {
@@ -379,8 +379,8 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
             }
         }
     } else if (auto bex = dynamic_cast<BinaryExpr*>(expr)) {
-        gen_expr_in_func(bex->left, fb);
         gen_expr_in_func(bex->right, fb);
+        gen_expr_in_func(bex->left, fb);
         auto it = BINOP_MAP.find(bex->op);
         if (it == BINOP_MAP.end()) {
             std::cerr << "genExpr: unknown binary op '" << bex->op << "'\n";
@@ -397,8 +397,8 @@ void BytecodeGenerator::gen_expr_in_func(Expr* expr, FuncBuilder& fb) {
                 gen_expr_in_func(ue->rhs, fb);
                 break;
             case '-':
-                emit_push_zero_const(fb);
                 gen_expr_in_func(ue->rhs, fb);
+                emit_push_zero_const(fb);
                 fb.emit_byte(OP_SUB);
                 break;
             default:
@@ -539,6 +539,11 @@ void BytecodeGenerator::gen_field_access_expr(FieldAccessExpr* expr, FuncBuilder
     
     fb.emit_byte(OP_GET_FIELD);
     fb.emit_int64(field_id);
+
+    auto itb = builtinIDs.find("get");
+    if (itb != builtinIDs.end()) {
+        fb.emit_call(itb->second);
+    }
 }
 
 void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuilder& fb) {
@@ -555,13 +560,17 @@ void BytecodeGenerator::gen_member_access_expr(MemberAccessExpr* expr, FuncBuild
     
     fb.emit_byte(OP_GET_FIELD);
     fb.emit_int64(field_id);
+
+    auto itb = builtinIDs.find("get");
+    if (itb != builtinIDs.end()) {
+        fb.emit_call(itb->second);
+    }
 }
 
-void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb) {
+void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& fb) { 
+    for (auto arg: expr->args | std::views::reverse) gen_expr_in_func(arg, fb);
     gen_expr_in_func(expr->target, fb);
-    
-    for (auto arg: expr->args) gen_expr_in_func(arg, fb);
-    
+
     int64_t method_id = get_method_id_or_error(expr->method_name);
     
     fb.emit_byte(OP_CALL_METHOD);
@@ -569,6 +578,9 @@ void BytecodeGenerator::gen_method_call_expr(MethodCallExpr* expr, FuncBuilder& 
 }
 
 void BytecodeGenerator::gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuilder& fb) {
+    // Generate the value to assign
+    gen_expr_in_func(stmt->expr, fb);
+    
     auto it = fb.var_index.find(stmt->object_name);
     if (it == fb.var_index.end()) {
         std::cerr << "Member assignment to unknown object '" << stmt->object_name << "'\n";
@@ -576,30 +588,14 @@ void BytecodeGenerator::gen_member_assign_stmt(MemberAssignStmt* stmt, FuncBuild
     }
     fb.emit_load(it->second);
     
-    auto typeIt = fb.var_types.find(stmt->object_name);
-    if (typeIt == fb.var_types.end()) {
-        std::cerr << "Member assignment on object with unknown type '" << stmt->object_name << "'\n";
-        return;
-    }
-    
-    std::string className = typeIt->second;
-    auto classIt = classFieldIndices.find(className);
-    if (classIt == classFieldIndices.end()) {
-        std::cerr << "Member assignment on object of unknown class '" << className << "'\n";
-        return;
-    }
-    
-    auto fieldIt = classIt->second.find(stmt->field);
-    if (fieldIt == classIt->second.end()) {
-        std::cerr << "Member assignment to unknown field '" << stmt->field << "' in class '" << className << "'\n";
-        return;
-    }
+    int64_t field_id = get_field_id_or_error(stmt->field, fb);
+    if (field_id == -1) return;
 
-    int64_t fieldIdx = fb.add_const(ConstEntry(fieldIt->second));
-    fb.emit_push_const_index(fieldIdx);
+    // Push the field index as a constant
+    fb.emit_byte(OP_GET_FIELD);
+    fb.emit_int64(field_id);
 
-    gen_expr_in_func(stmt->expr, fb);
-
+    // Use the set builtin function to set the field value
     auto itb = builtinIDs.find("set");
     if (itb != builtinIDs.end()) {
         fb.emit_call(itb->second);
