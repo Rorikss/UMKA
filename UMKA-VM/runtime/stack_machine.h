@@ -158,7 +158,7 @@ class StackMachine
                 jit_manager->request_jit(function_id);
             }
 
-            for (int64_t i = entry.arg_count - 1; i >= 0; --i) {
+            for (int64_t i = 0; i < entry.arg_count; ++i) {
                 if (operand_stack.empty()) {
                     throw std::runtime_error("Not enough arguments for " + error_context);
                 }
@@ -405,10 +405,10 @@ class StackMachine
 
     std::pair<Entity, Entity> get_operands_from_stack(const std::string& op_name) {
         CHECK_STACK_EMPTY(op_name);
-        Reference<Entity> rhs = operand_stack.back();
+        Reference<Entity> lhs = operand_stack.back();
         operand_stack.pop_back();
         CHECK_STACK_EMPTY(op_name);
-        Reference<Entity> lhs = operand_stack.back();
+        Reference<Entity> rhs = operand_stack.back();
         operand_stack.pop_back();
         CHECK_REF(lhs);
         CHECK_REF(rhs);
@@ -497,30 +497,38 @@ class StackMachine
             call_value_proc([this](auto arg) { return len(arg); });
             return true;
         case GET_FUN: {
-            auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL GET"));
             auto arr = get_operand_from_stack("CALL GET");
+            auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL GET"));
             create_and_push(*get(arr, idx).lock());
             return true;
         }
         case SET_FUN: {
-            auto val = stack_pop();
-            auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL SET"));
-            call_void_proc([&](auto arr) { set(arr, idx, val); });
+            call_void_proc([&](auto arr) { 
+                auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL SET"));
+                auto val = stack_pop();
+                set(arr, idx, val); 
+            });
             return true;
         }
         case ADD_FUN: {
-            auto val = stack_pop();
-            call_void_proc([&](auto arr) { add_elem(arr, val); });
+            call_void_proc([&](auto arr) { 
+                auto val = stack_pop();
+                add_elem(arr, val); 
+            });
             return true;
         }
         case REMOVE_FUN: {
-            auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL REMOVE"));
-            call_void_proc([&](auto arr) { remove(arr, idx); });
+            call_void_proc([&](auto arr) { 
+                auto idx = umka_cast<int64_t>(get_operand_from_stack("CALL REMOVE"));
+                remove(arr, idx); 
+            });
             return true;
         }
         case WRITE_FUN: {
-            auto content = get_operand_from_stack("CALL WRITE");
-            call_void_proc([&](auto filename) { write(filename.to_string(), content); });
+            call_void_proc([&](auto filename) { 
+                auto content = get_operand_from_stack("CALL WRITE");
+                write(filename.to_string(), content); 
+            });
             return true;
         }
         case READ_FUN: {
@@ -586,8 +594,10 @@ class StackMachine
             return true;
         }
         case PUSH_HEAP_FUN: {
-            auto val = stack_pop();
-            call_void_proc([&](auto arr) { push_heap(arr, val); });
+            call_void_proc([&](auto arr) { 
+                auto val = stack_pop();
+                push_heap(arr, val); 
+            });
             return true;
         }
         default: 

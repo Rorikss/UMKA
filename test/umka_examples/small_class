@@ -7,8 +7,29 @@ method Cat say_hello(self) -> unit {
     return;
 }
 
+method Cat catch_mices(self, catched, mices, x) -> unit {
+    print(self);
+    print(catched);
+    print(mices);
+    print(x);
+    print("=====");
+    print(self:name);
+    self:name = "kotenok";
+    for (let i = 0; i < catched; i = i + 1) {
+        print(get(mices, i));
+        print(concat(
+            "catched mice! ~O>",
+            to_string(get(mices, i))
+        ));
+    }
+    print("bebra");
+}
+
 fun main() -> unit {
     let my_cat = Cat;
     my_cat$say_hello();
+    let mices = [1, 2, 3, 4, 5];
+    my_cat$catch_mices(len(mices) - 1, mices, 42);
+    print(my_cat:name);
     return;
 }

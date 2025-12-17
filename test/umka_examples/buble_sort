@@ -1,4 +1,4 @@
-fun sort(arr) -> unit {
+fun buble_sort(arr) -> unit {
     let n = len(arr);
     for (let i = 0; i < n; i = i + 1) {
         for (let j = 0; j < n - i - 1; j = j + 1) {
@@ -16,7 +16,7 @@ fun main() -> unit {
     for (let i = 0; i < 1000; i = i + 1) {
         add(arr, random());
     }
-    sort(arr);
+    buble_sort(arr);
     print(arr);
     return;
 }
