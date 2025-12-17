@@ -36,7 +36,10 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    print_program_ast();
+    if (argc >= 3 && std::string(argv[2]) == "-ast") {
+        print_program_ast();
+    }
+    
     BytecodeGenerator gen;
     gen.generate_all(program_stmts);
 

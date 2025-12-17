@@ -1,8 +1,10 @@
 #include "standart_funcs.h"
 #include <model/model.h>
+#include <cmath>
 #include <iostream>
 #include <fstream>
 #include <ostream>
+#include <string>
 #include <sstream>
 #include <variant>
 #include <vector>
@@ -38,7 +40,12 @@ std::vector<std::string> read(const std::string& filename) {
 }
 
 int64_t len(Entity entity) {
-    return std::get<Owner<Array>>(entity.value)->size();
+    if (std::holds_alternative<Owner<Array>>(entity.value)) {
+        return std::get<Owner<Array>>(entity.value)->size();
+    } else if (std::holds_alternative<std::string>(entity.value)) {
+        return std::get<std::string>(entity.value).size();
+    }
+    throw std::runtime_error("Invalid type for len()");
 }
 
 void add_elem(Entity array, Reference<Entity> elem) {
@@ -85,5 +92,63 @@ std::string input() {
 
 double random() {
     return static_cast<double>(std::rand()) / RAND_MAX;
+}
+
+double pow(double base, double exp) {
+    return std::pow(base, exp);
+}   
+
+double sqrt(double number) {
+    return std::sqrt(number);
+}
+
+void umka_sort(Entity array) {
+    auto arr = std::get<Owner<Array>>(array.value);
+    std::sort(arr->begin(), arr->end(), [](const auto a, const auto b) {
+        return *a.lock() < *b.lock();
+    });
+}
+
+std::vector<std::string> split(const Entity& str_entity, const Entity& delim_entty) {
+    std::string str = str_entity.to_string();
+    std::string delim = delim_entty.to_string();
+
+    auto tokens = make_array();
+    std::string processed = str;
+    std::string::size_type n = 0;
+    while ((n = processed.find(delim, n)) != std::string::npos) {
+        processed.replace(n, delim.length(), " ");
+        n += 1; 
+    }
+    
+    std::istringstream stream(processed);
+
+    return std::vector<std::string>(
+        std::istream_iterator<std::string>(stream),
+        std::istream_iterator<std::string>()
+    );
+}
+
+void make_heap(Entity array) {
+    auto arr = std::get<Owner<Array>>(array.value);
+    std::make_heap(arr->begin(), arr->end(), [](const auto a, const auto b) {
+        return *a.lock() < *b.lock();
+    });
+}
+
+void pop_heap(Entity array) {
+    auto arr = std::get<Owner<Array>>(array.value);
+    std::pop_heap(arr->begin(), arr->end(), [](const auto a, const auto b) {
+        return *a.lock() < *b.lock();
+    });
+    arr->pop_back();
+}
+
+void push_heap(Entity array, Reference<Entity> elem) {
+    auto arr = std::get<Owner<Array>>(array.value);
+    arr->emplace_back(elem);
+    std::push_heap(arr->begin(), arr->end(), [](const auto a, const auto b) {
+        return *a.lock() < *b.lock();
+    });
 }
 }

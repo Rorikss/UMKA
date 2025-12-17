@@ -1,0 +1,54 @@
+fun main() -> unit {
+    let input_num = to_int(input());
+    print(input_num + 5);
+
+    assert(1 < 2);
+    print("ok!");
+
+    let a = 5;
+    print(sqrt(a));
+    print(pow(a, 2));
+
+    let s1 = "Hello, ";
+    let s2 = "world!";
+    print(concat(s1, s2));
+
+    let a = 10;
+    let b = 20;
+    print(a - b);
+
+
+    let one = "140";
+    let two = "230";
+    assert(to_int(one) + to_int(two) == 370.000000);
+    let three = "3.14";
+    assert(to_double(three) == 3.14);
+    let line_num = 140;
+    assert(to_string(line_num) == "140");
+    print("ok!");
+
+    let line = "Hello, world!";
+    print(len(line));
+
+    let arr = ["octopus", "zebra", "cat", "dog"];
+    sort(arr);
+    print(arr);
+
+    print(max(2, 10));
+    print(min("aboba", "cat"));
+    print(max("aboba", 5));
+
+    let arr = [1, 2, 3, 4, 5];
+    make_heap(arr);
+    print(arr);
+    pop_heap(arr);
+    print(arr);
+    push_heap(arr, 6);
+    print(arr);
+    print(get(arr, 0));
+
+    let long_line = "This ABC is ABC a ABC very ABC long ABC line.";
+    let tokens = split(long_line, "ABC");
+    print(tokens);
+    return;
+}
